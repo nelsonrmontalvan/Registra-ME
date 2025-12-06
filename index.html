@@ -1,0 +1,3261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- TEST GIT 123 -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RegistraME - V2</title>
+    <!-- FAVICON (EL ÍCONO DE LA PESTAÑA) -->
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/2997/2997300.png">
+    <link rel="shortcut icon" href="https://cdn-icons-png.flaticon.com/512/2997/2997300.png">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2997/2997300.png">
+
+    <!-- MODO APP MÓVIL -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#4F46E5">
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/2997/2997300.png">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2997/2997300.png">
+    
+    <!-- LIBRERÍAS MODERNAS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Chart.js para gráficas futuras -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* ESTILOS GLOBALES */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        :root {
+            --primary: #4F46E5; /* Indigo 600 */
+            --primary-dark: #4338CA; /* Indigo 700 */
+            --accent: #10B981; /* Emerald 500 */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F3F4F6; /* Gray 100 */
+            color: #1F2937; /* Gray 800 */
+        }
+
+        /* EFECTO CRISTAL Y TARJETAS */
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .card-hover { transition: transform 0.2s, box-shadow 0.2s; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+
+        /* SCROLLBAR PERSONALIZADO */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #c7c7c7; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+
+        /* ANIMACIONES */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* ESTILOS DE IMPRESIÓN (PDF) */
+        @media print {
+            body * { visibility: hidden; }
+            #printable-area, #printable-area * { visibility: visible; }
+            #printable-area { position: absolute; left: 0; top: 0; width: 100%; background: white; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body class="h-screen flex overflow-hidden">
+
+    <!-- ========================================== -->
+    <!-- 1. PANTALLA DE LOGIN (UNIFICADA) -->
+    <!-- ========================================== -->
+    <div id="screen-login" class="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-indigo-900 to-blue-800 p-4">
+        <div class="glass p-8 w-full max-w-md rounded-2xl text-center fade-in">
+            <div class="mb-6 flex justify-center">
+                <div class="bg-indigo-100 p-4 rounded-full">
+                    <i class="fas fa-graduation-cap text-4xl text-indigo-600"></i>
+                </div>
+            </div>
+            <h1 class="text-3xl font-bold text-gray-800 mb-1">RegistraME</h1>
+            <p class="text-gray-500 mb-8 text-sm">Plataforma de Gestión Educativa</p>
+            
+            <form onsubmit="app.login(event)">
+                <div class="mb-4 text-left">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Correo</label>
+                    <input type="email" id="login-email" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none transition" placeholder="usuario@escuela.com" required>
+                </div>
+                <div class="mb-6 text-left">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Contraseña</label>
+                    <input type="password" id="login-pass" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none transition" placeholder="••••••••" required>
+                </div>
+                <button type="submit" id="btn-login" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition transform active:scale-95 shadow-lg">
+                    INGRESAR
+                </button>
+            </form>
+            <p class="mt-6 text-xs text-gray-400">V2.0 Desarrollado por Ing. Nelson Rodriguez M</p>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 2. SIDEBAR (MENÚ LATERAL) -->
+    <!-- ========================================== -->
+    <!-- Se muestra solo si está logueado -->
+    <aside id="sidebar" class="w-64 bg-white border-r border-gray-200 hidden flex-col z-40 transition-all duration-300 transform md:translate-x-0 -translate-x-full fixed md:relative h-full">
+        <!-- Logo -->
+        <div class="p-6 border-b border-gray-100 flex items-center gap-3">
+            <i class="fas fa-graduation-cap text-2xl text-indigo-600"></i>
+            <div>
+                <h1 class="font-bold text-xl text-gray-800 tracking-tight">RegistraME</h1>
+                <span class="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">PRO</span>
+            </div>
+        </div>
+
+        <!-- Menú Scrolleable -->
+        <nav class="flex-1 overflow-y-auto p-4 space-y-1">
+            
+            <!-- SECCIÓN DOCENTE -->
+            <div id="menu-docente" class="space-y-1">
+                <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-2">Principal</p>
+                
+                <a onclick="app.nav('dashboard')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
+                    <i class="fas fa-home w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
+                    <span class="font-medium text-sm">Dashboard</span>
+                </a>
+                
+                <a onclick="app.nav('asistencia')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
+                    <i class="fas fa-calendar-check w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
+                    <span class="font-medium text-sm">Asistencia</span>
+                </a>              
+
+                <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-6">Académico</p>
+
+                <a onclick="app.nav('planeamientos')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
+                    <i class="fas fa-clipboard-list w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
+                    <span class="font-medium text-sm">Planeamiento</span>
+                </a>
+
+                <a onclick="app.nav('bitacoras')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
+                    <i class="fas fa-book-open w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
+                    <span class="font-medium text-sm">Bitácora</span>
+                </a>
+
+                <a onclick="app.nav('sea')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
+                    <i class="fas fa-file-excel w-6 text-green-600 group-hover:text-green-700 transition"></i>
+                    <span class="font-medium text-sm">Informe SEA</span>
+                </a>
+
+                <a onclick="app.nav('miaula')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
+                    <i class="fas fa-cloud-upload-alt w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
+                    <span class="font-medium text-sm">Mi Aula</span>
+                </a>
+
+                <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-6">Gestión</p>
+
+                <a onclick="app.nav('config')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
+                    <i class="fas fa-cog w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
+                    <span class="font-medium text-sm">Configuración</span>
+                </a>
+
+                 <a onclick="app.nav('horarios')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
+                    <i class="fas fa-clock w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
+                    <span class="font-medium text-sm">Horarios</span>
+                </a>
+            </div>
+
+            <!-- SECCIÓN ADMIN (Oculta por defecto) -->
+            <div id="menu-admin" class="hidden space-y-1">
+                <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Administración</p>
+                <a onclick="app.nav('admin-users')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
+                    <i class="fas fa-users-cog w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
+                    <span class="font-medium text-sm">Usuarios</span>
+                </a>
+            </div>
+
+        </nav>
+
+        <!-- Botón Salir -->
+        <div class="p-4 border-t border-gray-100">
+            <button onclick="app.logout()" class="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition">
+                <i class="fas fa-sign-out-alt mr-2"></i> Cerrar Sesión
+            </button>
+        </div>
+    </aside>
+
+    <!-- Overlay para móvil -->
+    <div id="sidebar-overlay" onclick="app.toggleSidebar()" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-30 hidden md:hidden glass"></div>
+
+    <!-- ========================================== -->
+    <!-- 3. ÁREA PRINCIPAL (CONTENIDO DINÁMICO) -->
+    <!-- ========================================== -->
+    <main id="main-content" class="flex-1 flex flex-col relative hidden h-full overflow-hidden">
+        
+        <!-- HEADER SUPERIOR -->
+        <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 shrink-0">
+            <div class="flex items-center gap-4">
+                <button onclick="app.toggleSidebar()" class="md:hidden text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <h2 id="page-title" class="text-xl font-bold text-gray-800">Dashboard</h2>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex flex-col text-right mr-2">
+                    <span id="user-name" class="text-sm font-bold text-gray-700">Cargando...</span>
+                    <span id="user-role" class="text-xs text-gray-500 uppercase">Docente</span>
+                </div>
+                <div class="h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold border border-indigo-200 shadow-sm">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTENEDOR DE VISTAS (SCROLLEABLE) -->
+        <div id="views-container" class="flex-1 overflow-y-auto p-6 relative">
+            
+            <!-- VISTA: DASHBOARD (SECCIONES) -->
+            <div id="view-dashboard" class="view fade-in">
+                <div id="grid-secciones" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Se llena con JS -->
+                    <div class="col-span-full text-center py-10 text-gray-400">
+                        <i class="fas fa-spinner fa-spin text-3xl mb-3"></i><br>Cargando tus datos...
+                    </div>
+                </div>
+            </div>
+
+            <!-- VISTA: ESTUDIANTES (CRUD) -->
+            <div id="view-estudiantes" class="view hidden fade-in">
+                <div class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <button onclick="app.nav('dashboard')" class="text-gray-500 hover:text-indigo-600 flex items-center gap-2 text-sm font-bold">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </button>
+                    <div class="flex gap-2">
+                        <!-- BOTÓN NUEVO -->
+                        <button onclick="app.modalEnvioMasivo()" class="bg-amber-100 text-amber-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-amber-200 transition border border-amber-200 shadow-sm">
+                            <i class="fas fa-paper-plane mr-2"></i> Informe al Hogar
+                        </button>
+                        
+                        <button onclick="app.modalImportar()" class="bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-200 transition">
+                            <i class="fas fa-file-excel mr-2"></i> Importar
+                        </button>
+                        <button onclick="app.modalEstudiante()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition shadow">
+                            <i class="fas fa-plus mr-2"></i> Nuevo Estudiante
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-gray-50 text-gray-500 text-xs uppercase font-bold border-b border-gray-200">
+                            <tr>
+                                <th class="p-4">Cédula</th>
+                                <th class="p-4">Nombre Completo</th>
+                                <th class="p-4">Teléfono</th>
+                                <th class="p-4 text-center">Correo Encargado</th>
+                                <th class="p-4 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-students-body" class="divide-y divide-gray-100 text-sm text-gray-700">
+                            <!-- JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- VISTA: MATERIAS Y CALIFICACIONES -->
+            <div id="view-materias" class="view hidden fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <button onclick="app.nav('dashboard')" class="text-gray-500 hover:text-indigo-600 font-bold text-sm"><i class="fas fa-arrow-left"></i> Volver</button>
+                    <button onclick="app.modalMateria()" class="bg-amber-500 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-amber-600 shadow"><i class="fas fa-plus"></i> Nueva Materia</button>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 text-gray-500 text-xs uppercase font-bold border-b">
+                            <tr>
+                                <th class="p-4">Asignatura</th>
+                                <th class="p-4 text-center">Rubros %</th>
+                                <th class="p-4 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-materias-body" class="divide-y divide-gray-100 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+
+ <!-- VISTA: CONFIGURACIÓN DE HORARIO (REDISEÑADA) -->
+            <div id="view-horarios" class="view hidden fade-in">
+                
+                <!-- 1. FORMULARIO COMPACTO (CREAR) -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6">
+                    <h3 class="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide border-b pb-2">
+                        <i class="fas fa-plus-circle text-indigo-600 mr-2"></i>Asignar Bloque
+                    </h3>
+                    
+                    <!-- Fila 1: Selectores -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                        <div><label class="text-[10px] font-bold text-gray-400 uppercase">Institución</label>
+                        <select id="hc-inst" class="w-full p-2 border rounded bg-gray-50 text-sm focus:ring-1 focus:ring-indigo-500" onchange="app.loadSecHorarioConfig()"></select></div>
+                        
+                        <div><label class="text-[10px] font-bold text-gray-400 uppercase">Sección</label>
+                        <select id="hc-sec" class="w-full p-2 border rounded bg-gray-50 text-sm focus:ring-1 focus:ring-indigo-500" onchange="app.loadMatHorarioConfig()"></select></div>
+                        
+                        <div><label class="text-[10px] font-bold text-gray-400 uppercase">Materia</label>
+                        <select id="hc-mat" class="w-full p-2 border rounded bg-white text-sm font-bold text-indigo-700 border-indigo-200 focus:ring-1 focus:ring-indigo-500"></select></div>
+                    </div>
+
+                    <!-- Fila 2: Días y Fechas -->
+                    <div class="flex flex-col md:flex-row gap-4 items-end">
+                        
+                        <!-- Días (Compacto) -->
+                        <div class="flex-1">
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Lecciones por día</label>
+                            <div class="flex gap-2" id="days-container">
+                                <!-- JS Inyecta aquí -->
+                            </div>
+                        </div>
+
+                        <!-- Fechas -->
+                        <div class="flex gap-2">
+                            <div><label class="text-[10px] font-bold text-gray-400 uppercase">Desde</label>
+                            <input type="date" id="hc-ini" class="p-1.5 border rounded text-xs w-32"></div>
+                            <div><label class="text-[10px] font-bold text-gray-400 uppercase">Hasta</label>
+                            <input type="date" id="hc-fin" class="p-1.5 border rounded text-xs w-32"></div>
+                        </div>
+
+                        <!-- Botón -->
+                        <button onclick="app.saveScheduleConfig()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition h-9">
+                            Guardar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. CONSULTA Y LISTADO -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
+                        <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wide">
+                            <i class="fas fa-list text-gray-400 mr-2"></i>Horarios Asignados
+                        </h3>
+                        
+                        <!-- Filtro Rango para la Consulta -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] font-bold text-gray-400 uppercase">Filtrar Vigencia:</span>
+                            <input type="date" id="filter-hc-date" class="p-1 border rounded text-xs bg-white" onchange="app.filterScheduleList()">
+                            <button onclick="app.filterScheduleList(true)" class="text-gray-400 hover:text-indigo-600" title="Limpiar filtro"><i class="fas fa-times"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div id="schedule-list" class="divide-y divide-gray-100 max-h-96 overflow-y-auto">
+                        <div class="p-8 text-center text-gray-400 text-sm">Selecciona una sección arriba para ver sus horarios.</div>
+                    </div>
+                </div>
+            </div>
+
+    <!-- MATRIZ SCROLLEABLE -->
+    <div class="flex-1 bg-white rounded-xl shadow overflow-hidden relative border border-gray-300">
+        <div class="overflow-auto h-full w-full" id="matrix-container">
+            <!-- AQUÍ SE DIBUJA LA TABLA GIGANTE -->
+            <div class="text-center py-10 text-gray-400">Selecciona los filtros y consulta.</div>
+        </div>
+    </div>
+</div>
+
+            <!-- VISTA: ADMIN USUARIOS -->
+            <div id="view-admin-users" class="view hidden fade-in">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Formulario Crear -->
+                    <div class="lg:col-span-1">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                            <h5 class="font-bold text-gray-800 mb-4">Nuevo Usuario</h5>
+                            <form onsubmit="app.adminCreateUser(event)">
+                                <div class="mb-3"><label class="text-xs font-bold text-gray-500">Nombre</label><input id="adm-name" class="w-full p-2 border rounded mt-1" required></div>
+                                <div class="mb-3"><label class="text-xs font-bold text-gray-500">Email</label><input type="email" id="adm-email" class="w-full p-2 border rounded mt-1" required></div>
+                                <div class="mb-4"><label class="text-xs font-bold text-gray-500">Plan</label><select id="adm-plan" class="w-full p-2 border rounded mt-1"><option value="Suscripción (1 Año)">Anual</option><option value="Prueba (1 Mes)">Prueba</option></select></div>
+                                <button type="submit" class="w-full bg-indigo-600 text-white font-bold py-2 rounded hover:bg-indigo-700">Crear</button>
+                            </form>
+                            <div id="adm-result" class="mt-4 p-3 bg-green-50 text-green-800 rounded text-sm hidden border border-green-200"></div>
+                        </div>
+                    </div>
+                    <!-- Tabla Usuarios -->
+                    <div class="lg:col-span-2">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-gray-50 text-gray-500 font-bold uppercase text-xs border-b"><tr><th class="p-4">Usuario</th><th class="p-4">Plan</th><th class="p-4 text-right">Vence</th></tr></thead>
+                                <tbody id="adm-table-body" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                
+
+            <!-- OTRAS VISTAS (Planeamiento, Bitácora, Config, Mi Aula) se generan dinámicamente con JS para ahorrar espacio en este mensaje -->
+            <!-- ... -->
+
+        </div>
+    </main>
+
+    <!-- ÁREA DE IMPRESIÓN (OCULTA) -->
+    <div id="printable-area" class="hidden"></div>
+
+    <!-- JAVASCRIPT LOGIC (PARTE 2 SE INYECTA AQUÍ) -->
+    <script>
+        // ==========================================
+    // CONFIGURACIÓN Y ESTADO GLOBAL
+    // ==========================================
+    // ¡¡PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT!! 👇
+    const API_URL = "https://script.google.com/macros/s/AKfycbzBxtW4GnEdEgoIsnWwOBV3OWiG5f8douP4lHCwU3gUrP0ZW3U-PWa8bCGalRD3HwxyiQ/exec"; 
+
+    const app = {
+        user: null,      // Datos del usuario logueado
+        data: {},        // Cache de datos (Secciones, Instituciones)
+        state: {},       // Estado temporal (Sección activa, Materia activa)
+        
+        // ==========================================
+        // 1. NÚCLEO DE COMUNICACIÓN (FETCH)
+        // ==========================================
+        api: async (payload) => {
+            try {
+                // Si hay usuario, inyectamos el email en cada petición automáticamente
+                if(app.user?.email) payload.email = app.user.email;
+                
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(payload)
+                });
+                const res = await response.json();
+                
+                // Manejo de errores global
+                if(res.status === 'error') throw new Error(res.msg || res.error);
+                return res;
+            } catch (error) {
+                console.error("API Error:", error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de Conexión',
+                    text: error.message || 'No se pudo contactar con el servidor.'
+                });
+                return null;
+            }
+        },
+
+        // ==========================================
+        // 2. AUTENTICACIÓN Y NAVEGACIÓN
+        // ==========================================
+   init: () => {
+            // 1. PRIMERO: Construimos el HTML (Inyectar vistas)
+            // ¡Esta línea debe ir arriba de todo!
+            app.injectDynamicViews(); 
+
+            // 2. SEGUNDO: Ahora sí, verificamos sesión y cargamos datos
+            const savedUser = localStorage.getItem('registrame_user');
+            if(savedUser) {
+                app.user = JSON.parse(savedUser);
+                app.enterApp();
+            }
+        },
+
+        login: async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-pass').value;
+            const btn = document.getElementById('btn-login');
+            
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+            btn.disabled = true;
+
+            const res = await app.api({ action: 'login', email, password: pass });
+            
+            if (res && res.status === 'success') {
+                app.user = { email: email, role: res.role };
+                localStorage.setItem('registrame_user', JSON.stringify(app.user));
+                app.enterApp();
+            } else {
+                btn.innerHTML = 'INGRESAR';
+                btn.disabled = false;
+            }
+        },
+
+        enterApp: async () => {
+            document.getElementById('screen-login').classList.add('hidden');
+            document.getElementById('sidebar').classList.remove('hidden');
+            document.getElementById('sidebar').classList.add('flex');
+            document.getElementById('main-content').classList.remove('hidden');
+            
+            // Configurar UI según Rol
+            document.getElementById('user-name').innerText = app.user.email;
+            document.getElementById('user-role').innerText = app.user.role;
+
+            if(app.user.role === 'ADMIN') {
+                document.getElementById('menu-docente').classList.add('hidden');
+                document.getElementById('menu-admin').classList.remove('hidden');
+                app.nav('admin-users');
+            } else {
+                document.getElementById('menu-docente').classList.remove('hidden');
+                document.getElementById('menu-admin').classList.add('hidden');
+                app.loadDashboardData(); // Cargar datos iniciales
+            }
+        },
+
+        logout: () => {
+            localStorage.removeItem('registrame_user');
+            location.reload();
+        },
+
+        toggleSidebar: () => {
+            const sb = document.getElementById('sidebar');
+            const ov = document.getElementById('sidebar-overlay');
+            if(sb.classList.contains('-translate-x-full')) {
+                sb.classList.remove('-translate-x-full');
+                ov.classList.remove('hidden');
+            } else {
+                sb.classList.add('-translate-x-full');
+                ov.classList.add('hidden');
+            }
+        },
+
+        // ==========================================
+        // 2. NAVEGACIÓN (CEREBRO DE RUTAS)
+        // ==========================================
+ nav: (viewId) => {
+            // 1. Ocultar todas las vistas
+            document.querySelectorAll('.view').forEach(el => el.classList.add('hidden'));
+            
+            // 2. Mostrar la vista seleccionada
+            const target = document.getElementById('view-' + viewId);
+            if(target) target.classList.remove('hidden');
+
+            // ----------------------------------------------------
+            // AJUSTE: LIMPIEZA AUTOMÁTICA
+            // ----------------------------------------------------
+            // Si navego a cualquier lado que NO SEA 'sea', limpio el reporte
+            if (viewId !== 'sea') {
+                // Verificamos si la función existe antes de llamarla para evitar errores
+                if (app.clearSeaView) app.clearSeaView();
+            }
+            
+            // 3. Actualizar Título del Header
+            const titles = {
+                'dashboard': 'Mis Secciones', 
+                'estudiantes': 'Gestión de Estudiantes',
+                'materias': 'Asignaturas y Notas', 
+                'horarios': 'Configuración de Horario',
+                'asistencia': 'Matriz de Asistencia',
+                'admin-users': 'Administración',
+                'planeamientos': 'Planeamiento Didáctico', 
+                'bitacoras': 'Bitácora de Incidencias',
+                'miaula': 'Mi Aula Virtual', 
+                'config': 'Configuración',
+                'sea': 'Informe Oficial SEA' // <--- Agregué el título para esta vista
+            };
+            
+            // Si el título existe en el mapa, úsalo, sino usa 'Panel de Control'
+            const pageTitle = document.getElementById('page-title');
+            if(pageTitle) pageTitle.innerText = titles[viewId] || 'Panel de Control';
+
+            // 4. CERRAR SIDEBAR (En Móvil)
+            if(window.innerWidth < 768) app.toggleSidebar();
+
+            // ===============================================
+            // 5. INICIALIZADORES
+            // ===============================================
+
+            // Si entramos a ADMIN
+            if(viewId === 'admin-users') app.adminLoadUsers();
+            
+            // Si entramos a PLANEAMIENTOS
+            if(viewId === 'planeamientos') app.loadPlanes();
+            
+            // Si entramos a BITÁCORAS
+            if(viewId === 'bitacoras') app.loadBitacoras();
+            
+            // Si entramos a MI AULA
+            if(viewId === 'miaula') app.loadLecciones();
+
+            // --- NUEVOS MÓDULOS ---
+            
+            // Si entramos a HORARIOS -> Cargar Checkboxes y Combos
+            if(viewId === 'horarios') app.initHorarioUI(); 
+
+            // Si entramos a ASISTENCIA -> Cargar Combos y Fechas
+            if(viewId === 'asistencia') app.initAsistenciaUI();
+
+            // Si entramos a SEA -> Cargar Combos
+            if(viewId === 'sea') app.initSeaUI();
+        },
+
+              // ==========================================
+        // FUNCIÓN UNIVERSAL DE DESCARGA PDF
+        // ==========================================
+
+        downloadPdf: async (action, id) => {
+            // 1. Feedback visual
+            Swal.fire({ 
+                title: 'Generando PDF...', 
+                text: 'Esto puede tardar unos segundos.',
+                didOpen: () => Swal.showLoading() 
+            });
+
+            // 2. Petición al Servidor
+            // Nota: Enviamos 'id' genérico, el servidor sabrá si es idEstudiante o idMateria según la 'action'
+            const res = await app.api({ action: action, id: id });
+
+            // 3. Procesar Respuesta
+            if(res && res.success) {
+                Swal.close(); // Cerrar loading
+                
+                // Truco para descargar Base64
+                const link = document.createElement('a');
+                link.href = "data:application/pdf;base64," + res.base64;
+                link.download = res.nombre; // Nombre del archivo que viene del server
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                // Notificación pequeña
+                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+                Toast.fire({ icon: 'success', title: 'Descarga iniciada' });
+
+            } else {
+                Swal.fire('Error', res.message || 'No se pudo generar el PDF', 'error');
+            }
+        },
+
+        // ==========================================
+        // 3. DASHBOARD Y DATOS MAESTROS
+        // ==========================================
+  loadDashboardData: async () => {
+            app.nav('dashboard');
+            const grid = document.getElementById('grid-secciones');
+            
+            // Asegurar que el spinner se vea al iniciar
+            if(grid) grid.innerHTML = '<div class="col-span-full text-center py-20"><i class="fas fa-spinner fa-spin text-4xl text-indigo-500 mb-4"></i><p class="text-gray-500 animate-pulse">Cargando tus datos...</p></div>';
+
+            try {
+                const res = await app.api({ action: 'getInitialData' });
+
+                if(res && !res.error) {
+                    app.data = res; // Guardar en caché
+                    app.renderDashboard();
+                } else {
+                    throw new Error(res.error || "No llegaron datos");
+                }
+            } catch (error) {
+                console.error("Error cargando dashboard:", error);
+                if(grid) {
+                    grid.innerHTML = `
+                    <div class="col-span-full text-center py-10">
+                        <div class="text-red-400 text-5xl mb-3"><i class="fas fa-wifi"></i></div>
+                        <h3 class="text-gray-600 font-bold">No pudimos cargar tu información</h3>
+                        <p class="text-sm text-gray-400 mb-4">Verifica tu conexión a internet.</p>
+                        <button onclick="app.loadDashboardData()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold shadow hover:bg-indigo-700">
+                            Reintentar Conexión
+                        </button>
+                    </div>`;
+                }
+            }
+        },
+
+renderDashboard: () => {
+        const grid = document.getElementById('grid-secciones');
+        grid.innerHTML = '';
+
+        // CASO 1: NO TIENE INSTITUCIONES (Usuario Nuevo)
+        if (!app.data.instituciones || app.data.instituciones.length === 0) {
+            grid.innerHTML = `
+            <div class="col-span-full p-8 bg-orange-50 border-2 border-orange-200 border-dashed rounded-xl text-center">
+                <div class="text-orange-500 text-4xl mb-3"><i class="fas fa-exclamation-circle"></i></div>
+                <h3 class="text-lg font-bold text-orange-800 mb-1">¡Atención, Docente!</h3>
+                <p class="text-orange-700 text-sm mb-6">
+                    Para crear una sección primero debes crear una <b>Institución</b>.
+                </p>
+                <button onclick="app.nav('config')" class="bg-orange-600 text-white px-6 py-3 rounded-lg font-bold shadow hover:bg-orange-700 transition">
+                    <i class="fas fa-arrow-right mr-2"></i> Ir a Configuración
+                </button>
+            </div>`;
+            
+            // Forzamos la actualización de la vista de configuración también
+            app.updateConfigView();
+            return;
+        }
+
+        // CASO 2: TIENE INSTITUCIÓN PERO NO SECCIONES
+        if(!app.data.secciones || app.data.secciones.length === 0) {
+             grid.innerHTML = `
+            <div class="col-span-full text-center py-10 bg-white rounded-xl shadow-sm border border-gray-200">
+                <h3 class="text-gray-700 font-bold text-lg">Todo listo</h3>
+                <p class="text-gray-500 mb-4 text-sm">Ya tienes tu institución. Ahora crea tu primera sección.</p>
+                <button onclick="app.nav('config')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow font-bold hover:bg-indigo-700">Crear Sección</button>
+            </div>`;
+            app.updateConfigView();
+            return;
+        }
+
+ // CASO 3: DIBUJAR TARJETAS (CON BOTONES DE EDICIÓN)
+        app.data.secciones.forEach(sec => {
+            grid.innerHTML += `
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 card-hover flex flex-col justify-between h-full relative group">
+                
+                <!-- BOTONES FLOTANTES (EDITAR / ELIMINAR) -->
+                <div class="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onclick="app.editSection('${sec.id}', '${sec.nombre}', '${sec.anio}')" class="h-8 w-8 rounded-full bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600 flex items-center justify-center transition" title="Editar">
+                        <i class="fas fa-pen text-xs"></i>
+                    </button>
+                    <button onclick="app.deleteSection('${sec.id}')" class="h-8 w-8 rounded-full bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition" title="Eliminar">
+                        <i class="fas fa-trash text-xs"></i>
+                    </button>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-start mb-2 pr-10"> <!-- Padding derecho para no tapar texto -->
+                        <h3 class="text-lg font-bold text-indigo-700 truncate" title="${sec.nombre}">${sec.nombre}</h3>
+                        <span class="bg-blue-50 text-blue-600 text-[10px] px-2 py-1 rounded-full border border-blue-100 font-bold shrink-0">${sec.anio}</span>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded border border-gray-100 truncate"><i class="fas fa-university mr-1"></i> ${sec.institucion}</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mt-2">
+                    <button onclick="app.openStudents('${sec.id}', '${sec.nombre}')" class="flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-600 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition">
+                        <i class="fas fa-users"></i> Alumnos
+                    </button>
+                    <button onclick="app.openMaterias('${sec.id}', '${sec.nombre}')" class="flex items-center justify-center gap-2 bg-amber-50 border border-amber-100 text-amber-700 py-2 rounded-lg text-sm font-bold hover:bg-amber-100 transition">
+                        <i class="fas fa-book"></i> Materias
+                    </button>
+                </div>
+            </div>`;
+        });
+        
+        app.updateConfigView();
+    },
+
+    // 2. AGREGA ESTA NUEVA FUNCIÓN (Controla el formulario de config)
+    updateConfigView: () => {
+        const selInst = document.getElementById('cfg-inst');
+        const alertBox = document.getElementById('alert-no-inst');
+        const formInputs = document.getElementById('form-section-inputs');
+
+        // Llenar el select de instituciones
+        selInst.innerHTML = '';
+        if (app.data.instituciones && app.data.instituciones.length > 0) {
+            app.data.instituciones.forEach(i => {
+                selInst.innerHTML += `<option value="${i.id}">${i.nombre}</option>`;
+            });
+            // Si hay instituciones: Ocultar alerta y Habilitar formulario
+            if(alertBox) alertBox.classList.add('hidden');
+            if(formInputs) formInputs.classList.remove('opacity-50', 'pointer-events-none');
+        } else {
+            // Si NO hay instituciones: Mostrar alerta y Deshabilitar formulario
+            selInst.innerHTML = '<option>Sin instituciones</option>';
+            if(alertBox) alertBox.classList.remove('hidden');
+            if(formInputs) formInputs.classList.add('opacity-50', 'pointer-events-none');
+        }
+    },
+
+    // 3. AGREGA ESTA NUEVA FUNCIÓN (Conecta el botón "+" con Google)
+    createInstitution: async () => {
+        const nombre = document.getElementById('new-inst-name').value;
+        if(!nombre) return Swal.fire('Error', 'Escribe un nombre para la institución', 'warning');
+
+        // Efecto de carga
+        Swal.fire({ title: 'Creando...', didOpen: () => Swal.showLoading() });
+
+        // Llamada a la API
+        const res = await app.api({ action: 'createInst', nombre: nombre });
+        
+        if(res && res.status === 'success') {
+            document.getElementById('new-inst-name').value = ''; // Limpiar input
+            await app.loadDashboardData(); // Recargar todo para que aparezca en la lista
+            Swal.fire('¡Éxito!', 'Institución creada correctamente.', 'success');
+        }
+    },
+
+    // DIBUJAR INPUTS DE FECHAS (AGREGAR AL OBJETO APP)
+        renderPeriodInputs: () => {
+            const cant = document.getElementById('cfg-periodos').value;
+            const container = document.getElementById('cfg-fechas-container');
+            container.innerHTML = '';
+            
+            for(let i=1; i<=cant; i++) {
+                container.innerHTML += `
+                <div class="bg-gray-50 p-2 rounded border border-gray-200 flex items-center gap-2">
+                    <span class="text-xs font-bold text-gray-500 w-8">P${i}</span>
+                    <input type="date" class="p-1 border rounded text-xs w-full inp-start" title="Inicio Periodo ${i}">
+                    <span class="text-gray-400">-</span>
+                    <input type="date" class="p-1 border rounded text-xs w-full inp-end" title="Fin Periodo ${i}">
+                </div>`;
+            }
+        },
+
+    // 4. REEMPLAZA TU 'createSection' CON ESTA (Valida antes de enviar)
+  createSection: async () => {
+            if(!app.data.instituciones || app.data.instituciones.length === 0) return Swal.fire('Alto', 'Primero crea una institución.', 'error');
+
+            const idInst = document.getElementById('cfg-inst').value;
+            const nombre = document.getElementById('cfg-nom').value;
+            const periodos = document.getElementById('cfg-periodos').value;
+            
+            // Recolectar Fechas
+            let fechas = [];
+            const starts = document.querySelectorAll('.inp-start');
+            const ends = document.querySelectorAll('.inp-end');
+            
+            for(let i=0; i<starts.length; i++) {
+                if(!starts[i].value || !ends[i].value) return Swal.fire('Faltan Fechas', `Define inicio y fin para el Periodo ${i+1}`, 'warning');
+                fechas.push({ p: i+1, inicio: starts[i].value, fin: ends[i].value });
+            }
+
+            if(!idInst || !nombre) return Swal.fire('Faltan datos', 'Revisa el nombre de la sección', 'warning');
+
+            Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+
+            const payload = {
+                action: 'createSection',
+                emailUsuario: app.user.email,
+                idInstitucion: idInst,
+                nombreSeccion: nombre,
+                anio: document.getElementById('cfg-anio').value,
+                cantPeriodos: periodos,
+                fechas: fechas // Enviamos el array de fechas
+            };
+            
+            const res = await app.api(payload);
+            if(res && res.success) {
+                document.getElementById('cfg-nom').value = '';
+                Swal.fire('Listo', 'Sección creada con su cronograma.', 'success');
+                app.loadDashboardData();
+            }
+        },
+
+        // ==========================================
+        // 4. MÓDULO ESTUDIANTES
+        // ==========================================
+openStudents: async (idSec, nombreSec) => {
+            app.state.currentSecId = idSec;
+            app.state.currentSecName = nombreSec;
+            app.nav('estudiantes');
+            document.getElementById('page-title').innerText = `Estudiantes: ${nombreSec}`;
+            
+            const tbody = document.getElementById('table-students-body');
+            tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+
+            const list = await app.api({ action: 'getStudents', idSeccion: idSec });
+            tbody.innerHTML = '';
+
+            if(!list || list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-400">No hay estudiantes registrados.</td></tr>';
+                return;
+            }
+
+            list.forEach(est => {
+                tbody.innerHTML += `
+                <tr class="hover:bg-gray-50 group border-b border-gray-100">
+                    <td class="p-4 font-bold text-gray-700">${est.cedula}</td>
+                    <td class="p-4">${est.nombre}</td>
+                    <td class="p-4 text-gray-500 text-xs">${est.telefono}</td>
+                    
+                    <!-- 👇 AQUÍ HICE EL CAMBIO: MOSTRAR CORREO EN LUGAR DE ADECUACIÓN 👇 -->
+                    <td class="p-4 text-center text-xs">
+                        ${est.emailEnc ? `<span class="bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-100">${est.emailEnc}</span>` : '<span class="text-gray-300 italic">No registrado</span>'}
+                    </td>
+                    <!-- 👆 FIN DEL CAMBIO 👆 -->
+
+                    <td class="p-4 text-right flex justify-end gap-2">
+                        <!-- Ver Notas -->
+                        <button onclick="app.verNotasEstudiante('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-indigo-50 text-indigo-500 hover:bg-indigo-100 hover:text-indigo-700 flex items-center justify-center transition" title="Ver Notas">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        
+                        <!-- Trasladar -->
+                          <button onclick="app.modalTraslado('${est.id}', '${est.nombre}')" class="text-gray-400 hover:text-blue-600 transition" title="Trasladar">
+                         <i class="fas fa-exchange-alt"></i>
+                          </button>
+
+                        <!-- Eliminar -->
+                        <button onclick="app.deleteStudent('${est.id}')" class="h-8 w-8 rounded bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            });
+        },
+
+        // ==========================================
+        // FUNCIONES DE ESTUDIANTES (FALTANTES)
+        // ==========================================
+
+        // 1. NUEVO ESTUDIANTE (MODAL)
+        modalEstudiante: async () => {
+            if(!app.state.currentSecId) return Swal.fire('Error', 'No se ha detectado la sección.', 'error');
+
+            const { value: form } = await Swal.fire({
+                title: 'Nuevo Estudiante',
+                html: `
+                    <div class="text-left space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="text-xs font-bold text-gray-500">Cédula</label><input id="sw-e-ced" class="swal2-input w-full m-0" placeholder="Ej: 123456789"></div>
+                            <div><label class="text-xs font-bold text-gray-500">Teléfono</label><input id="sw-e-tel" class="swal2-input w-full m-0" placeholder="Ej: 8888-8888"></div>
+                        </div>
+                        <div><label class="text-xs font-bold text-gray-500">Nombre Completo</label><input id="sw-e-nom" class="swal2-input w-full m-0"></div>
+                        <div><label class="text-xs font-bold text-gray-500">Correo Encargado</label><input id="sw-e-mail" class="swal2-input w-full m-0" placeholder="padre@email.com"></div>
+                    </div>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar',
+                preConfirm: () => {
+                    const ced = document.getElementById('sw-e-ced').value;
+                    const nom = document.getElementById('sw-e-nom').value;
+                    if(!ced || !nom) return Swal.showValidationMessage('Cédula y Nombre son obligatorios');
+                    
+                    return {
+                        cedula: ced,
+                        nombre: nom,
+                        telEst: document.getElementById('sw-e-tel').value,
+                        emailEnc: document.getElementById('sw-e-mail').value,
+                        idSeccion: app.state.currentSecId // Usamos el estado global
+                    }
+                }
+            });
+
+            if(form) {
+                Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+                const res = await app.api({ action: 'saveStudent', ...form });
+                if(res && res.success) {
+                    Swal.fire('Guardado', 'Estudiante registrado', 'success');
+                    app.openStudents(app.state.currentSecId, app.state.currentSecName);
+                }
+            }
+        },
+
+        // 2. IMPORTAR DESDE EXCEL (MODAL)
+        modalImportar: async () => {
+            if(!app.state.currentSecId) return Swal.fire('Error', 'No se ha detectado la sección.', 'error');
+
+            const { value: text } = await Swal.fire({
+                title: 'Importar Masivamente',
+                input: 'textarea',
+                inputPlaceholder: 'Copia desde Excel y pega aquí:\nColumna A: Cédula\nColumna B: Nombre\nColumna C: Teléfono',
+                inputAttributes: { 'style': 'height: 150px;' },
+                showCancelButton: true,
+                confirmButtonText: 'Procesar',
+                footer: '<span class="text-xs text-gray-500">Copia las celdas de tu Excel y pégalas aquí directamente.</span>'
+            });
+
+            if (text) {
+                // Procesar texto (Detecta Tabs de Excel o Comas)
+                const rows = text.split('\n');
+                let data = [];
+                rows.forEach(r => {
+                    let cols = r.split(/\t|,/); // Separar por Tab o Coma
+                    if(cols.length >= 2) { // Al menos Cédula y Nombre
+                        // Limpiar comillas si vienen de CSV
+                        let ced = cols[0].trim().replace(/^"|"$/g, '');
+                        let nom = cols[1].trim().replace(/^"|"$/g, '');
+                        let tel = cols[2] ? cols[2].trim().replace(/^"|"$/g, '') : "";
+                        if(ced && nom) data.push([ced, nom, tel]);
+                    }
+                });
+                
+                if(data.length > 0) {
+                    Swal.fire({ title: `Importando ${data.length} estudiantes...`, didOpen: () => Swal.showLoading() });
+                    const res = await app.api({ 
+                        action: 'importStudents', 
+                        idSeccion: app.state.currentSecId, 
+                        lista: data 
+                    });
+                    
+                    if(res && res.success) {
+                        Swal.fire('Éxito', res.message, 'success');
+                        app.openStudents(app.state.currentSecId, app.state.currentSecName);
+                    }
+                } else {
+                    Swal.fire('Error', 'No se detectaron datos válidos.', 'warning');
+                }
+            }
+        },
+
+        // ==========================================
+        // MÓDULO COMUNICACIÓN (ENVÍO MASIVO)
+        // ==========================================
+        
+        modalEnvioMasivo: async () => {
+            // 1. Obtener estudiantes de la sección actual
+            // (Podemos llamar a la API o usar una caché si la tuviéramos, llamemos a la API para estar seguros)
+            Swal.showLoading();
+            const estudiantes = await app.api({ action: 'getStudents', idSeccion: app.state.currentSecId });
+            Swal.close();
+
+            if(!estudiantes || estudiantes.length === 0) return Swal.fire('Aviso', 'No hay estudiantes en esta sección.', 'info');
+
+            // 2. Construir la lista HTML
+            let listaHtml = `<div class="max-h-60 overflow-y-auto border rounded bg-white text-left text-sm">`;
+            
+            // Header con "Marcar Todos"
+            listaHtml += `
+                <div class="sticky top-0 bg-gray-100 p-2 border-b flex items-center justify-between font-bold text-gray-600">
+                    <span>Estudiantes</span>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" onchange="app.toggleAllChecks(this)" checked> Todos
+                    </label>
+                </div>
+                <div class="divide-y">`;
+
+            estudiantes.forEach(e => {
+                // Verificar si tiene correo para mostrar aviso
+                const tieneEmail = e.emailEnc && e.emailEnc.includes('@'); // emailEnc viene de getStudents (asegúrate que el backend lo envíe)
+                const aviso = tieneEmail ? `<span class="text-green-600 text-xs ml-2">(${e.emailEnc})</span>` : `<span class="text-red-500 text-xs ml-2 font-bold">(Sin correo)</span>`;
+                const disabled = !tieneEmail ? 'disabled' : 'checked'; // Deshabilitar si no tiene correo
+                
+                listaHtml += `
+                <div class="p-2 hover:bg-gray-50 flex items-center gap-3">
+                    <input type="checkbox" class="chk-send-student w-4 h-4 text-indigo-600" value="${e.id}" ${disabled}>
+                    <div>
+                        <span class="font-medium text-gray-800">${e.nombre}</span>
+                        ${aviso}
+                    </div>
+                </div>`;
+            });
+            listaHtml += `</div></div>`;
+
+            // 3. Mostrar Modal
+            const { value: form } = await Swal.fire({
+                title: 'Enviar Informe al Hogar',
+                width: '600px',
+                html: `
+                    <div class="space-y-4">
+                        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 text-left text-xs text-blue-700">
+                            <p>Se generará el <b>PDF de Notas</b> actual y se enviará por correo electrónico a los encargados seleccionados.</p>
+                        </div>
+                        
+                        <div class="text-left">
+                            <label class="text-xs font-bold text-gray-500">Mensaje para los padres</label>
+                            <textarea id="sw-msg-body" class="w-full p-2 border rounded h-24 text-sm" placeholder="Estimados padres, adjunto envío el reporte de calificaciones..."></textarea>
+                        </div>
+
+                        <div class="text-left">
+                            <label class="text-xs font-bold text-gray-500 mb-1 block">Seleccionar Destinatarios</label>
+                            ${listaHtml}
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Enviar Correos',
+                confirmButtonColor: '#10B981', // Green
+            preConfirm: () => {
+                    const msg = document.getElementById('sw-msg-body').value;
+                    if(!msg) return Swal.showValidationMessage('Escribe un mensaje');
+                    
+                    let ids = [];
+                    document.querySelectorAll('.chk-send-student:checked').forEach(c => ids.push(c.value));
+                    
+                    if(ids.length === 0) return Swal.showValidationMessage('Selecciona al menos un estudiante');
+
+                    return { 
+                        mensaje: msg, 
+                        ids: ids,
+                        // 👇 AGREGAMOS ESTOS DATOS DEL DOCENTE 👇
+                        nombreDocente: "Prof. " + (document.getElementById('user-name').innerText || "Docente"),
+                        emailDocente: app.user.email 
+                    };
+                }
+            });
+
+            if(form) {
+                // Confirmación final
+                const confirm = await Swal.fire({
+                    title: `¿Enviar a ${form.ids.length} personas?`,
+                    text: "Esto puede tomar unos segundos. No cierres la ventana.",
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonText: 'Sí, enviar'
+                });
+
+                if(confirm.isConfirmed) {
+                    Swal.fire({
+                        title: 'Enviando...',
+                        html: 'Generando PDFs y enviando correos.<br><b>Por favor espera.</b>',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
+                    });
+
+                    const res = await app.api({
+                        action: 'sendBulkReport',
+                        ids: form.ids,
+                        mensaje: form.mensaje
+                    });
+
+                    if(res && res.success) {
+                        Swal.fire('Proceso Finalizado', res.message, 'success');
+                    } else {
+                        Swal.fire('Error', res.message || 'Hubo un problema', 'error');
+                    }
+                }
+            }
+        },
+
+        // Helper para "Marcar Todos"
+        toggleAllChecks: (source) => {
+            const checkboxes = document.querySelectorAll('.chk-send-student:not(:disabled)');
+            checkboxes.forEach(chk => chk.checked = source.checked);
+        },
+
+        // ==========================================
+        // 5. MÓDULO MATERIAS (CRUD COMPLETO)
+        // ==========================================
+        
+        // 1. ABRIR VISTA (READ)
+        openMaterias: async (idSec, nombreSec) => {
+            app.state.currentSecId = idSec;
+            app.state.currentSecName = nombreSec;
+            app.nav('materias');
+            // Cambiamos el título para saber dónde estamos
+            document.getElementById('page-title').innerText = `Asignaturas: ${nombreSec}`;
+            
+            const tbody = document.getElementById('table-materias-body');
+            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando asignaturas...</td></tr>';
+
+            // Llamada a la API
+            const list = await app.api({ action: 'getSubjects', idSeccion: idSec });
+            tbody.innerHTML = '';
+
+            if(!list || list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-400">No hay materias asignadas a esta sección.</td></tr>';
+                return;
+            }
+
+            // Renderizar Tabla
+            list.forEach(m => {
+                tbody.innerHTML += `
+                <tr class="hover:bg-gray-50 group border-b border-gray-100">
+                    <td class="p-4">
+                        <span class="font-bold text-gray-700 block">${m.nombre}</span>
+                    </td>
+                    <td class="p-4 text-center text-xs text-gray-500">
+                        <span class="bg-gray-100 px-2 py-1 rounded">Cot: ${m.cotidiano}%</span>
+                        <span class="bg-gray-100 px-2 py-1 rounded">Tar: ${m.tareas}%</span>
+                        <span class="bg-gray-100 px-2 py-1 rounded">Pru: ${m.pruebas}%</span>
+                        <span class="bg-gray-100 px-2 py-1 rounded">Pro: ${m.proyectos}%</span>
+                        <span class="bg-gray-100 px-2 py-1 rounded">Asi: ${m.asistencia}%</span>
+                    </td>
+                    <td class="p-4 text-right">
+                        <!-- Botón para ver Notas/Indicadores -->
+                        <button onclick="app.openIndicadores('${m.id}', '${m.nombre}')" class="text-indigo-500 hover:text-indigo-700 mr-3" title="Evaluar">
+                            <i class="fas fa-edit"></i> Evaluar
+                        </button>
+                        <!-- Botón Borrar -->
+                      <button onclick="app.verNotasMateria('${m.id}', '${m.nombre}')" class="text-emerald-500 hover:text-emerald-700 mr-3 transition" title="Ver Notas de Todos">
+                            <i class="fas fa-table"></i>
+                    </button>
+                    <button onclick="app.deleteMateria('${m.id}')" class="text-red-300 hover:text-red-600 transition" title="Eliminar"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            });
+        },
+
+
+
+        // ==========================================
+        // FUNCIONES DE SECCIONES (EDIT/DELETE)
+        // ==========================================
+
+        // EDITAR SECCIÓN
+        editSection: async (id, nombreActual, anioActual) => {
+            const { value: form } = await Swal.fire({
+                title: 'Editar Sección',
+                html: `
+                    <label class="block text-left text-xs font-bold text-gray-500 mb-1">Nombre</label>
+                    <input id="sw-sec-nom" class="swal2-input m-0 w-full mb-3" value="${nombreActual}">
+                    <label class="block text-left text-xs font-bold text-gray-500 mb-1">Año</label>
+                    <input id="sw-sec-anio" class="swal2-input m-0 w-full" value="${anioActual}">
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar Cambios',
+                preConfirm: () => {
+                    return {
+                        id: id,
+                        nombre: document.getElementById('sw-sec-nom').value,
+                        anio: document.getElementById('sw-sec-anio').value
+                    }
+                }
+            });
+
+            if (form) {
+                Swal.fire({ title: 'Actualizando...', didOpen: () => Swal.showLoading() });
+                const res = await app.api({ action: 'editSection', ...form });
+                if (res && res.success) {
+                    Swal.fire('Actualizado', '', 'success');
+                    app.loadDashboardData(); // Recargar tarjetas
+                }
+            }
+        },
+
+        // ELIMINAR SECCIÓN
+        deleteSection: async (id) => {
+            const conf = await Swal.fire({
+                title: '¿Eliminar Sección?',
+                text: "Se borrarán también los alumnos y notas asociadas. ¡Cuidado!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Sí, eliminar'
+            });
+
+            if (conf.isConfirmed) {
+                Swal.fire({ title: 'Eliminando...', didOpen: () => Swal.showLoading() });
+                const res = await app.api({ action: 'deleteSection', id: id });
+                if (res && res.success) {
+                    Swal.fire('Eliminado', 'La sección ha sido borrada.', 'success');
+                    app.loadDashboardData(); // Recargar tarjetas
+                }
+            }
+        },
+
+        // 2. CREAR NUEVA MATERIA (CREATE)
+        modalMateria: async () => {
+            const { value: form } = await Swal.fire({
+                title: 'Nueva Asignatura',
+                html: `
+                    <div class="text-left space-y-3">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">Nombre Materia</label>
+                            <input id="sw-mat-nom" class="swal2-input w-full m-0" placeholder="Ej: Matemáticas">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 text-indigo-600">Nota Mínima para Aprobar</label>
+                            <input type="number" id="sw-nota-min" class="swal2-input w-full m-0 text-center font-bold text-indigo-600" value="65">
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-2 mt-4 bg-gray-50 p-2 rounded border">
+                            <div class="col-span-3 text-xs font-bold text-gray-400 uppercase text-center mb-1">Distribución Porcentual</div>
+                            <div><label class="text-[10px] font-bold">Cotidiano</label><input type="number" id="sw-p-cot" class="swal2-input m-0 w-full text-center h-8" value="0"></div>
+                            <div><label class="text-[10px] font-bold">Tareas</label><input type="number" id="sw-p-tar" class="swal2-input m-0 w-full text-center h-8" value="0"></div>
+                            <div><label class="text-[10px] font-bold">Pruebas</label><input type="number" id="sw-p-pru" class="swal2-input m-0 w-full text-center h-8" value="0"></div>
+                            <div><label class="text-[10px] font-bold">Proyectos</label><input type="number" id="sw-p-pro" class="swal2-input m-0 w-full text-center h-8" value="0"></div>
+                            <div><label class="text-[10px] font-bold">Asistencia</label><input type="number" id="sw-p-asi" class="swal2-input m-0 w-full text-center h-8" value="0"></div>
+                        </div>
+                    </div>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar',
+                preConfirm: () => {
+                    const nom = document.getElementById('sw-mat-nom').value;
+                    const min = document.getElementById('sw-nota-min').value;
+                    if(!nom || !min) Swal.showValidationMessage('Nombre y Nota Mínima requeridos');
+                    return {
+                        nombre: nom,
+                        notaMinima: min, // <--- NUEVO CAMPO
+                        cotidiano: document.getElementById('sw-p-cot').value,
+                        tareas: document.getElementById('sw-p-tar').value,
+                        pruebas: document.getElementById('sw-p-pru').value,
+                        proyectos: document.getElementById('sw-p-pro').value,
+                        asistencia: document.getElementById('sw-p-asi').value,
+                        idSeccion: app.state.currentSecId
+                    }
+                }
+            });
+
+            if(form) {
+                Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+                const res = await app.api({ action: 'saveSubject', ...form });
+                if(res) {
+                    Swal.fire('Guardado', 'Materia agregada', 'success');
+                    app.openMaterias(app.state.currentSecId, app.state.currentSecName);
+                }
+            }
+        },
+
+        // 3. BORRAR MATERIA (DELETE)
+        deleteMateria: async (id) => {
+            const conf = await Swal.fire({ 
+                title: '¿Eliminar Materia?', 
+                text: "Se borrarán también las notas asociadas.", 
+                icon: 'warning', 
+                showCancelButton: true,
+                confirmButtonColor: '#d33'
+            });
+            
+            if(conf.isConfirmed) {
+                Swal.fire({ title: 'Eliminando...', didOpen: () => Swal.showLoading() });
+                await app.api({ action: 'deleteSubject', id });
+                app.openMaterias(app.state.currentSecId, app.state.currentSecName);
+                Swal.fire('Eliminado', '', 'success');
+            }
+        },
+     
+// ==========================================
+        // LÓGICA HORARIOS 2.0 (COMPACTO)
+        // ==========================================
+        
+// ==========================================
+        // MÓDULO HORARIOS 2.0 (FINAL)
+        // ==========================================
+        
+        initHorarioUI: () => {
+            // 1. Generar Días con Input separado (Diseño Vertical)
+            const days = ['Lunes','Martes','Miércoles','Jueves','Viernes'];
+            const cont = document.getElementById('days-container');
+            cont.innerHTML = '';
+            
+            days.forEach(d => {
+                const short = d.substring(0,3); // Lun, Mar...
+                cont.innerHTML += `
+                <div class="flex flex-col items-center gap-1">
+                    <!-- Checkbox Oculto y Botón Visual -->
+                    <input type="checkbox" id="chk-${d}" class="peer sr-only chk-day" value="${d}" onchange="app.toggleDayInput('${d}')">
+                    
+                    <label for="chk-${d}" class="w-10 h-10 flex items-center justify-center border rounded-lg cursor-pointer bg-white text-gray-500 hover:bg-gray-50 peer-checked:bg-indigo-600 peer-checked:text-white peer-checked:border-indigo-600 transition-all shadow-sm font-bold text-[10px] uppercase select-none">
+                        ${short}
+                    </label>
+
+                    <!-- Input de Cantidad (Aparece solo si está activo) -->
+                    <input type="number" id="inp-${d}" 
+                           class="w-10 p-1 text-center border-b-2 border-indigo-200 text-xs font-bold focus:border-indigo-600 outline-none hidden bg-transparent" 
+                           placeholder="#" min="1" value="1" title="Cantidad de Lecciones">
+                </div>`;
+            });
+
+            // 2. Cargar Instituciones
+            const selInst = document.getElementById('hc-inst');
+            selInst.innerHTML = '<option value="">Institución...</option>';
+            if(app.data.instituciones) app.data.instituciones.forEach(i => selInst.innerHTML += `<option value="${i.id}">${i.nombre}</option>`);
+        },
+
+        toggleDayInput: (day) => {
+            const chk = document.getElementById(`chk-${day}`);
+            const inp = document.getElementById(`inp-${day}`);
+            if(chk.checked) {
+                inp.classList.remove('hidden'); inp.focus(); inp.select();
+            } else {
+                inp.classList.add('hidden'); inp.value = 1;
+            }
+        },
+
+        // 1. CARGAR SECCIONES
+        loadSecHorarioConfig: () => {
+            const idInst = document.getElementById('hc-inst').value;
+            const selSec = document.getElementById('hc-sec');
+            selSec.innerHTML = '<option value="">Cargando...</option>';
+            document.getElementById('hc-mat').innerHTML = '<option value="">Materia...</option>'; 
+
+            if (!idInst) {
+                selSec.innerHTML = '<option value="">Sección...</option>';
+                return;
+            }
+
+            const seccionesFiltradas = app.data.secciones.filter(s => String(s.idInstitucion) === String(idInst));
+            selSec.innerHTML = '<option value="">Seleccione Sección...</option>';
+            
+            if (seccionesFiltradas.length > 0) {
+                seccionesFiltradas.forEach(s => selSec.innerHTML += `<option value="${s.id}">${s.nombre}</option>`);
+            } else {
+                selSec.innerHTML = '<option value="">No hay secciones</option>';
+            }
+        },
+
+        // 2. CARGAR MATERIAS
+        loadMatHorarioConfig: async () => {
+            const idSec = document.getElementById('hc-sec').value;
+            const selMat = document.getElementById('hc-mat');
+            
+            if (!idSec) {
+                selMat.innerHTML = '<option value="">Materia...</option>';
+                return;
+            }
+
+            selMat.innerHTML = '<option value="">Cargando...</option>';
+            
+            try {
+                const mats = await app.api({ action: 'getSubjects', idSeccion: idSec });
+                selMat.innerHTML = '<option value="">Seleccione Materia...</option>';
+                
+                if (mats && mats.length > 0) {
+                    mats.forEach(m => selMat.innerHTML += `<option value="${m.id}">${m.nombre}</option>`);
+                } else {
+                    selMat.innerHTML = '<option value="">No hay materias</option>';
+                }
+
+                app.loadScheduleList(idSec); // Cargar lista inferior
+
+            } catch (error) {
+                console.error(error);
+                selMat.innerHTML = '<option value="">Error</option>';
+            }
+        },
+
+        saveScheduleConfig: async () => {
+            let diasConfig = {};
+            document.querySelectorAll('.chk-day:checked').forEach(chk => {
+                const cant = document.getElementById(`inp-${chk.value}`).value;
+                if(cant > 0) diasConfig[chk.value] = cant;
+            });
+
+            if(Object.keys(diasConfig).length === 0) return Swal.fire('Error','Selecciona días y lecciones','warning');
+
+            const payload = {
+                action: 'saveConfigHorario',
+                email: app.user.email,
+                idSeccion: document.getElementById('hc-sec').value,
+                idMateria: document.getElementById('hc-mat').value,
+                fechaIni: document.getElementById('hc-ini').value,
+                fechaFin: document.getElementById('hc-fin').value,
+                diasConfig: diasConfig
+            };
+            
+            Swal.fire({title:'Guardando...', didOpen:()=>Swal.showLoading()});
+            const res = await app.api(payload);
+            if(res.success) {
+                Swal.fire('Guardado','','success');
+                app.loadScheduleList(payload.idSeccion);
+            }
+        },
+
+        // 3. LISTADO Y FILTRO
+        loadScheduleList: async (idSec) => {
+            const div = document.getElementById('schedule-list');
+            div.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-indigo-500"></i></div>';
+            
+            const list = await app.api({action:'getConfigHorarios', idSeccion:idSec});
+            app.data.tempScheduleList = list || []; 
+            app.renderScheduleList(); 
+        },
+
+        renderScheduleList: () => {
+            const div = document.getElementById('schedule-list');
+            const filterDateVal = document.getElementById('filter-hc-date').value;
+            
+            let list = app.data.tempScheduleList || [];
+
+            if(filterDateVal) {
+                const fFilter = new Date(filterDateVal);
+                list = list.filter(item => {
+                    const iStart = new Date(item.ini);
+                    const iEnd = new Date(item.fin);
+                    return fFilter >= iStart && fFilter <= iEnd;
+                });
+            }
+
+            div.innerHTML = '';
+            if(list.length === 0) {
+                div.innerHTML = '<div class="p-6 text-center text-xs text-gray-400">No hay horarios configurados que coincidan.</div>';
+                return;
+            }
+
+            list.forEach(c => {
+                let diasStr = Object.keys(c.dias).map(k=> `<span class="bg-gray-100 px-1.5 rounded text-gray-600 font-bold">${k.substring(0,3)}:${c.dias[k]}</span>`).join(' ');
+                
+                div.innerHTML += `
+                <div class="flex justify-between items-center p-3 hover:bg-gray-50 transition group border-b border-gray-50 last:border-0">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-indigo-100 text-indigo-600 h-8 w-8 rounded flex items-center justify-center font-bold text-xs">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div>
+                            <h5 class="font-bold text-sm text-gray-800">${c.nomMateria}</h5>
+                            <div class="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                                <span><i class="fas fa-clock mr-1"></i>${c.ini} al ${c.fin}</span>
+                                <span class="text-gray-300">|</span>
+                                <div class="flex gap-1 text-[10px]">${diasStr}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="app.delScheduleConfig('${c.id}', '${c.idSeccion}')" class="h-8 w-8 rounded-full hover:bg-red-50 text-gray-300 hover:text-red-500 transition">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>`;
+            });
+        },
+
+        delScheduleConfig: async (id, idSec) => {
+            if(confirm('¿Eliminar bloque?')) {
+                await app.api({action:'delConfigHorario', id});
+                app.loadScheduleList(idSec);
+            }
+        },
+
+        filterScheduleList: (clear = false) => {
+            if(clear) document.getElementById('filter-hc-date').value = '';
+            app.renderScheduleList();
+        },
+
+        // ==========================================
+        // NUEVO: ASISTENCIA 2.0 (MATRIZ)
+        // ==========================================
+        
+        // 1. Iniciar filtros
+        initAsistenciaUI: () => {
+            const selSec = document.getElementById('as-sec');
+            selSec.innerHTML = '<option value="">Sección...</option>';
+            app.data.secciones.forEach(s => selSec.innerHTML += `<option value="${s.id}">${s.nombre}</option>`);
+            // Fechas default (Mes actual)
+            const date = new Date();
+            document.getElementById('as-ini').value = new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
+            document.getElementById('as-fin').value = new Date().toISOString().split('T')[0];
+        },
+
+        loadMatAsistencia: async () => {
+            const idSec = document.getElementById('as-sec').value;
+            const sel = document.getElementById('as-mat');
+            const mats = await app.api({action:'getSubjects', idSeccion:idSec});
+            sel.innerHTML = '';
+            if(mats) mats.forEach(m => {
+                // Guardamos el porcentaje de asistencia en un atributo data
+                sel.innerHTML += `<option value="${m.id}" data-p-asis="${m.asistencia}">${m.nombre}</option>`;
+            });
+        },
+
+        loadAttendanceMatrix: async () => {
+            const idSec = document.getElementById('as-sec').value;
+            const selMat = document.getElementById('as-mat');
+            const idMat = selMat.value;
+            const valAsistencia = parseFloat(selMat.options[selMat.selectedIndex].getAttribute('data-p-asis')) || 0;
+            const fIni = document.getElementById('as-ini').value;
+            const fFin = document.getElementById('as-fin').value;
+
+            if(!idSec || !idMat) return Swal.fire('Faltan datos','Selecciona sección y materia','warning');
+
+            const cont = document.getElementById('matrix-container');
+            cont.innerHTML = '<div class="text-center py-10"><i class="fas fa-spinner fa-spin text-2xl text-green-600"></i><br>Generando Matriz...</div>';
+
+            const res = await app.api({
+                action: 'getMatrixAttendance',
+                idSeccion: idSec, idMateria: idMat, fIni: fIni, fFin: fFin
+            });
+
+            if(!res.estudiantes || res.estudiantes.length === 0) {
+                cont.innerHTML = '<div class="text-center py-10 text-gray-400">Sin estudiantes.</div>';
+                return;
+            }
+
+            // 1. GENERAR COLUMNAS DE FECHAS (Basado en la configuración)
+            let dateCols = [];
+            let currentDate = new Date(fIni.replace(/-/g, '\/')); // Fix timezone
+            let endDate = new Date(fFin.replace(/-/g, '\/'));
+            const daysMap = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+            while(currentDate <= endDate) {
+                let dayName = daysMap[currentDate.getDay()];
+                // Verificamos si este día está en alguna configuración activa
+                res.configs.forEach(cfg => {
+                    let cIni = new Date(cfg.ini.replace(/-/g, '\/'));
+                    let cFin = new Date(cfg.fin.replace(/-/g, '\/'));
+                    if(currentDate >= cIni && currentDate <= cFin && cfg.dias[dayName]) {
+                        // Es un día de clase válido
+                        dateCols.push({
+                            dateObj: new Date(currentDate),
+                            dateStr: currentDate.toISOString().split('T')[0],
+                            label: `${currentDate.getDate()}/${currentDate.getMonth()+1}`,
+                            lessons: cfg.dias[dayName]
+                        });
+                    }
+                });
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+
+            // Eliminar duplicados si hay traslape de configs
+            dateCols = dateCols.filter((v,i,a)=>a.findIndex(t=>(t.dateStr === v.dateStr))===i);
+
+            // 2. CALCULAR TOTAL DE LECCIONES EN EL PERIODO
+            let totalLeccionesPeriodo = dateCols.reduce((sum, d) => sum + Number(d.lessons), 0);
+
+            // 3. CONSTRUIR TABLA HTML
+            let html = `<table class="w-full text-sm border-collapse">
+                <thead class="sticky top-0 bg-gray-100 z-10 text-xs uppercase font-bold text-gray-600">
+                    <tr>
+                        <th class="p-2 border sticky left-0 bg-gray-100 z-20 w-64 text-left">Estudiante</th>
+                        <th class="p-2 border w-16 text-center bg-gray-200">% Obt</th>
+                        <th class="p-2 border w-10 text-center text-red-500">AI</th>
+                        <th class="p-2 border w-10 text-center text-yellow-600">T</th>
+                        <th class="p-2 border w-10 text-center text-orange-500">E</th>
+                        <th class="p-2 border w-10 text-center text-blue-500">J</th>
+                        <!-- FECHAS -->
+                        ${dateCols.map(d => `<th class="p-2 border min-w-[50px] text-center bg-white cursor-pointer hover:bg-gray-50" title="${d.lessons} Lecciones">${d.label}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody class="divide-y">`;
+
+            res.estudiantes.forEach(est => {
+                // Calcular acumulados
+                let sumAI = 0, sumT = 0, sumE = 0, sumJ = 0;
+                let perdidas = 0; // Puntos perdidos (Lecciones)
+
+                let cellsHtml = dateCols.map(d => {
+                    let key = est.id + "|" + d.dateStr;
+                    let val = res.marcas[key] || ""; // Estado actual (P, AI, T, E, J) o vacío
+                    
+                    // Cálculos
+                    if(val === 'AI') { sumAI++; perdidas += Number(d.lessons); } // Pierde toda la lección
+                    if(val === 'T')  { sumT++;  perdidas += 0; } // MEP: Tardía no resta puntos directos, suma a conducta o 3T=1A (Regla simple aquí)
+                    if(val === 'E')  { sumE++;  perdidas += 0; }
+                    if(val === 'J')  { sumJ++; } // Justificada no resta
+
+                    // Color celda
+                    let bg = val==='P'?'bg-green-100': val==='AI'?'bg-red-100': val==='T'?'bg-yellow-100': val==='E'?'bg-orange-100': val==='J'?'bg-blue-100':'';
+
+                    return `<td class="border p-1 text-center ${bg} cursor-pointer hover:bg-gray-200 transition font-bold text-xs"
+                                onclick="app.cycleAttendance(this, '${est.id}', '${idMat}', '${d.dateStr}')">${val}</td>`;
+                }).join('');
+
+                // Calcular Porcentaje Final
+                // Regla simple: (Lecciones Totales - Lecciones Perdidas) / Lecciones Totales * Valor Asistencia
+                let porcentaje = 100;
+                if(totalLeccionesPeriodo > 0) {
+                    let factor = valAsistencia / totalLeccionesPeriodo; // Cuánto vale cada lección
+                    let puntosPerdidos = perdidas * factor;
+                    porcentaje = valAsistencia - puntosPerdidos;
+                }
+                if(porcentaje < 0) porcentaje = 0;
+
+                html += `<tr>
+                    <td class="p-2 border sticky left-0 bg-white font-medium truncate z-10">${est.nombre}</td>
+                    <td class="p-2 border text-center font-bold bg-gray-50">${porcentaje.toFixed(1)}%</td>
+                    <td class="p-2 border text-center text-red-600 bg-red-50 font-bold">${sumAI}</td>
+                    <td class="p-2 border text-center text-yellow-600">${sumT}</td>
+                    <td class="p-2 border text-center text-orange-600">${sumE}</td>
+                    <td class="p-2 border text-center text-blue-600">${sumJ}</td>
+                    ${cellsHtml}
+                </tr>`;
+            });
+
+            html += `</tbody></table>`;
+            cont.innerHTML = html;
+        },
+
+        // Click en celda para cambiar estado
+        cycleAttendance: (cell, idEst, idMat, fecha) => {
+            const states = ['', 'P', 'AI', 'T', 'E', 'J'];
+            let current = cell.innerText;
+            let nextIndex = (states.indexOf(current) + 1) % states.length;
+            let next = states[nextIndex];
+            
+            // UI Update inmediata (Optimista)
+            cell.innerText = next;
+            cell.className = cell.className.replace(/bg-\w+-100/g, ''); // Limpiar color
+            if(next==='P') cell.classList.add('bg-green-100');
+            if(next==='AI') cell.classList.add('bg-red-100');
+            if(next==='T') cell.classList.add('bg-yellow-100');
+            if(next==='E') cell.classList.add('bg-orange-100');
+            if(next==='J') cell.classList.add('bg-blue-100');
+
+            // Guardar Silencioso
+            app.api({
+                action: 'saveMark',
+                email: app.user.email,
+                idEst: idEst, idMateria: idMat, fecha: fecha, estado: next
+            });
+            
+            // Nota: Para recalcular el porcentaje en vivo habría que recargar o tener lógica JS compleja en cliente.
+            // Por ahora, el usuario puede dar click en "Consultar" para refrescar los cálculos totales.
+        },
+
+        // ==========================================
+        // 6. MÓDULO DE EVALUACIÓN (FALTABA ESTO)
+        // ==========================================
+
+        // A. ENTRAR A INDICADORES
+        openIndicadores: (idMat, nomMat) => {
+            app.state.currentMatId = idMat;
+            app.state.currentMatName = nomMat;
+            app.state.currentCat = 'TRAB_COT'; // Por defecto empezamos en Cotidiano
+            app.state.currentCatLabel = 'Cotidiano';
+            
+            app.nav('indicadores');
+            document.getElementById('ind-title').innerText = `Evaluación: ${nomMat}`;
+            app.updateTabsUI();
+            app.loadIndicadores();
+        },
+
+        // Cambiar de Pestaña (Cotidiano, Tareas, etc.)
+        setCategory: (catCode, catLabel) => {
+            app.state.currentCat = catCode;
+            app.state.currentCatLabel = catLabel;
+            app.updateTabsUI();
+            app.loadIndicadores();
+        },
+
+        updateTabsUI: () => {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if(btn.innerText.includes(app.state.currentCatLabel)) {
+                    btn.className = 'tab-btn px-4 py-2 rounded-full text-sm font-bold bg-indigo-100 text-indigo-700 ring-2 ring-indigo-500 transition';
+                } else {
+                    btn.className = 'tab-btn px-4 py-2 rounded-full text-sm font-bold bg-white text-gray-500 hover:bg-gray-50 border transition';
+                }
+            });
+        },
+
+        // B. CARGAR LISTA DE INDICADORES
+        loadIndicadores: async () => {
+            const tbody = document.getElementById('table-ind-body');
+            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+
+            const list = await app.api({ 
+                action: 'getIndicators', 
+                idMateria: app.state.currentMatId, 
+                categoria: app.state.currentCat 
+            });
+
+            tbody.innerHTML = '';
+            if(!list || list.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-gray-400">No hay actividades en ${app.state.currentCatLabel}.<br>¡Crea la primera!</td></tr>`;
+                return;
+            }
+
+            list.forEach(i => {
+                tbody.innerHTML += `
+                <tr class="hover:bg-gray-50 group">
+                    <td class="p-4 font-bold text-gray-700">${i.descripcion}</td>
+                    <td class="p-4 text-center"><span class="bg-gray-100 px-3 py-1 rounded-full text-xs font-bold text-gray-600">${i.puntaje} pts</span></td>
+                    <td class="p-4 text-right">
+                        <button onclick="app.openEvaluation('${i.id}', '${i.descripcion}', ${i.puntaje})" class="bg-green-100 text-green-700 px-3 py-1 rounded text-xs font-bold hover:bg-green-200 mr-2">
+                            <i class="fas fa-check-circle"></i> Calificar
+                        </button>
+                        <button onclick="app.deleteIndicador('${i.id}')" class="text-red-300 hover:text-red-600 transition"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            });
+        },
+
+        // C. CREAR NUEVO INDICADOR
+        modalIndicador: async () => {
+            const { value: form } = await Swal.fire({
+                title: `Nuevo: ${app.state.currentCatLabel}`,
+                html: `
+                    <input id="sw-ind-desc" class="swal2-input" placeholder="Descripción (Ej: Tarea #1)">
+                    <input id="sw-ind-pts" type="number" class="swal2-input" placeholder="Puntaje Máximo (Ej: 100)">
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                preConfirm: () => {
+                    const desc = document.getElementById('sw-ind-desc').value;
+                    const pts = document.getElementById('sw-ind-pts').value;
+                    if(!desc || !pts) Swal.showValidationMessage('Completa los campos');
+                    return { descripcion: desc, puntaje: pts }
+                }
+            });
+
+            if(form) {
+                Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+                const payload = {
+                    action: 'saveIndicator',
+                    idMateria: app.state.currentMatId,
+                    categoria: app.state.currentCat,
+                    descripcion: form.descripcion,
+                    puntaje: form.puntaje
+                };
+                const res = await app.api(payload);
+                if(res) {
+                    Swal.fire('Listo', 'Indicador creado', 'success');
+                    app.loadIndicadores();
+                }
+            }
+        },
+
+        deleteIndicador: async (id) => {
+            const conf = await Swal.fire({ title: '¿Borrar?', text: 'Se perderán las notas de esta actividad', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' });
+            if(conf.isConfirmed) {
+                await app.api({ action: 'deleteIndicator', id });
+                app.loadIndicadores();
+            }
+        },
+
+        // D. CALIFICAR (LA GRID DE NOTAS)
+        openEvaluation: async (idInd, descInd, maxPts) => {
+            app.state.currentIndId = idInd;
+            app.state.currentMaxPts = maxPts;
+            
+            app.nav('evaluar');
+            document.getElementById('eval-title').innerText = descInd;
+            document.getElementById('eval-subtitle').innerText = `${app.state.currentCatLabel} | Valor: ${maxPts} pts`;
+            
+            const tbody = document.getElementById('table-eval-body');
+            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando estudiantes...</td></tr>';
+
+            // Traer estudiantes + notas ya existentes
+            const list = await app.api({ 
+                action: 'getEvaluationData', 
+                idSeccion: app.state.currentSecId, 
+                idIndicador: idInd 
+            });
+
+            tbody.innerHTML = '';
+            if(!list || list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-400">No hay estudiantes en esta sección.</td></tr>';
+                return;
+            }
+
+            list.forEach((e, idx) => {
+                tbody.innerHTML += `
+                <tr class="hover:bg-gray-50 border-b border-gray-100">
+                    <td class="p-4 text-gray-400 font-bold w-10">${idx+1}</td>
+                    <td class="p-4 font-medium text-gray-700">${e.nombre}</td>
+                    <td class="p-4 text-center">
+                        <input type="number" 
+                               class="grade-input w-24 p-2 border border-gray-300 rounded text-center font-bold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" 
+                               data-id="${e.id}" 
+                               value="${e.nota}" 
+                               max="${maxPts}"
+                               placeholder="-">
+                    </td>
+                </tr>`;
+            });
+        },
+
+        saveGrades: async () => {
+            const inputs = document.querySelectorAll('.grade-input');
+            let lista = [];
+            
+            inputs.forEach(inp => {
+                // Solo guardar si tiene valor (o si es 0)
+                if(inp.value !== "") {
+                    lista.push({ idEst: inp.getAttribute('data-id'), nota: inp.value });
+                }
+            });
+
+            Swal.fire({ title: 'Guardando Notas...', didOpen: () => Swal.showLoading() });
+            
+            const payload = {
+                action: 'saveGrades',
+                idIndicador: app.state.currentIndId,
+                lista: lista
+            };
+
+            const res = await app.api(payload);
+            if(res && res.success) {
+                Swal.fire({ icon: 'success', title: 'Notas Guardadas', timer: 1500, showConfirmButton: false });
+            }
+        },
+
+        fillMaxScore: () => {
+            document.querySelectorAll('.grade-input').forEach(inp => {
+                if(inp.value === "") inp.value = app.state.currentMaxPts;
+            });
+        },
+
+        // ==========================================
+        // MÓDULO BITÁCORA (LÓGICA COMPLETA)
+        // ==========================================
+
+        // 1. CARGAR DATOS
+        loadBitacoras: async () => {
+            const tbody = document.getElementById('bitacora-table-body');
+            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+            
+            // Traer datos del server
+            const list = await app.api({ action: 'getBitacoras' });
+            app.data.bitacoras = list || []; // Guardar en memoria para filtros
+
+            // Llenar Filtro de Secciones (Solo la primera vez)
+            const selFilter = document.getElementById('bit-filter-sec');
+            if(selFilter.options.length <= 1 && app.data.secciones) {
+                app.data.secciones.forEach(s => selFilter.innerHTML += `<option value="${s.id}">${s.nombre}</option>`);
+            }
+
+            app.renderBitacoraTable();
+        },
+
+        // 2. RENDERIZAR TABLA (CON FILTROS)
+        renderBitacoraTable: () => {
+            const tbody = document.getElementById('bitacora-table-body');
+            const filterSec = document.getElementById('bit-filter-sec').value;
+            const filterTxt = document.getElementById('bit-filter-search').value.toLowerCase();
+
+            // Aplicar Filtros
+            const filtered = app.data.bitacoras.filter(b => {
+                const matchSec = filterSec === "" || String(b.idSeccion) === String(filterSec);
+                const matchTxt = b.nombreEstudiante.toLowerCase().includes(filterTxt) || 
+                                 b.desc.toLowerCase().includes(filterTxt);
+                return matchSec && matchTxt;
+            });
+
+            tbody.innerHTML = '';
+            if(filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-400">Sin incidencias</td></tr>';
+                return;
+            }
+
+            filtered.forEach(b => {
+                // Estilos
+                const typeBadge = b.tipo === 'Estudiante' 
+                    ? '<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">Individual</span>'
+                    : '<span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold">Grupal</span>';
+                
+                const statusBadge = b.estado === 'Abierto'
+                    ? '<span class="bg-red-100 text-red-600 px-2 py-1 rounded-full text-xs font-bold">Pendiente</span>'
+                    : '<span class="bg-green-100 text-green-600 px-2 py-1 rounded-full text-xs font-bold">Cerrado</span>';
+
+                // Botón Cerrar Caso (Solo si está abierto)
+                const closeBtn = b.estado === 'Abierto' 
+                    ? `<button onclick="app.closeBitacora('${b.id}')" class="text-green-500 hover:text-green-700 mr-2" title="Cerrar Caso"><i class="fas fa-check-circle"></i></button>` 
+                    : '';
+
+                tbody.innerHTML += `
+                <tr class="hover:bg-gray-50 group">
+                    <td class="p-4 whitespace-nowrap text-gray-600">${b.fecha}</td>
+                    <td class="p-4">${typeBadge}</td>
+                    <td class="p-4">
+                        <div class="font-bold text-gray-800">${b.nombreEstudiante}</div>
+                        <div class="text-xs text-gray-500">${b.nombreSeccion} ${b.idMateria!=='GENERAL' ? '• '+b.nombreMateria : ''}</div>
+                    </td>
+                    <td class="p-4 text-gray-600 max-w-xs truncate" title="${b.desc}">${b.desc}</td>
+                    <td class="p-4 text-center">${statusBadge}</td>
+                    <td class="p-4 text-right flex justify-end">
+                        ${closeBtn}
+                        <button onclick="app.editBitacora('${b.id}')" class="text-gray-400 hover:text-blue-600 mr-2"><i class="fas fa-pen"></i></button>
+                        <button onclick="app.downloadPdf('pdfBitacora', '${b.id}')" class="text-gray-400 hover:text-red-600 mr-2"><i class="fas fa-file-pdf"></i></button>
+                        <button onclick="app.deleteBitacora('${b.id}')" class="text-gray-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            });
+        },
+
+        // 3. MODAL NUEVA/EDITAR (IMAGEN 2)
+        modalBitacora: async (bitToEdit = null) => {
+            // Generar opciones Institución
+            let optsInst = '<option value="">Seleccione...</option>';
+            if(app.data.instituciones) app.data.instituciones.forEach(i => optsInst += `<option value="${i.id}">${i.nombre}</option>`);
+
+            const titulo = bitToEdit ? 'Editar Incidencia' : 'Nueva Incidencia';
+            const btnTxt = bitToEdit ? 'Actualizar' : 'Registrar';
+
+            const { value: form } = await Swal.fire({
+                title: titulo,
+                width: '600px',
+                html: `
+                    <div class="text-left space-y-3 bg-gray-50 p-4 rounded-lg">
+                        
+                        <!-- Institución (Base) -->
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">Institución</label>
+                            <select id="sw-b-inst" class="w-full p-2 border rounded bg-white" onchange="app.loadSecBitacora(this.value)"></select>
+                        </div>
+
+                        <!-- Sección -->
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">Sección</label>
+                            <select id="sw-b-sec" class="w-full p-2 border rounded bg-white" onchange="app.loadEstBitacora(this.value)">
+                                <option value="">Seleccione Institución primero...</option>
+                            </select>
+                        </div>
+
+                        <!-- TIPO (Tabs) -->
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">Tipo</label>
+                            <div class="flex rounded-md shadow-sm" role="group">
+                                <button type="button" id="btn-type-gen" onclick="app.setBitacoraType('General')" class="flex-1 px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-l-lg hover:bg-gray-700">
+                                    General
+                                </button>
+                                <button type="button" id="btn-type-est" onclick="app.setBitacoraType('Estudiante')" class="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-r-lg hover:bg-gray-100">
+                                    Estudiante
+                                </button>
+                            </div>
+                            <input type="hidden" id="sw-b-tipo" value="General">
+                        </div>
+
+                        <!-- SELECTOR DINÁMICO (Estudiante o Materia) -->
+                        <div id="div-estudiante" class="hidden">
+                            <label class="text-xs font-bold text-gray-500">Estudiante</label>
+                            <select id="sw-b-est" class="w-full p-2 border rounded bg-white"></select>
+                        </div>
+                        
+                        <!-- Materia (Opcional, bueno para reportes) -->
+                        <div id="div-materia">
+                            <label class="text-xs font-bold text-gray-500">Asignatura (Opcional)</label>
+                            <select id="sw-b-mat" class="w-full p-2 border rounded bg-white"></select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="text-xs font-bold text-gray-500">Fecha</label><input type="date" id="sw-b-fecha" class="w-full p-2 border rounded"></div>
+                            <div>
+                                <label class="text-xs font-bold text-red-500"><i class="fas fa-bell"></i> Recordatorio</label>
+                                <input type="date" id="sw-b-alert" class="w-full p-2 border rounded border-red-200 bg-red-50">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">Descripción del Evento</label>
+                            <textarea id="sw-b-desc" class="w-full p-2 border rounded h-24" placeholder="¿Qué sucedió?"></textarea>
+                        </div>
+                    </div>
+                `,
+                didOpen: async () => {
+                    // 1. Cargar Instituciones
+                    document.getElementById('sw-b-inst').innerHTML = optsInst;
+                    // Fecha hoy default
+                    document.getElementById('sw-b-fecha').valueAsDate = new Date();
+
+                    // 2. RELLENAR SI ES EDICIÓN
+                    if(bitToEdit) {
+                        const b = bitToEdit;
+                        // A. Inst -> Sec
+                        if(b.idInstitucion) {
+                            document.getElementById('sw-b-inst').value = b.idInstitucion;
+                            app.loadSecBitacora(b.idInstitucion); // Carga secciones
+                            document.getElementById('sw-b-sec').value = b.idSeccion;
+                            
+                            // Cargar Estudiantes y Materias
+                            await app.loadEstBitacora(b.idSeccion);
+                        }
+                        
+                        // B. Tipo
+                        app.setBitacoraType(b.tipo);
+                        
+                        // C. Datos
+                        if(b.tipo === 'Estudiante') document.getElementById('sw-b-est').value = b.idEstudiante;
+                        document.getElementById('sw-b-mat').value = b.idMateria;
+                        document.getElementById('sw-b-fecha').value = b.fecha;
+                        document.getElementById('sw-b-desc').value = b.desc;
+                        document.getElementById('sw-b-alert').value = b.recordatorio;
+                    } else {
+                        app.state.editingBitacoraId = null;
+                    }
+                },
+                preConfirm: () => {
+                    return {
+                        idBitacora: app.state.editingBitacoraId || null,
+                        idSeccion: document.getElementById('sw-b-sec').value,
+                        tipo: document.getElementById('sw-b-tipo').value,
+                        idEstudiante: document.getElementById('sw-b-est').value, // Puede ir vacío si es General
+                        idMateria: document.getElementById('sw-b-mat').value,
+                        fecha: document.getElementById('sw-b-fecha').value,
+                        descripcion: document.getElementById('sw-b-desc').value,
+                        fechaRecordatorio: document.getElementById('sw-b-alert').value
+                    }
+                }
+            });
+
+            if(form) {
+                if(!form.idSeccion || !form.descripcion) return Swal.fire('Error', 'Faltan datos obligatorios', 'warning');
+                
+                Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+                const res = await app.api({ action: 'saveBitacora', ...form });
+                if(res.success) {
+                    Swal.fire('Listo', res.message, 'success');
+                    app.loadBitacoras();
+                    app.state.editingBitacoraId = null;
+                }
+            }
+        },
+
+        // ==========================================
+        // MÓDULO TRASLADOS (VERSIÓN SWEETALERT FINAL)
+        // ==========================================
+        
+        modalTraslado: async (idEst, nomEst) => {
+            // 1. Usamos el estado global para saber dónde estamos parados
+            const idSecActual = app.state.currentSecId; 
+            
+            // 2. Obtener Institución actual
+            const secActual = app.data.secciones.find(s => String(s.id) === String(idSecActual));
+            const idInst = secActual ? secActual.idInstitucion : null;
+
+            // 3. Generar lista de secciones destino (Excluyendo la actual)
+            let opts = '<option value="">Seleccione nueva sección...</option>';
+            
+            // Validamos que existan datos
+            if(app.data.secciones && idInst) {
+                // Filtramos secciones de la MISMA institución
+                const disponibles = app.data.secciones.filter(s => 
+                    String(s.idInstitucion) === String(idInst) && 
+                    String(s.id) !== String(idSecActual)
+                );
+
+                if(disponibles.length > 0){
+                    disponibles.forEach(s => {
+                       opts += `<option value="${s.id}">${s.nombre} (${s.anio})</option>`;
+                   });
+                } else {
+                    opts = '<option value="" disabled>No hay otras secciones</option>';
+                }
+            }
+
+            // 4. Mostrar Modal
+            const { value: idDestino } = await Swal.fire({
+                title: 'Trasladar Estudiante',
+                html: `
+                    <div class="text-left bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
+                        <p class="text-xs text-gray-500 uppercase font-bold mb-1">Estudiante a mover:</p>
+                        <h4 class="font-bold text-gray-800 text-lg flex items-center gap-2">
+                            <i class="fas fa-user-graduate text-blue-500"></i> ${nomEst}
+                        </h4>
+                        <div class="mt-2 text-xs text-blue-600 flex items-center gap-1 bg-white p-2 rounded border border-blue-100">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Las notas y bitácoras se moverán automáticamente.</span>
+                        </div>
+                    </div>
+                    <label class="block text-left text-xs font-bold text-gray-500 mb-1">Sección de Destino</label>
+                    <select id="sw-traslado-sec" class="swal2-input w-full m-0 text-sm h-10">
+                        ${opts}
+                    </select>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Confirmar Traslado',
+                confirmButtonColor: '#3B82F6', // Azul
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    const dest = document.getElementById('sw-traslado-sec').value;
+                    if(!dest) Swal.showValidationMessage('Debes seleccionar una sección de destino');
+                    return dest;
+                }
+            });
+
+            // 5. Ejecutar Traslado si confirmó
+            if (idDestino) {
+                // Obtener nombre de la nueva sección para el mensaje bonito
+                const nombreNuevaSec = app.data.secciones.find(s => String(s.id) === String(idDestino))?.nombre;
+
+                Swal.fire({ 
+                    title: 'Procesando...', 
+                    text: `Moviendo a ${nomEst} a ${nombreNuevaSec}`,
+                    didOpen: () => Swal.showLoading() 
+                });
+
+                const res = await app.api({ 
+                    action: 'moveStudent', 
+                    idEstudiante: idEst, 
+                    idNuevaSeccion: idDestino 
+                });
+
+                if (res && res.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Traslado Exitoso',
+                        text: `${nomEst} ha sido movido correctamente.`,
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                    // Recargar la lista actual (el estudiante desaparecerá de aquí)
+                    app.openStudents(app.state.currentSecId, app.state.currentSecName);
+                } else {
+                    Swal.fire('Error', res.message || 'No se pudo trasladar', 'error');
+                }
+            }
+        },
+        // ==========================================
+        // MÓDULO SEA (REPORTE EXCEL)
+        // ==========================================
+        
+        // 1. Inicializar Combos
+        initSeaUI: () => {
+            const sel = document.getElementById('sea-inst');
+            sel.innerHTML = '<option value="">Seleccione...</option>';
+            if(app.data.instituciones) app.data.instituciones.forEach(i => sel.innerHTML += `<option value="${i.id}">${i.nombre}</option>`);
+        },
+        
+        loadSecSEA: () => {
+            const idInst = document.getElementById('sea-inst').value;
+            const sel = document.getElementById('sea-sec');
+            sel.innerHTML = '<option value="">Seleccione...</option>';
+            app.data.secciones.filter(s=>String(s.idInstitucion)===idInst).forEach(s=>sel.innerHTML+=`<option value="${s.id}">${s.nombre}</option>`);
+        },
+
+        loadMatSEA: async () => {
+            const idSec = document.getElementById('sea-sec').value;
+            const sel = document.getElementById('sea-mat');
+            sel.innerHTML = '<option>Cargando...</option>';
+            const mats = await app.api({ action: 'getSubjects', idSeccion: idSec });
+            sel.innerHTML = '<option value="">Seleccione...</option>';
+            if(mats) mats.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.nombre}</option>`);
+        },
+
+        // 2. GENERAR Y DESCARGAR EXCEL
+        downloadExcelSEA: async () => {
+            const idMat = document.getElementById('sea-mat').value;
+            if(!idMat) return Swal.fire('Faltan datos', 'Selecciona una asignatura', 'warning');
+
+            Swal.fire({ title: 'Procesando datos...', didOpen: () => Swal.showLoading() });
+            
+            const res = await app.api({ action: 'getSEAReport', id: idMat });
+            
+            if(!res || res.error) {
+                Swal.close();
+                return Swal.fire('Error', res.error || 'No hay datos', 'error');
+            }
+
+            // A. MOSTRAR PREVIEW EN PANTALLA (Opcional, para que el profe vea)
+            const tbody = document.getElementById('sea-table-body');
+            tbody.innerHTML = '';
+            res.lista.forEach(r => {
+                tbody.innerHTML += `<tr>
+                    <td class="p-3">${r.Id}</td>
+                    <td class="p-3">${r.Nombre}</td>
+                    <td class="p-3 text-center">${r.Cotidiano}</td>
+                    <td class="p-3 text-center font-bold bg-yellow-50">${r.Tareas}</td>
+                    <td class="p-3 text-center">${r.Prueba}</td>
+                    <td class="p-3 text-center">${r.Asistencia}</td>
+                </tr>`;
+            });
+            document.getElementById('sea-preview').classList.remove('hidden');
+            Swal.close();
+
+            // B. GENERAR ARCHIVO EXCEL (Truco HTML Table)
+            // Creamos una tabla HTML cruda que Excel entiende como hoja de cálculo
+            let excelContent = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Reporte SEA</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>
+                <body>
+                <table border="1">
+                    <thead>
+                        <tr style="background-color:#CCC;">
+                            <th>Id</th>
+                            <th>Nombre</th>
+                            <th>Trabajo cotidiano</th>
+                            <th>Tareas</th>
+                            <th>Prueba</th>
+                            <th>Asistencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+            
+            res.lista.forEach(r => {
+                // Importante: Usar coma o punto según la región, aquí forzamos formato numérico
+                excelContent += `<tr>
+                    <td>${r.Id}</td>
+                    <td>${r.Nombre}</td>
+                    <td>${r.Cotidiano}</td>
+                    <td>${r.Tareas}</td>
+                    <td>${r.Prueba}</td>
+                    <td>${r.Asistencia}</td>
+                </tr>`;
+            });
+
+            excelContent += `</tbody></table></body></html>`;
+
+            // C. DESCARGAR
+            const blob = new Blob([excelContent], { type: 'application/vnd.ms-excel' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            // Nombre del archivo: SEA_Matemáticas_8-2.xls
+            link.download = `SEA_${res.materia.replace(/\s+/g, '_')}.xls`; 
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+            Toast.fire({ icon: 'success', title: 'Archivo SEA descargado' });
+        },
+
+        // ==========================================
+        // LIMPIEZA DE VISTAS
+        // ==========================================
+        clearSeaView: () => {
+            // 1. Ocultar la tabla de previsualización
+            document.getElementById('sea-preview').classList.add('hidden');
+            document.getElementById('sea-table-body').innerHTML = '';
+            
+            // 2. Resetear los selectores
+            const instSelect = document.getElementById('sea-inst');
+            if(instSelect) instSelect.value = ""; // Volver a "Seleccione..."
+            
+            // Limpiar los dependientes
+            document.getElementById('sea-sec').innerHTML = '';
+            document.getElementById('sea-mat').innerHTML = '';
+        },
+
+        // Auxiliares del Modal
+        setBitacoraType: (type) => {
+            document.getElementById('sw-b-tipo').value = type;
+            const btnGen = document.getElementById('btn-type-gen');
+            const btnEst = document.getElementById('btn-type-est');
+            const divEst = document.getElementById('div-estudiante');
+
+            if(type === 'General') {
+                btnGen.className = "flex-1 px-4 py-2 text-sm font-medium text-white bg-gray-600 rounded-l-lg";
+                btnEst.className = "flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-r-lg";
+                divEst.classList.add('hidden');
+            } else {
+                btnGen.className = "flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-l-lg";
+                btnEst.className = "flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-r-lg";
+                divEst.classList.remove('hidden');
+            }
+        },
+
+        loadSecBitacora: (idInst) => {
+            const sel = document.getElementById('sw-b-sec');
+            sel.innerHTML = '<option value="">Seleccione...</option>';
+            if(app.data.secciones) app.data.secciones.filter(s=>String(s.idInstitucion)==idInst).forEach(s=>sel.innerHTML+=`<option value="${s.id}">${s.nombre}</option>`);
+        },
+
+        loadEstBitacora: async (idSec) => {
+            const selEst = document.getElementById('sw-b-est');
+            const selMat = document.getElementById('sw-b-mat');
+            selEst.innerHTML = '<option>Cargando...</option>';
+            
+            // Cargar estudiantes
+            const ests = await app.api({ action: 'getStudents', idSeccion: idSec });
+            selEst.innerHTML = '<option value="">Seleccione Estudiante...</option>';
+            if(ests) ests.forEach(e => selEst.innerHTML += `<option value="${e.id}">${e.nombre}</option>`);
+
+            // Cargar materias (para tener contexto)
+            const mats = await app.api({ action: 'getSubjects', idSeccion: idSec });
+            selMat.innerHTML = '<option value="GENERAL">General / Gestión de Grupo</option>';
+            if(mats) mats.forEach(m => selMat.innerHTML += `<option value="${m.id}">${m.nombre}</option>`);
+        },
+
+        editBitacora: async (id) => {
+            const b = app.data.bitacoras.find(x => x.id === id);
+            if(!b) return;
+            app.state.editingBitacoraId = id;
+            app.modalBitacora(b);
+        },
+
+        deleteBitacora: async (id) => {
+            if(confirm('¿Eliminar incidencia?')) {
+                Swal.showLoading();
+                await app.api({ action: 'deleteBitacora', id });
+                app.loadBitacoras();
+                Swal.close();
+            }
+        },
+
+        closeBitacora: async (id) => {
+            if(confirm('¿Marcar como caso cerrado?')) {
+                await app.api({ action: 'closeBitacora', id });
+                app.loadBitacoras();
+            }
+        },
+
+        // ==========================================
+        // 11. MÓDULO MI AULA (LÓGICA COMPLETA)
+        // ==========================================
+
+        // A. CARGAR LISTA
+        loadLecciones: async () => {
+            const div = document.getElementById('aula-list');
+            div.innerHTML = '<div class="col-span-2 text-center py-10"><i class="fas fa-spinner fa-spin text-teal-600 text-2xl"></i></div>';
+            
+            const lista = await app.api({ action: 'getLessons' });
+            app.data.lecciones = lista || [];
+            app.renderAulaList(app.data.lecciones);
+        },
+
+        renderAulaList: (lista) => {
+            const div = document.getElementById('aula-list');
+            div.innerHTML = '';
+            if(!lista || lista.length === 0) {
+                div.innerHTML = `<div class="col-span-2 text-center py-10 text-gray-400">No hay contenido publicado.</div>`;
+                return;
+            }
+
+            lista.forEach(l => {
+                // Estilos según tipo
+                const isTarea = l.tipo === 'Tarea';
+                const color = isTarea ? 'orange' : 'teal';
+                const icon = isTarea ? 'fa-tasks' : 'fa-book';
+                const badge = isTarea 
+                    ? `<span class="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-bold border border-orange-200"><i class="fas fa-link mr-1"></i> ${l.nombreIndicador}</span>`
+                    : `<span class="bg-teal-50 text-teal-700 px-2 py-1 rounded text-xs font-bold border border-teal-100">Material de Clase</span>`;
+
+                div.innerHTML += `
+                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-${color}-500 hover:shadow-md transition relative group">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">${l.fecha} | ${l.materia}</span>
+                            <h4 class="font-bold text-gray-800 text-lg flex items-center gap-2">
+                                <i class="fas ${icon} text-${color}-500"></i> ${l.titulo}
+                            </h4>
+                        </div>
+                        
+                        <!-- Menú acciones (Solo visible al pasar mouse) -->
+                        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                            <button onclick="app.editAula('${l.id}')" class="text-gray-400 hover:text-blue-600" title="Editar"><i class="fas fa-pen"></i></button>
+                            <button onclick="app.deleteAula('${l.id}')" class="text-gray-400 hover:text-red-600" title="Eliminar"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                    
+                    <p class="text-sm text-gray-600 mb-3 line-clamp-2">${l.desc}</p>
+                    
+                    <div class="flex flex-wrap gap-2 mb-3">
+                        ${badge}
+                        ${l.fileUrl ? `<a href="${l.fileUrl}" target="_blank" class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-gray-700 flex items-center"><i class="fas fa-paperclip mr-1"></i> Ver Archivo</a>` : ''}
+                        ${l.link ? `<a href="${l.link}" target="_blank" class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-indigo-600 flex items-center"><i class="fas fa-external-link-alt mr-1"></i> Enlace</a>` : ''}
+                    </div>
+                </div>`;
+            });
+        },
+
+        filterAula: (tipo) => {
+            if(tipo === 'Todos') app.renderAulaList(app.data.lecciones);
+            else app.renderAulaList(app.data.lecciones.filter(x => x.tipo === tipo));
+        },
+
+        // B. MODAL PRINCIPAL (CREAR Y EDITAR)
+        modalAula: async (editItem = null) => {
+            // Cargar instituciones para el primer select
+            let optsInst = '<option value="">Seleccione...</option>';
+            if(app.data.instituciones) app.data.instituciones.forEach(i => optsInst += `<option value="${i.id}">${i.nombre}</option>`);
+
+            const titulo = editItem ? 'Editar Contenido' : 'Nuevo Contenido';
+
+            const { value: form } = await Swal.fire({
+                title: titulo,
+                width: '700px',
+                html: `
+                    <div class="text-left space-y-3 bg-gray-50 p-4 rounded-lg text-sm">
+                        <!-- CASCADA DE SELECTORES -->
+                        <div class="grid grid-cols-1 gap-2">
+                            <div><label class="text-xs font-bold text-gray-500">Institución</label>
+                            <select id="ma-inst" class="w-full p-2 border rounded bg-white" onchange="app.loadSecAula(this.value)"></select></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="text-xs font-bold text-gray-500">Sección</label>
+                            <select id="ma-sec" class="w-full p-2 border rounded bg-white" onchange="app.loadMatAula(this.value)"></select></div>
+                            <div><label class="text-xs font-bold text-gray-500">Materia</label>
+                            <select id="ma-mat" class="w-full p-2 border rounded bg-white" onchange="app.loadIndAula()"></select></div>
+                        </div>
+                        
+                        <div class="flex gap-4 border-b pb-2 mt-2">
+                            <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="ma-tipo" value="Clase" checked onchange="app.toggleRubro(false)"> <span class="text-sm font-bold text-teal-700">Clase / Material</span></label>
+                            <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="ma-tipo" value="Tarea" onchange="app.toggleRubro(true)"> <span class="text-sm font-bold text-orange-700">Tarea / Entrega</span></label>
+                        </div>
+
+                        <!-- Selector de Rubro (Oculto por defecto) -->
+                        <div id="div-rubro" class="hidden bg-orange-50 p-2 rounded border border-orange-200">
+                            <label class="text-xs font-bold text-orange-800">Vincular con Rubro (Calificación)</label>
+                            <select id="ma-ind" class="w-full p-2 border rounded text-xs mt-1"><option value="">Seleccione Materia primero...</option></select>
+                        </div>
+
+                        <div><label class="text-xs font-bold text-gray-500">Título</label><input id="ma-tit" class="w-full p-2 border rounded" placeholder="Ej: La Célula"></div>
+                        <div><label class="text-xs font-bold text-gray-500">Descripción</label><textarea id="ma-desc" class="w-full p-2 border rounded h-20"></textarea></div>
+                        <div><label class="text-xs font-bold text-gray-500">Fecha</label><input type="date" id="ma-fecha" class="w-full p-2 border rounded"></div>
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="text-xs font-bold text-gray-500">Archivo (PDF/IMG - Max 5MB)</label><input type="file" id="ma-file" class="w-full text-xs border rounded bg-white p-1" accept="image/*,.pdf,.doc,.docx"></div>
+                            <div><label class="text-xs font-bold text-gray-500">Enlace Externo</label><input id="ma-link" class="w-full p-2 border rounded" placeholder="https://..."></div>
+                        </div>
+                    </div>
+                `,
+                didOpen: async () => {
+                    document.getElementById('ma-inst').innerHTML = optsInst;
+                    document.getElementById('ma-fecha').valueAsDate = new Date();
+
+                    // RELLENADO AUTOMÁTICO AL EDITAR
+                    if(editItem) {
+                        const x = editItem;
+                        Swal.showLoading(); // Mostrar que estamos trabajando
+                        
+                        // 1. Institución
+                        if(x.idInstitucion) {
+                            document.getElementById('ma-inst').value = x.idInstitucion;
+                            app.loadSecAula(x.idInstitucion); // Carga secciones (síncrono)
+                        }
+
+                        // 2. Sección
+                        if(x.idSeccion) {
+                            document.getElementById('ma-sec').value = x.idSeccion;
+                            await app.loadMatAula(x.idSeccion); // Carga materias (ASÍNCRONO - AWAIT)
+                        }
+
+                        // 3. Materia
+                        document.getElementById('ma-mat').value = x.idMateria;
+                        
+                        // 4. Datos texto
+                        document.getElementById('ma-tit').value = x.titulo;
+                        document.getElementById('ma-desc').value = x.desc;
+                        document.getElementById('ma-link').value = x.link;
+                        document.getElementById('ma-fecha').value = x.fecha;
+                        
+                        // 5. Tipo y Rubro
+                        document.querySelector(`input[name="ma-tipo"][value="${x.tipo}"]`).checked = true;
+                        app.toggleRubro(x.tipo === 'Tarea');
+                        
+                        if(x.tipo === 'Tarea') {
+                            await app.loadIndAula(); // Cargar indicadores
+                            document.getElementById('ma-ind').value = x.idIndicador;
+                        }
+                        
+                        Swal.hideLoading(); // Listo
+                    }
+                },
+                preConfirm: () => {
+                    const fileInput = document.getElementById('ma-file');
+                    if(fileInput.files.length > 0 && fileInput.files[0].size > 5 * 1024 * 1024) {
+                        Swal.showValidationMessage('El archivo es muy pesado (Máx 5MB)'); return false;
+                    }
+                    return {
+                        idLeccion: editItem ? editItem.id : null,
+                        idMateria: document.getElementById('ma-mat').value,
+                        tipo: document.querySelector('input[name="ma-tipo"]:checked').value,
+                        idIndicador: document.getElementById('ma-ind').value,
+                        titulo: document.getElementById('ma-tit').value,
+                        descripcion: document.getElementById('ma-desc').value,
+                        fecha: document.getElementById('ma-fecha').value,
+                        linkExtra: document.getElementById('ma-link').value,
+                        fileObj: fileInput.files[0],
+                        // Mantener urls viejas si edita
+                        fileUrlExisting: editItem ? editItem.fileUrl : "",
+                        fileNameExisting: editItem ? editItem.fileName : ""
+                    }
+                }
+            });
+
+            if(form) {
+                if(!form.idMateria || !form.titulo) return Swal.fire('Faltan datos', '', 'warning');
+
+                Swal.fire({ title: 'Subiendo...', text: 'Por favor espere', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+                // Lógica de subida de archivo (Base64)
+                if(form.fileObj) {
+                    const reader = new FileReader();
+                    reader.readAsDataURL(form.fileObj);
+                    reader.onload = async () => {
+                        const base64 = reader.result.split(',')[1];
+                        await app.sendAulaData({ ...form, archivoBase64: base64, archivoNombre: form.fileObj.name, archivoMime: form.fileObj.type });
+                    };
+                } else {
+                    await app.sendAulaData(form);
+                }
+            }
+        },
+
+        sendAulaData: async (payload) => {
+            delete payload.fileObj; // No enviar objeto DOM al server
+            const res = await app.api({ action: 'saveLesson', ...payload });
+            if(res.success) {
+                Swal.fire('Éxito', res.message, 'success');
+                app.loadLecciones();
+            } else {
+                Swal.fire('Error', res.message, 'error');
+            }
+        },
+
+        // C. HELPERS Y ACCIONES
+        
+        editAula: (id) => {
+            const item = app.data.lecciones.find(x=>x.id===id);
+            if(item) app.modalAula(item);
+        },
+
+        deleteAula: async (id) => {
+            if(confirm('¿Borrar contenido?')) {
+                Swal.showLoading();
+                await app.api({action:'deleteLesson', id});
+                app.loadLecciones();
+                Swal.close();
+            }
+        },
+
+        // Funciones auxiliares de carga para los selects
+        loadSecAula: (idInst) => {
+            const sel = document.getElementById('ma-sec');
+            sel.innerHTML = '<option value="">Seleccione...</option>';
+            if(app.data.secciones) app.data.secciones.filter(s=>String(s.idInstitucion)==idInst).forEach(s=>sel.innerHTML+=`<option value="${s.id}">${s.nombre}</option>`);
+        },
+
+        loadMatAula: async (idSec) => {
+            const sel = document.getElementById('ma-mat');
+            const mats = await app.api({ action: 'getSubjects', idSeccion: idSec });
+            sel.innerHTML = '<option value="">Seleccione...</option>';
+            if(mats) mats.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.nombre}</option>`);
+        },
+
+        loadIndAula: async () => {
+            const idMat = document.getElementById('ma-mat').value;
+            const div = document.getElementById('div-rubro');
+            const sel = document.getElementById('ma-ind');
+            
+            if(div.classList.contains('hidden')) return; 
+
+            sel.innerHTML = '<option>Cargando...</option>';
+            const cats = ['TRAB_COT', 'TAREAS', 'PROYECTOS', 'PRUEBAS'];
+            sel.innerHTML = '<option value="">Sin vincular</option>';
+            
+            for (const cat of cats) {
+                const inds = await app.api({ action: 'getIndicators', idMateria: idMat, categoria: cat });
+                if(inds && inds.length > 0) {
+                    sel.innerHTML += `<optgroup label="${cat}">`;
+                    inds.forEach(i => sel.innerHTML += `<option value="${i.id}">${i.descripcion}</option>`);
+                    sel.innerHTML += `</optgroup>`;
+                }
+            }
+        },
+
+        toggleRubro: (show) => {
+            const div = document.getElementById('div-rubro');
+            if(show) { div.classList.remove('hidden'); app.loadIndAula(); }
+            else div.classList.add('hidden');
+        },
+
+        // ==========================================
+        // 8. ADMIN Y OTROS (PLANEAMIENTO, ETC)
+        // ==========================================
+        adminLoadUsers: async () => {
+            const users = await app.api({ action: 'getUsers' });
+            const tbody = document.getElementById('adm-table-body');
+            tbody.innerHTML = '';
+            if(users) {
+                users.forEach(u => {
+                    if(u.rol === 'ADMIN') return;
+                    tbody.innerHTML += `
+                    <tr>
+                        <td class="p-4 font-bold">${u.nombre}<br><span class="font-normal text-gray-400 text-xs">${u.email}</span></td>
+                        <td class="p-4"><span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-bold">${u.tipo}</span></td>
+                        <td class="p-4 text-right text-gray-500">${u.vence}</td>
+                    </tr>`;
+                });
+            }
+        },
+
+        adminCreateUser: async (e) => {
+            e.preventDefault();
+            const form = {
+                action: 'createUser',
+                nombre: document.getElementById('adm-name').value,
+                email: document.getElementById('adm-email').value,
+                tipo: document.getElementById('adm-plan').value
+            };
+            const res = await app.api(form);
+            if(res && res.success) {
+                const box = document.getElementById('adm-result');
+                box.classList.remove('hidden');
+                box.innerHTML = `Usuario: <b>${res.datos.email}</b><br>Pass: <b>${res.datos.pass}</b>`;
+                app.adminLoadUsers();
+            }
+        },
+
+        // ==========================================
+        // NUEVO: REPORTES EN VIVO (MODALES)
+        // ==========================================
+
+        // 1. VER NOTAS DEL ESTUDIANTE (MODAL OJO)
+        verNotasEstudiante: async (idEst, nombreEst) => {
+            Swal.fire({ title: 'Cargando Boleta...', didOpen: () => Swal.showLoading() });
+            const res = await app.api({ action: 'getStudentReport', id: idEst });
+            Swal.close();
+
+            if(!res || res.error) return Swal.fire('Error', 'No hay datos', 'error');
+
+            let html = `
+            <div class="text-left mb-3">
+                <h4 class="font-bold text-gray-700">${nombreEst}</h4>
+                <p class="text-xs text-gray-500">Resumen de Calificaciones</p>
+            </div>
+            <div class="overflow-x-auto border rounded-lg">
+                <table class="w-full text-xs text-left">
+                    <thead class="bg-gray-100 font-bold text-gray-600 border-b">
+                        <tr>
+                            <th class="p-2">Materia</th>
+                            <th class="p-2 text-center">Cot</th>
+                            <th class="p-2 text-center">Tar</th>
+                            <th class="p-2 text-center">Pru</th>
+                            <th class="p-2 text-center">Pro</th>
+                            <th class="p-2 text-center">Asi</th>
+                            <th class="p-2 text-center bg-gray-200">TOTAL</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y">`;
+            
+            res.notas.forEach(n => {
+                let color = n.final >= 70 ? 'text-green-600' : 'text-red-600';
+                html += `<tr>
+                    <td class="p-2 font-medium">${n.materia}</td>
+                    <td class="p-2 text-center">${n.desglose.TRAB_COT}</td>
+                    <td class="p-2 text-center">${n.desglose.TAREAS}</td>
+                    <td class="p-2 text-center">${n.desglose.PRUEBAS}</td>
+                    <td class="p-2 text-center">${n.desglose.PROYECTOS}</td>
+                    <td class="p-2 text-center">${n.desglose.ASIST}</td>
+                    <td class="p-2 text-center font-bold bg-gray-50 ${color}">${n.final}</td>
+                </tr>`;
+            });
+            html += `</tbody></table></div>`;
+
+            // Mostrar Modal con Botón PDF
+            Swal.fire({
+                html: html,
+                width: '700px',
+                showCloseButton: true,
+                showConfirmButton: false,
+                footer: `<button onclick="app.downloadPdf('pdfStudentReport', '${idEst}')" class="bg-red-500 text-white px-4 py-2 rounded font-bold shadow hover:bg-red-600 w-full"><i class="fas fa-file-pdf mr-2"></i> Descargar Boleta PDF</button>`
+            });
+        },
+
+        // 2. VER NOTAS DE MATERIA (MODAL TABLA)
+        verNotasMateria: async (idMat, nomMat) => {
+            Swal.fire({ title: 'Generando Cuadro...', didOpen: () => Swal.showLoading() });
+            const res = await app.api({ action: 'getSubjectReport', id: idMat });
+            Swal.close();
+
+            if(!res || res.error) return Swal.fire('Error', 'No hay datos', 'error');
+
+            let html = `
+            <div class="text-left mb-3">
+                <h4 class="font-bold text-gray-700">${nomMat}</h4>
+                <p class="text-xs text-gray-500">Cuadro General de Rendimiento</p>
+            </div>
+            <div class="overflow-y-auto max-h-[400px] border rounded-lg">
+                <table class="w-full text-xs text-left">
+                    <thead class="bg-gray-100 font-bold text-gray-600 border-b sticky top-0">
+                        <tr>
+                            <th class="p-2">Estudiante</th>
+                            <th class="p-2 text-center">Cot</th>
+                            <th class="p-2 text-center">Tar</th>
+                            <th class="p-2 text-center">Pru</th>
+                            <th class="p-2 text-center">Pro</th>
+                            <th class="p-2 text-center">Asi</th>
+                            <th class="p-2 text-center bg-gray-200">FINAL</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y">`;
+            
+            res.lista.forEach(e => {
+                let color = e.total >= 70 ? 'text-green-600' : 'text-red-600';
+                html += `<tr>
+                    <td class="p-2 font-medium truncate max-w-[150px]">${e.nombre}</td>
+                    <td class="p-2 text-center">${e.notas.TRAB_COT}</td>
+                    <td class="p-2 text-center">${e.notas.TAREAS}</td>
+                    <td class="p-2 text-center">${e.notas.PRUEBAS}</td>
+                    <td class="p-2 text-center">${e.notas.PROYECTOS}</td>
+                    <td class="p-2 text-center">${e.notas.ASIST}</td>
+                    <td class="p-2 text-center font-bold bg-gray-50 ${color}">${e.total}</td>
+                </tr>`;
+            });
+            html += `</tbody></table></div>`;
+
+            Swal.fire({
+                html: html,
+                width: '800px',
+                showCloseButton: true,
+                showConfirmButton: false,
+                footer: `<button onclick="app.downloadPdf('pdfGrades', '${idMat}')" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold shadow hover:bg-indigo-700 w-full"><i class="fas fa-file-pdf mr-2"></i> Descargar Cuadro PDF</button>`
+            });
+        },
+
+        // ==========================================
+        // MÓDULO PLANEAMIENTO (LÓGICA FRONTAL)
+        // ==========================================
+
+// 1. CARGAR LISTA (ACTUALIZADO CON BOTONES)
+        loadPlanes: async () => {
+            const div = document.getElementById('plan-list');
+            div.innerHTML = '<div class="text-center py-10"><i class="fas fa-spinner fa-spin text-indigo-600 text-2xl"></i></div>';
+            
+            const planes = await app.api({ action: 'getPlanning' });
+            div.innerHTML = '';
+
+            // GUARDAMOS EN MEMORIA PARA USAR AL EDITAR
+            app.data.planes = planes || [];
+
+            if(!planes || planes.length === 0) {
+                div.innerHTML = `
+                <div class="bg-white border-2 border-dashed border-gray-300 rounded-xl p-10 text-center">
+                    <h4 class="text-gray-500 font-bold mb-2">No tienes planeamientos</h4>
+                    <button onclick="app.modalPlan()" class="bg-blue-600 text-white px-4 py-2 rounded font-bold shadow hover:bg-blue-700">Crear Plan</button>
+                </div>`;
+                return;
+            }
+
+            planes.forEach(p => {
+                div.innerHTML += `
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center hover:shadow-md transition gap-4">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-3 mb-1">
+                            <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-xs font-bold border border-indigo-100">${p.periodo}</span>
+                            <h4 class="font-bold text-gray-800 text-lg">${p.nombreMateria}</h4>
+                        </div>
+                        <p class="text-sm text-gray-500 mb-2"><i class="fas fa-users mr-1"></i> ${p.nombreSeccion} &bull; <i class="fas fa-calendar mr-1"></i> Inicio: ${p.fechaIni}</p>
+                        <p class="text-xs text-gray-400 italic truncate max-w-md">${p.aprendizaje}</p>
+                    </div>
+                    
+                    <!-- BOTONES DE ACCIÓN -->
+                    <div class="flex items-center gap-2">
+                        <button onclick="app.editPlan('${p.id}')" class="h-9 w-9 rounded-lg bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600 transition flex items-center justify-center" title="Editar">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button onclick="app.downloadPdf('pdfPlanning', '${p.id}')" class="h-9 px-3 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-700 border border-red-100 font-bold text-xs transition flex items-center gap-2" title="PDF">
+                            <i class="fas fa-file-pdf"></i> PDF
+                        </button>
+                        <button onclick="app.deletePlan('${p.id}')" class="h-9 w-9 rounded-lg bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600 transition flex items-center justify-center" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>`;
+            });
+        },
+
+// 2. ABRIR MODAL (SOPORTA CREAR Y EDITAR)
+        modalPlan: async (planToEdit = null) => {
+            // Generar opciones de Institución
+            let optsInst = '<option value="">Seleccione...</option>';
+            if(app.data.instituciones) {
+                app.data.instituciones.forEach(i => optsInst += `<option value="${i.id}">${i.nombre}</option>`);
+            }
+
+            // Título dinámico
+            const titulo = planToEdit ? 'Editar Planeamiento' : 'Nuevo Planeamiento';
+            const textoBoton = planToEdit ? 'Actualizar Plan' : 'Guardar Plan';
+
+            const { value: form } = await Swal.fire({
+                title: titulo,
+                width: '800px',
+                html: `
+                    <div class="text-left space-y-4 text-sm">
+                        <!-- 1. INFO ADMIN -->
+                        <div class="bg-blue-50 p-3 rounded-lg border border-blue-100">
+                            <h6 class="font-bold text-blue-700 mb-2 border-b border-blue-200 pb-1">1. Información Administrativa</h6>
+                            <div class="grid grid-cols-1 gap-3 mb-3">
+                                <div><label class="font-bold text-gray-500 text-xs">Institución</label>
+                                <select id="sw-p-inst" class="w-full p-2 border rounded bg-white" onchange="app.loadSecPlan(this.value)"></select></div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                <div><label class="font-bold text-gray-500 text-xs">Sección</label>
+                                <select id="sw-p-sec" class="w-full p-2 border rounded bg-white" onchange="app.loadMatPlan(this.value)"></select></div>
+                                <div><label class="font-bold text-gray-500 text-xs">Asignatura</label>
+                                <select id="sw-p-mat" class="w-full p-2 border rounded bg-white"></select></div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div><label class="font-bold text-gray-500 text-xs">Periodo</label>
+                                <select id="sw-p-per" class="w-full p-2 border rounded bg-white"><option>I Periodo</option><option>II Periodo</option><option>III Periodo</option></select></div>
+                                <div><label class="font-bold text-gray-500 text-xs">Desde</label><input type="date" id="sw-p-ini" class="w-full p-2 border rounded"></div>
+                                <div><label class="font-bold text-gray-500 text-xs">Hasta</label><input type="date" id="sw-p-fin" class="w-full p-2 border rounded"></div>
+                            </div>
+                        </div>
+
+                        <!-- 2. APRENDIZAJE -->
+                        <div>
+                            <h6 class="font-bold text-indigo-700 mb-1">2. Aprendizaje Esperado</h6>
+                            <textarea id="sw-p-apr" class="w-full p-2 border rounded focus:ring-2 focus:ring-indigo-200 outline-none" rows="2" placeholder="Describa el objetivo..."></textarea>
+                        </div>
+
+                        <!-- 3. ESTRATEGIAS -->
+                        <div class="space-y-2">
+                            <h6 class="font-bold text-indigo-700 mb-1">3. Estrategias de Mediación</h6>
+                            <textarea id="sw-p-ape" class="w-full p-2 border rounded text-xs" rows="2" placeholder="Apertura / Focalización"></textarea>
+                            <textarea id="sw-p-des" class="w-full p-2 border rounded text-xs" rows="3" placeholder="Desarrollo / Exploración"></textarea>
+                            <textarea id="sw-p-cie" class="w-full p-2 border rounded text-xs" rows="2" placeholder="Cierre / Aplicación"></textarea>
+                        </div>
+
+                        <!-- 4. INSTRUMENTOS -->
+                        <div class="bg-gray-50 p-3 rounded border border-gray-200">
+                            <h6 class="font-bold text-indigo-700 mb-2">4. Instrumentos de Evaluación</h6>
+                            <div class="grid grid-cols-3 gap-2 text-xs">
+                                <label><input type="checkbox" class="chk-inst" value="Rúbrica"> Rúbrica</label>
+                                <label><input type="checkbox" class="chk-inst" value="Lista de Cotejo"> Lista de Cotejo</label>
+                                <label><input type="checkbox" class="chk-inst" value="Escala"> Escala</label>
+                                <label><input type="checkbox" class="chk-inst" value="Observación"> Observación</label>
+                                <label><input type="checkbox" class="chk-inst" value="Diario"> Diario</label>
+                                <label><input type="checkbox" class="chk-inst" value="Portafolio"> Portafolio</label>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                didOpen: async () => {
+                    // 1. Cargar Instituciones SIEMPRE
+                    document.getElementById('sw-p-inst').innerHTML = optsInst;
+
+                    // 2. SI ES EDICIÓN -> RELLENAR DATOS
+                    if (planToEdit) {
+                        const p = planToEdit; // Alias corto
+                        
+                        // A. Textos Simples
+                        document.getElementById('sw-p-per').value = p.periodo;
+                        document.getElementById('sw-p-ini').value = p.fechaIni;
+                        document.getElementById('sw-p-fin').value = p.fechaFin;
+                        document.getElementById('sw-p-apr').value = p.aprendizaje;
+
+                        // B. Estrategias
+                        if(p.estrategias) {
+                            document.getElementById('sw-p-ape').value = p.estrategias.apertura || "";
+                            document.getElementById('sw-p-des').value = p.estrategias.desarrollo || "";
+                            document.getElementById('sw-p-cie').value = p.estrategias.cierre || "";
+                        }
+
+                        // C. Checkboxes
+                        if(p.instrumentos) {
+                            p.instrumentos.forEach(val => {
+                                const chk = document.querySelector(`.chk-inst[value="${val}"]`);
+                                if(chk) chk.checked = true;
+                            });
+                        }
+
+                        // D. CASCADA DE SELECTORES (Institución -> Sección -> Materia)
+                        if (p.idInstitucion) {
+                            // Paso 1: Set Institución
+                            document.getElementById('sw-p-inst').value = p.idInstitucion;
+                            
+                            // Paso 2: Cargar Secciones (Síncrono en memoria)
+                            app.loadSecPlan(p.idInstitucion);
+                            document.getElementById('sw-p-sec').value = p.idSeccion;
+
+                            // Paso 3: Cargar Materias (ASÍNCRONO - Hay que esperar)
+                            const selMat = document.getElementById('sw-p-mat');
+                            selMat.innerHTML = '<option>Cargando...</option>';
+                            
+                            // Pedimos materias al servidor
+                            const mats = await app.api({ action: 'getSubjects', idSeccion: p.idSeccion });
+                            
+                            // Llenamos el select
+                            selMat.innerHTML = '<option value="">Seleccione...</option>';
+                            if(mats) mats.forEach(m => selMat.innerHTML += `<option value="${m.id}">${m.nombre}</option>`);
+                            
+                            // Paso 4: Set Materia Final
+                            document.getElementById('sw-p-mat').value = p.idMateria;
+                        }
+                    } else {
+                        // SI ES NUEVO: Limpiamos el ID de edición
+                        app.state.editingPlanId = null;
+                    }
+                },
+                showCancelButton: true,
+                confirmButtonText: textoBoton,
+                confirmButtonColor: '#10B981',
+                preConfirm: () => {
+                    const sec = document.getElementById('sw-p-sec').value;
+                    const mat = document.getElementById('sw-p-mat').value;
+                    const apr = document.getElementById('sw-p-apr').value;
+                    
+                    if(!sec || !mat || !apr) return Swal.showValidationMessage('Faltan datos obligatorios');
+
+                    let insts = [];
+                    document.querySelectorAll('.chk-inst:checked').forEach(c => insts.push(c.value));
+
+                    return {
+                        idPlan: app.state.editingPlanId || null, // ENVIAMOS EL ID SI EXISTE
+                        idSeccion: sec,
+                        idMateria: mat,
+                        periodo: document.getElementById('sw-p-per').value,
+                        fechaIni: document.getElementById('sw-p-ini').value,
+                        fechaFin: document.getElementById('sw-p-fin').value,
+                        aprendizaje: apr,
+                        apertura: document.getElementById('sw-p-ape').value,
+                        desarrollo: document.getElementById('sw-p-des').value,
+                        cierre: document.getElementById('sw-p-cie').value,
+                        instrumentos: insts
+                    }
+                }
+            });
+
+            if(form) {
+                Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+                const res = await app.api({ action: 'savePlanning', ...form });
+                if(res && res.success) {
+                    Swal.fire('Guardado', res.message, 'success');
+                    app.loadPlanes();
+                    app.state.editingPlanId = null; // Limpiar estado
+                }
+            }
+        },
+
+        // FUNCIONES DE APOYO PARA LOS DROPDOWNS DEL MODAL
+        loadSecPlan: (idInst) => {
+            const sel = document.getElementById('sw-p-sec');
+            sel.innerHTML = '<option value="">Seleccione...</option>';
+            if(app.data.secciones) {
+                app.data.secciones.filter(s => String(s.idInstitucion) === idInst)
+                   .forEach(s => sel.innerHTML += `<option value="${s.id}">${s.nombre}</option>`);
+            }
+        },
+
+        loadMatPlan: async (idSec) => {
+            const sel = document.getElementById('sw-p-mat');
+            sel.innerHTML = '<option>Cargando...</option>';
+            const mats = await app.api({ action: 'getSubjects', idSeccion: idSec });
+            sel.innerHTML = '<option value="">Seleccione...</option>';
+            if(mats) mats.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.nombre}</option>`);
+        },
+
+        // 2. ELIMINAR PLAN
+        deletePlan: async (id) => {
+            const conf = await Swal.fire({
+                title: '¿Eliminar Plan?',
+                text: "No podrás recuperar este documento.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Sí, eliminar'
+            });
+
+            if (conf.isConfirmed) {
+                Swal.fire({ title: 'Eliminando...', didOpen: () => Swal.showLoading() });
+                const res = await app.api({ action: 'deletePlanning', id: id });
+                if (res.success) {
+                    Swal.fire('Eliminado', '', 'success');
+                    app.loadPlanes();
+                }
+            }
+        },
+
+        // 3. EDITAR PLAN (CORREGIDO)
+        editPlan: async (id) => {
+            // 1. Buscar datos en memoria
+            const p = app.data.planes.find(x => x.id === id);
+            if (!p) return;
+
+            // 2. Guardamos el ID en el estado global para saber que es edición
+            app.state.editingPlanId = id;
+
+            // 3. Llamamos al modal PASÁNDOLE LOS DATOS
+            // Ya no usamos 'await' aquí para bloquear, dejamos que el modal maneje el flujo
+            app.modalPlan(p); 
+        },
+
+// ==========================================
+        // 9. INYECTOR DE VISTAS (VERSIÓN LIMPIA)
+        // ==========================================
+        injectDynamicViews: () => {
+            const container = document.getElementById('views-container');
+            
+// 1. VISTA PLANEAMIENTOS (ACTUALIZADA)
+            container.innerHTML += `
+            <div id="view-planeamientos" class="view hidden fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800"><i class="fas fa-calendar-alt text-indigo-600 mr-2"></i>Planeamiento Didáctico</h3>
+                    <button onclick="app.modalPlan()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg shadow font-bold hover:bg-indigo-700 transition">
+                        <i class="fas fa-plus-circle mr-2"></i> Nuevo Plan
+                    </button>
+                </div>
+                
+                <!-- LISTA DE PLANES (Si está vacío, JS pone el mensaje) -->
+                <div id="plan-list" class="grid grid-cols-1 gap-4"></div>
+            </div>`;
+
+      // 2. VISTA BITÁCORA (ACTUALIZADA)
+            container.innerHTML += `
+            <div id="view-bitacoras" class="view hidden fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800"><i class="fas fa-book-reader text-amber-500 mr-2"></i>Bitácora de Incidencias</h3>
+                    <div class="flex gap-2">
+                        <button onclick="app.modalBitacora()" class="bg-amber-400 text-black px-5 py-2 rounded-lg shadow font-bold hover:bg-amber-500 transition">
+                            <i class="fas fa-plus-circle mr-2"></i> Nueva Entrada
+                        </button>
+                        <button onclick="window.print()" class="bg-white border border-gray-300 text-gray-600 px-4 py-2 rounded-lg font-bold hover:bg-gray-50 transition">
+                            <i class="fas fa-file-pdf mr-2 text-red-500"></i> Reporte PDF
+                        </button>
+                    </div>
+                </div>
+
+                <!-- FILTROS (IMAGEN 1) -->
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4 flex gap-4">
+                    <select id="bit-filter-sec" class="p-2 border rounded-lg w-1/3 bg-gray-50" onchange="app.renderBitacoraTable()">
+                        <option value="">Todas las Secciones</option>
+                    </select>
+                    <input id="bit-filter-search" type="text" placeholder="Buscar por estudiante..." class="p-2 border rounded-lg flex-1 outline-none focus:ring-2 focus:ring-amber-200" onkeyup="app.renderBitacoraTable()">
+                </div>
+
+                <!-- TABLA -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-50 text-gray-500 font-bold uppercase text-xs border-b">
+                            <tr>
+                                <th class="p-4">Fecha</th>
+                                <th class="p-4">Tipo</th>
+                                <th class="p-4">Estudiante / Grupo</th>
+                                <th class="p-4">Descripción</th>
+                                <th class="p-4 text-center">Estado</th>
+                                <th class="p-4 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bitacora-table-body" class="divide-y divide-gray-100"></tbody>
+                    </table>
+                </div>
+            </div>`;
+
+            // VISTA INFORME SEA
+            container.innerHTML += `
+            <div id="view-sea" class="view hidden fade-in">
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500 mb-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-2">Informe Oficial SEA (MEP)</h3>
+                    <p class="text-sm text-gray-500 mb-4">
+                        Genera el archivo Excel compatible con la plataforma SEA. 
+                        El sistema sumará automáticamente <b>Tareas + Proyectos</b> en la columna de Tareas.
+                    </p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">Institución</label>
+                            <select id="sea-inst" class="w-full p-2 border rounded-lg bg-gray-50" onchange="app.loadSecSEA()"></select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">Sección</label>
+                            <select id="sea-sec" class="w-full p-2 border rounded-lg bg-gray-50" onchange="app.loadMatSEA()"></select>
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">Asignatura</label>
+                            <select id="sea-mat" class="w-full p-2 border rounded-lg bg-white shadow-sm border-green-200"></select>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 text-right">
+                        <button onclick="app.downloadExcelSEA()" class="bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow hover:bg-green-700 transition flex items-center gap-2 ml-auto">
+                            <i class="fas fa-download"></i> Descargar Plantilla Excel
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- PREVISUALIZACIÓN -->
+                <div id="sea-preview" class="hidden">
+                    <h5 class="text-sm font-bold text-gray-500 mb-2">Previsualización de Datos</h5>
+                    <div class="bg-white rounded-xl shadow border border-gray-200 overflow-x-auto">
+                        <table class="w-full text-xs text-left">
+                            <thead class="bg-gray-100 text-gray-600 border-b">
+                                <tr>
+                                    <th class="p-3">Id (Cédula)</th>
+                                    <th class="p-3">Nombre</th>
+                                    <th class="p-3 text-center">Trab. Cotidiano</th>
+                                    <th class="p-3 text-center bg-yellow-50 text-yellow-700">Tareas (T+P)</th>
+                                    <th class="p-3 text-center">Prueba</th>
+                                    <th class="p-3 text-center">Asistencia</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sea-table-body" class="divide-y"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>`;
+
+            // VISTA MI AULA (ACTUALIZADA)
+            container.innerHTML += `
+            <div id="view-miaula" class="view hidden fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-gray-800"><i class="fas fa-chalkboard-teacher text-teal-600 mr-2"></i>Mi Aula Virtual</h3>
+                    <button onclick="app.modalAula()" class="bg-teal-600 text-white px-5 py-2 rounded-lg shadow font-bold hover:bg-teal-700 transition">
+                        <i class="fas fa-plus-circle mr-2"></i> Crear Contenido
+                    </button>
+                </div>
+
+                <!-- FILTRO RÁPIDO -->
+                <div class="flex gap-2 mb-4">
+                    <button onclick="app.filterAula('Todos')" class="px-4 py-1 rounded-full bg-gray-200 text-gray-700 text-sm font-bold hover:bg-gray-300">Todos</button>
+                    <button onclick="app.filterAula('Clase')" class="px-4 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-bold hover:bg-blue-200">Clases</button>
+                    <button onclick="app.filterAula('Tarea')" class="px-4 py-1 rounded-full bg-orange-100 text-orange-700 text-sm font-bold hover:bg-orange-200">Tareas</button>
+                </div>
+
+                <div id="aula-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </div>`;
+
+            // 3. VISTA CONFIGURACIÓN (LA QUE DABA ERROR)
+            container.innerHTML += `
+            <div id="view-config" class="view hidden fade-in">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <!-- TARJETA 1: CREAR INSTITUCIÓN -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-indigo-500">
+                        <h3 class="font-bold text-gray-800 mb-2 flex items-center gap-2">
+                            <i class="fas fa-university text-indigo-500"></i> Nueva Institución
+                        </h3>
+                        <p class="text-xs text-gray-500 mb-4">Registra el colegio o escuela donde trabajas.</p>
+                        <div class="flex gap-2">
+                            <input id="new-inst-name" type="text" placeholder="Ej: Liceo de San José" class="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none">
+                            <button onclick="app.createInstitution()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 shadow">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+
+        <!-- TARJETA 2: CREAR SECCIÓN (ACTUALIZADA) -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            <i class="fas fa-layer-group text-gray-500"></i> Nueva Sección
+                        </h3>
+                        
+                        <div id="alert-no-inst" class="hidden bg-orange-50 border border-orange-200 text-orange-800 p-3 rounded-lg text-xs mb-4 flex items-start gap-2">
+                            <i class="fas fa-exclamation-triangle mt-0.5"></i>
+                            <span>Para crear una sección primero debes crear una Institución.</span>
+                        </div>
+
+                        <div id="form-section-inputs">
+                            <div class="mb-3">
+                                <label class="text-xs font-bold text-gray-500">Institución</label>
+                                <select id="cfg-inst" class="w-full p-2 border rounded-lg mt-1 bg-gray-50"></select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 mb-3">
+                                <div><label class="text-xs font-bold text-gray-500">Nombre</label><input id="cfg-nom" placeholder="Ej: 7-1" class="w-full p-2 border rounded-lg mt-1"></div>
+                                <div><label class="text-xs font-bold text-gray-500">Año</label><input id="cfg-anio" type="number" value="2025" class="w-full p-2 border rounded-lg mt-1"></div>
+                            </div>
+                            
+                            <!-- NUEVO: SELECTOR DE PERIODOS -->
+                            <div class="mb-3">
+                                <label class="text-xs font-bold text-gray-500">Esquema de Evaluación</label>
+                                <select id="cfg-periodos" class="w-full p-2 border rounded-lg mt-1" onchange="app.renderPeriodInputs()">
+                                    <option value="1">1 Periodo (Anual)</option>
+                                    <option value="2">2 Periodos (Semestral)</option>
+                                    <option value="3" selected>3 Periodos (Trimestral)</option>
+                                </select>
+                            </div>
+
+                            <!-- AQUÍ SE GENERAN LAS FECHAS AUTOMÁTICAMENTE -->
+                            <div id="cfg-fechas-container" class="space-y-2 mb-4"></div>
+
+                            <button onclick="app.createSection()" class="w-full bg-green-600 text-white p-2 rounded-lg font-bold hover:bg-green-700 shadow transition">
+                                Guardar Sección
+                            </button>
+                        </div>
+                    </div>
+            </div>`;
+
+            // 4. VISTA INDICADORES (RUBROS)
+            container.innerHTML += `
+            <div id="view-indicadores" class="view hidden fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <button onclick="app.openMaterias(app.state.currentSecId, app.state.currentSecName)" class="text-gray-500 hover:text-indigo-600 text-xs font-bold mb-1 flex items-center gap-1"><i class="fas fa-arrow-left"></i> VOLVER A MATERIAS</button>
+                        <h3 class="text-xl font-bold text-gray-800" id="ind-title">Evaluación</h3>
+                    </div>
+                    <button onclick="app.modalIndicador()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow font-bold hover:bg-indigo-700"><i class="fas fa-plus mr-2"></i> Nuevo Indicador</button>
+                </div>
+
+                <!-- TABS DE CATEGORÍAS -->
+                <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+                    <button onclick="app.setCategory('TRAB_COT', 'Cotidiano')" class="tab-btn px-4 py-2 rounded-full text-sm font-bold bg-indigo-100 text-indigo-700 ring-2 ring-indigo-500">Cotidiano</button>
+                    <button onclick="app.setCategory('TAREAS', 'Tareas')" class="tab-btn px-4 py-2 rounded-full text-sm font-bold bg-white text-gray-500 hover:bg-gray-50 border">Tareas</button>
+                    <button onclick="app.setCategory('PRUEBAS', 'Pruebas')" class="tab-btn px-4 py-2 rounded-full text-sm font-bold bg-white text-gray-500 hover:bg-gray-50 border">Pruebas</button>
+                    <button onclick="app.setCategory('PROYECTOS', 'Proyectos')" class="tab-btn px-4 py-2 rounded-full text-sm font-bold bg-white text-gray-500 hover:bg-gray-50 border">Proyectos</button>
+                    <button onclick="app.setCategory('ASIST', 'Asistencia')" class="tab-btn px-4 py-2 rounded-full text-sm font-bold bg-white text-gray-500 hover:bg-gray-50 border">Asistencia</button>
+                </div>
+
+                <!-- TABLA DE INDICADORES -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 text-gray-500 text-xs uppercase font-bold border-b">
+                            <tr>
+                                <th class="p-4">Descripción / Actividad</th>
+                                <th class="p-4 text-center">Valor (Pts)</th>
+                                <th class="p-4 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-ind-body" class="divide-y divide-gray-100 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>`;
+
+  
+
+            // 5. VISTA DE CALIFICAR (LA GRID DE NOTAS)
+            container.innerHTML += `
+            <div id="view-evaluar" class="view hidden fade-in">
+                <div class="flex justify-between items-center mb-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200 sticky top-0 z-10">
+                    <div>
+                        <button onclick="app.nav('indicadores')" class="text-gray-500 hover:text-indigo-600 text-xs font-bold mb-1"><i class="fas fa-arrow-left"></i> VOLVER</button>
+                        <h3 class="text-lg font-bold text-indigo-700" id="eval-title">...</h3>
+                        <p class="text-xs text-gray-500" id="eval-subtitle">...</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="app.fillMaxScore()" class="bg-blue-50 text-blue-600 px-3 py-2 rounded-lg font-bold text-sm hover:bg-blue-100" title="Rellenar todo con nota máxima"><i class="fas fa-magic"></i> Máx</button>
+                        <button onclick="app.saveGrades()" class="bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow hover:bg-green-700"><i class="fas fa-save mr-2"></i> Guardar Notas</button>
+                    </div>
+                </div>
+                
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 text-gray-500 text-xs uppercase font-bold border-b">
+                            <tr>
+                                <th class="p-4 w-10">#</th>
+                                <th class="p-4">Estudiante</th>
+                                <th class="p-4 w-32 text-center">Puntaje Obt.</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-eval-body" class="divide-y divide-gray-100 text-sm"></tbody>
+                    </table>
+                </div>
+            </div>`;
+        },
+    };
+    // INICIAR APLICACIÓN
+    document.addEventListener("DOMContentLoaded", app.init);
+
+
+    </script>
+
+</body>
+</html>
