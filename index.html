@@ -698,75 +698,82 @@
         },
 
 renderDashboard: () => {
-        const grid = document.getElementById('grid-secciones');
-        grid.innerHTML = '';
+            const grid = document.getElementById('grid-secciones');
+            grid.innerHTML = '';
 
-        // CASO 1: NO TIENE INSTITUCIONES (Usuario Nuevo)
-        if (!app.data.instituciones || app.data.instituciones.length === 0) {
-            grid.innerHTML = `
-            <div class="col-span-full p-8 bg-orange-50 border-2 border-orange-200 border-dashed rounded-xl text-center">
-                <div class="text-orange-500 text-4xl mb-3"><i class="fas fa-exclamation-circle"></i></div>
-                <h3 class="text-lg font-bold text-orange-800 mb-1">¡Atención, Docente!</h3>
-                <p class="text-orange-700 text-sm mb-6">
-                    Para crear una sección primero debes crear una <b>Institución</b>.
-                </p>
-                <button onclick="app.nav('config')" class="bg-orange-600 text-white px-6 py-3 rounded-lg font-bold shadow hover:bg-orange-700 transition">
-                    <i class="fas fa-arrow-right mr-2"></i> Ir a Configuración
-                </button>
-            </div>`;
-            
-            // Forzamos la actualización de la vista de configuración también
-            app.updateConfigView();
-            return;
-        }
+            // 1. CASO: NO TIENE INSTITUCIONES (Alerta Naranja)
+            // (Mantenemos esta lógica que ya tenías para que no se pierda)
+            if (!app.data.instituciones || app.data.instituciones.length === 0) {
+                grid.innerHTML = `
+                <div class="col-span-full p-8 bg-orange-50 border-2 border-orange-200 border-dashed rounded-xl text-center">
+                    <div class="text-orange-500 text-4xl mb-3"><i class="fas fa-exclamation-circle"></i></div>
+                    <h3 class="text-lg font-bold text-orange-800 mb-1">¡Atención, Docente!</h3>
+                    <p class="text-orange-700 text-sm mb-6">Para crear una sección primero debes crear una <b>Institución</b>.</p>
+                    <button onclick="app.nav('config')" class="bg-orange-600 text-white px-6 py-3 rounded-lg font-bold shadow hover:bg-orange-700 transition"><i class="fas fa-arrow-right mr-2"></i> Ir a Configuración</button>
+                </div>`;
+                app.updateConfigView();
+                return;
+            }
 
-        // CASO 2: TIENE INSTITUCIÓN PERO NO SECCIONES
-        if(!app.data.secciones || app.data.secciones.length === 0) {
-             grid.innerHTML = `
-            <div class="col-span-full text-center py-10 bg-white rounded-xl shadow-sm border border-gray-200">
-                <h3 class="text-gray-700 font-bold text-lg">Todo listo</h3>
-                <p class="text-gray-500 mb-4 text-sm">Ya tienes tu institución. Ahora crea tu primera sección.</p>
-                <button onclick="app.nav('config')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow font-bold hover:bg-indigo-700">Crear Sección</button>
-            </div>`;
-            app.updateConfigView();
-            return;
-        }
+            // 2. CASO: TIENE INSTITUCIÓN PERO NO SECCIONES
+            if(!app.data.secciones || app.data.secciones.length === 0) {
+                 grid.innerHTML = `
+                <div class="col-span-full text-center py-10 bg-white rounded-xl shadow-sm border border-gray-200">
+                    <h3 class="text-gray-700 font-bold text-lg">Todo listo</h3>
+                    <p class="text-gray-500 mb-4 text-sm">Ya tienes tu institución. Ahora crea tu primera sección.</p>
+                    <button onclick="app.nav('config')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow font-bold hover:bg-indigo-700">Crear Sección</button>
+                </div>`;
+                app.updateConfigView();
+                return;
+            }
 
- // CASO 3: DIBUJAR TARJETAS (CON BOTONES DE EDICIÓN)
-        app.data.secciones.forEach(sec => {
-            grid.innerHTML += `
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 card-hover flex flex-col justify-between h-full relative group">
-                
-                <!-- BOTONES FLOTANTES (EDITAR / ELIMINAR) -->
-                <div class="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onclick="app.editSection('${sec.id}', '${sec.nombre}', '${sec.anio}')" class="h-8 w-8 rounded-full bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600 flex items-center justify-center transition" title="Editar">
-                        <i class="fas fa-pen text-xs"></i>
-                    </button>
-                    <button onclick="app.deleteSection('${sec.id}')" class="h-8 w-8 rounded-full bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition" title="Eliminar">
-                        <i class="fas fa-trash text-xs"></i>
-                    </button>
-                </div>
+            // 3. CASO: DIBUJAR TARJETAS (AQUÍ ESTÁ EL NUEVO DISEÑO "NAVY") 🎨👇
+            app.data.secciones.forEach(sec => {
+                grid.innerHTML += `
+                <div class="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 hover:shadow-lg transition duration-300 flex flex-col justify-between h-full overflow-hidden group relative">
+                    
+                    <!-- Línea decorativa superior -->
+                    <div class="h-1.5 w-full bg-indigo-600"></div>
 
-                <div>
-                    <div class="flex justify-between items-start mb-2 pr-10"> <!-- Padding derecho para no tapar texto -->
-                        <h3 class="text-lg font-bold text-indigo-700 truncate" title="${sec.nombre}">${sec.nombre}</h3>
-                        <span class="bg-blue-50 text-blue-600 text-[10px] px-2 py-1 rounded-full border border-blue-100 font-bold shrink-0">${sec.anio}</span>
+                    <!-- Botones Flotantes (Editar/Eliminar) - Aparecen con Hover -->
+                    <div class="absolute top-4 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+                        <button onclick="app.editSection('${sec.id}', '${sec.nombre}', '${sec.anio}')" class="h-8 w-8 rounded-full bg-white text-slate-400 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 shadow-sm flex items-center justify-center transition" title="Editar">
+                            <i class="fas fa-pen text-xs"></i>
+                        </button>
+                        <button onclick="app.deleteSection('${sec.id}')" class="h-8 w-8 rounded-full bg-white text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 shadow-sm flex items-center justify-center transition" title="Eliminar">
+                            <i class="fas fa-trash text-xs"></i>
+                        </button>
                     </div>
-                    <p class="text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded border border-gray-100 truncate"><i class="fas fa-university mr-1"></i> ${sec.institucion}</p>
-                </div>
-                <div class="grid grid-cols-2 gap-3 mt-2">
-                    <button onclick="app.openStudents('${sec.id}', '${sec.nombre}')" class="flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-600 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition">
-                        <i class="fas fa-users"></i> Alumnos
-                    </button>
-                    <button onclick="app.openMaterias('${sec.id}', '${sec.nombre}')" class="flex items-center justify-center gap-2 bg-amber-50 border border-amber-100 text-amber-700 py-2 rounded-lg text-sm font-bold hover:bg-amber-100 transition">
-                        <i class="fas fa-book"></i> Materias
-                    </button>
-                </div>
-            </div>`;
-        });
-        
-        app.updateConfigView();
-    },
+
+                    <div class="p-6">
+                        <!-- Encabezado Tarjeta -->
+                        <div class="flex justify-between items-start mb-4 pr-8">
+                            <div>
+                                <h3 class="text-xl font-bold text-slate-800 group-hover:text-indigo-600 transition truncate" title="${sec.nombre}">${sec.nombre}</h3>
+                                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1 truncate">
+                                    <i class="fas fa-university"></i> ${sec.institucion}
+                                </p>
+                            </div>
+                            <span class="bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-md font-bold border border-indigo-100 shrink-0">
+                                ${sec.anio}
+                            </span>
+                        </div>
+
+                        <!-- Botones de Acción (Más sólidos y profesionales) -->
+                        <div class="grid grid-cols-2 gap-3 mt-4">
+                            <button onclick="app.openStudents('${sec.id}', '${sec.nombre}')" class="flex items-center justify-center gap-2 bg-slate-50 text-slate-700 border border-slate-200 py-2.5 rounded-lg text-sm font-bold hover:bg-white hover:border-indigo-300 hover:text-indigo-600 transition shadow-sm">
+                                <i class="fas fa-users"></i> Alumnos
+                            </button>
+                            <button onclick="app.openMaterias('${sec.id}', '${sec.nombre}')" class="flex items-center justify-center gap-2 bg-indigo-600 text-white border border-transparent py-2.5 rounded-lg text-sm font-bold hover:bg-indigo-700 transition shadow-md shadow-indigo-200">
+                                <i class="fas fa-book"></i> Materias
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            
+            app.updateConfigView();
+        },
 
     // 2. AGREGA ESTA NUEVA FUNCIÓN (Controla el formulario de config)
     updateConfigView: () => {
