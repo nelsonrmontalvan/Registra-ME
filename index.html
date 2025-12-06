@@ -286,81 +286,120 @@
             </div>
 
  <!-- VISTA: CONFIGURACIÓN DE HORARIO (REDISEÑADA) -->
-            <div id="view-horarios" class="view hidden fade-in">
-                
-                <!-- 1. FORMULARIO COMPACTO (CREAR) -->
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6">
-                    <h3 class="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide border-b pb-2">
-                        <i class="fas fa-plus-circle text-indigo-600 mr-2"></i>Asignar Bloque
-                    </h3>
-                    
-                    <!-- Fila 1: Selectores -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                        <div><label class="text-[10px] font-bold text-gray-400 uppercase">Institución</label>
-                        <select id="hc-inst" class="w-full p-2 border rounded bg-gray-50 text-sm focus:ring-1 focus:ring-indigo-500" onchange="app.loadSecHorarioConfig()"></select></div>
-                        
-                        <div><label class="text-[10px] font-bold text-gray-400 uppercase">Sección</label>
-                        <select id="hc-sec" class="w-full p-2 border rounded bg-gray-50 text-sm focus:ring-1 focus:ring-indigo-500" onchange="app.loadMatHorarioConfig()"></select></div>
-                        
-                        <div><label class="text-[10px] font-bold text-gray-400 uppercase">Materia</label>
-                        <select id="hc-mat" class="w-full p-2 border rounded bg-white text-sm font-bold text-indigo-700 border-indigo-200 focus:ring-1 focus:ring-indigo-500"></select></div>
-                    </div>
+            <!-- VISTA: CONFIGURACIÓN DE HORARIOS -->
+<div id="view-horarios" class="view hidden fade-in">
+    
+    <!-- 1. FORMULARIO COMPACTO (CREAR) -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6">
+        <h3 class="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide border-b pb-2">
+            <i class="fas fa-plus-circle text-indigo-600 mr-2"></i>Asignar Bloque
+        </h3>
+        
+        <!-- Fila 1: Selectores -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+            <div>
+                <label class="text-[10px] font-bold text-gray-400 uppercase">Institución</label>
+                <select id="hc-inst" class="w-full p-2 border rounded bg-gray-50 text-sm focus:ring-1 focus:ring-indigo-500" onchange="app.loadSecHorarioConfig()"></select>
+            </div>
+            
+            <div>
+                <label class="text-[10px] font-bold text-gray-400 uppercase">Sección</label>
+                <select id="hc-sec" class="w-full p-2 border rounded bg-gray-50 text-sm focus:ring-1 focus:ring-indigo-500" onchange="app.loadMatHorarioConfig()"></select>
+            </div>
+            
+            <div>
+                <label class="text-[10px] font-bold text-gray-400 uppercase">Materia</label>
+                <select id="hc-mat" class="w-full p-2 border rounded bg-white text-sm font-bold text-indigo-700 border-indigo-200 focus:ring-1 focus:ring-indigo-500"></select>
+            </div>
+        </div>
 
-                    <!-- Fila 2: Días y Fechas -->
-                    <div class="flex flex-col md:flex-row gap-4 items-end">
-                        
-                        <!-- Días (Compacto) -->
-                        <div class="flex-1">
-                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Lecciones por día</label>
-                            <div class="flex gap-2" id="days-container">
-                                <!-- JS Inyecta aquí -->
-                            </div>
-                        </div>
-
-                        <!-- Fechas -->
-                        <div class="flex gap-2">
-                            <div><label class="text-[10px] font-bold text-gray-400 uppercase">Desde</label>
-                            <input type="date" id="hc-ini" class="p-1.5 border rounded text-xs w-32"></div>
-                            <div><label class="text-[10px] font-bold text-gray-400 uppercase">Hasta</label>
-                            <input type="date" id="hc-fin" class="p-1.5 border rounded text-xs w-32"></div>
-                        </div>
-
-                        <!-- Botón -->
-                        <button onclick="app.saveScheduleConfig()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition h-9">
-                            Guardar
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 2. CONSULTA Y LISTADO -->
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                    <div class="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
-                        <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wide">
-                            <i class="fas fa-list text-gray-400 mr-2"></i>Horarios Asignados
-                        </h3>
-                        
-                        <!-- Filtro Rango para la Consulta -->
-                        <div class="flex items-center gap-2">
-                            <span class="text-[10px] font-bold text-gray-400 uppercase">Filtrar Vigencia:</span>
-                            <input type="date" id="filter-hc-date" class="p-1 border rounded text-xs bg-white" onchange="app.filterScheduleList()">
-                            <button onclick="app.filterScheduleList(true)" class="text-gray-400 hover:text-indigo-600" title="Limpiar filtro"><i class="fas fa-times"></i></button>
-                        </div>
-                    </div>
-                    
-                    <div id="schedule-list" class="divide-y divide-gray-100 max-h-96 overflow-y-auto">
-                        <div class="p-8 text-center text-gray-400 text-sm">Selecciona una sección arriba para ver sus horarios.</div>
-                    </div>
+        <!-- Fila 2: Días y Fechas -->
+        <div class="flex flex-col md:flex-row gap-4 items-end">
+            
+            <!-- Días (Compacto) -->
+            <div class="flex-1">
+                <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Lecciones por día</label>
+                <div class="flex gap-2" id="days-container">
+                    <!-- JS Inyecta aquí los checkboxes -->
                 </div>
             </div>
 
-    <!-- MATRIZ SCROLLEABLE -->
+            <!-- Fechas -->
+            <div class="flex gap-2">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Desde</label>
+                    <input type="date" id="hc-ini" class="p-1.5 border rounded text-xs w-32">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Hasta</label>
+                    <input type="date" id="hc-fin" class="p-1.5 border rounded text-xs w-32">
+                </div>
+            </div>
+
+            <!-- Botón -->
+            <button onclick="app.saveScheduleConfig()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition h-9">
+                Guardar
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. CONSULTA Y LISTADO -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
+            <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wide">
+                <i class="fas fa-list text-gray-400 mr-2"></i>Horarios Asignados
+            </h3>
+            
+            <!-- Filtro Rango para la Consulta -->
+            <div class="flex items-center gap-2">
+                <span class="text-[10px] font-bold text-gray-400 uppercase">Filtrar Vigencia:</span>
+                <input type="date" id="filter-hc-date" class="p-1 border rounded text-xs bg-white" onchange="app.filterScheduleList()">
+                <button onclick="app.filterScheduleList(true)" class="text-gray-400 hover:text-indigo-600" title="Limpiar filtro"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+        
+        <div id="schedule-list" class="divide-y divide-gray-100 max-h-96 overflow-y-auto">
+            <div class="p-8 text-center text-gray-400 text-sm">Selecciona una sección arriba para ver sus horarios.</div>
+        </div>
+    </div>
+
+</div> 
+
+<!-- VISTA: MATRIZ DE ASISTENCIA -->
+<div id="view-asistencia" class="view hidden fade-in flex flex-col h-full">
+    
+    <!-- 1. HEADER DE FILTROS -->
+    <div class="bg-white p-4 rounded-xl shadow mb-4 flex flex-wrap gap-4 items-end">
+        <div>
+            <label class="text-xs font-bold text-gray-500">Sección</label>
+            <select id="as-sec" class="p-2 border rounded w-40" onchange="app.loadMatAsistencia()"></select>
+        </div>
+        <div>
+            <label class="text-xs font-bold text-gray-500">Materia</label>
+            <select id="as-mat" class="p-2 border rounded w-40"></select>
+        </div>
+        <div>
+            <label class="text-xs font-bold text-gray-500">Desde</label>
+            <input type="date" id="as-ini" class="p-2 border rounded w-32">
+        </div>
+        <div>
+            <label class="text-xs font-bold text-gray-500">Hasta</label>
+            <input type="date" id="as-fin" class="p-2 border rounded w-32">
+        </div>
+        <button onclick="app.loadAttendanceMatrix()" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 shadow">
+            <i class="fas fa-search mr-2"></i> Consultar
+        </button>
+    </div>
+
+    <!-- 2. MATRIZ SCROLLEABLE (AQUÍ ES SU LUGAR CORRECTO) -->
     <div class="flex-1 bg-white rounded-xl shadow overflow-hidden relative border border-gray-300">
         <div class="overflow-auto h-full w-full" id="matrix-container">
             <!-- AQUÍ SE DIBUJA LA TABLA GIGANTE -->
             <div class="text-center py-10 text-gray-400">Selecciona los filtros y consulta.</div>
         </div>
     </div>
-</div>
+
+</div> <!-- FIN DE VISTA ASISTENCIA --><!-- FIN DE VISTA HORARIOS -->
 
             <!-- VISTA: ADMIN USUARIOS -->
             <div id="view-admin-users" class="view hidden fade-in">
