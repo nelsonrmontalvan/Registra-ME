@@ -108,11 +108,19 @@
     <!-- Se muestra solo si está logueado -->
     <aside id="sidebar" class="w-64 bg-slate-900 border-r border-slate-800 hidden flex-col z-40 transition-all duration-300 transform md:translate-x-0 -translate-x-full fixed md:relative h-full text-slate-300">
         <!-- Logo -->
-        <div class="p-6 border-b border-gray-100 flex items-center gap-3">
-            <i class="fas fa-graduation-cap text-2xl text-indigo-600"></i>
+     <div class="p-6 border-b border-slate-800 flex items-center gap-3">
+            
+            <!-- Icono: Lo ponemos blanco o en un contenedor suave -->
+            <div class="bg-white/10 p-2 rounded-lg flex items-center justify-center">
+                <i class="fas fa-graduation-cap text-2xl text-indigo-400"></i>
+            </div>
+            
             <div>
-                <h1 class="font-bold text-xl text-gray-800 tracking-tight">RegistraME</h1>
-                <span class="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">PRO</span>
+                <!-- AQUÍ EL CAMBIO: text-white para que resalte -->
+                <h1 class="font-bold text-xl text-white tracking-tight">RegistraME</h1>
+                
+                <!-- Badge PRO ajustado -->
+                <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold shadow-lg shadow-indigo-900/50">PRO</span>
             </div>
         </div>
 
