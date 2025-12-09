@@ -705,12 +705,42 @@
             }
         },
 
-renderDashboard: () => {
+        // ==========================================
+        // FUNCIONES DE VISUALIZACIÓN (DASHBOARD)
+        // ==========================================
+
+        // 1. NUEVA FUNCIÓN: CALCULAR PERIODO ACTUAL
+        getCurrentPeriodLabel: (jsonFechas) => {
+            if (!jsonFechas) return ''; // Si es una sección vieja sin fechas, no muestra nada
+            
+            try {
+                const periodos = JSON.parse(jsonFechas);
+                const hoy = new Date();
+                hoy.setHours(0,0,0,0); // Ignorar la hora, solo fecha
+
+                for (let p of periodos) {
+                    // Convertir "2025-02-01" a objeto fecha compatible
+                    let inicio = new Date(p.inicio.replace(/-/g, '\/'));
+                    let fin = new Date(p.fin.replace(/-/g, '\/'));
+
+                    if (hoy >= inicio && hoy <= fin) {
+                        // ¡Bingo! Estamos en este periodo
+                        return `<span class="bg-green-100 text-green-700 text-[10px] px-2 py-1 rounded-full border border-green-200 font-bold uppercase tracking-wide">P${p.p} Activo</span>`;
+                    }
+                }
+                // Si no coincide con ninguno (Vacaciones o fin de año)
+                return `<span class="bg-gray-100 text-gray-400 text-[10px] px-2 py-1 rounded-full border border-gray-200 font-bold">Inactivo</span>`;
+            } catch (e) {
+                return '';
+            }
+        },
+
+        // 2. RENDER DASHBOARD (ACTUALIZADO COMPLETO)
+        renderDashboard: () => {
             const grid = document.getElementById('grid-secciones');
             grid.innerHTML = '';
 
-            // 1. CASO: NO TIENE INSTITUCIONES (Alerta Naranja)
-            // (Mantenemos esta lógica que ya tenías para que no se pierda)
+            // CASO 1: NO TIENE INSTITUCIONES
             if (!app.data.instituciones || app.data.instituciones.length === 0) {
                 grid.innerHTML = `
                 <div class="col-span-full p-8 bg-orange-50 border-2 border-orange-200 border-dashed rounded-xl text-center">
@@ -723,7 +753,7 @@ renderDashboard: () => {
                 return;
             }
 
-            // 2. CASO: TIENE INSTITUCIÓN PERO NO SECCIONES
+            // CASO 2: TIENE INSTITUCIÓN PERO NO SECCIONES
             if(!app.data.secciones || app.data.secciones.length === 0) {
                  grid.innerHTML = `
                 <div class="col-span-full text-center py-10 bg-white rounded-xl shadow-sm border border-gray-200">
@@ -735,47 +765,43 @@ renderDashboard: () => {
                 return;
             }
 
-            // 3. CASO: DIBUJAR TARJETAS (AQUÍ ESTÁ EL NUEVO DISEÑO "NAVY") 🎨👇
+            // CASO 3: DIBUJAR TARJETAS (CON ETIQUETA DE PERIODO)
             app.data.secciones.forEach(sec => {
-                grid.innerHTML += `
-                <div class="bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 hover:shadow-lg transition duration-300 flex flex-col justify-between h-full overflow-hidden group relative">
-                    
-                    <!-- Línea decorativa superior -->
-                    <div class="h-1.5 w-full bg-indigo-600"></div>
+                // Calculamos la etiqueta aquí
+                const etiquetaPeriodo = app.getCurrentPeriodLabel(sec.fechas);
 
-                    <!-- Botones Flotantes (Editar/Eliminar) - Aparecen con Hover -->
-                    <div class="absolute top-4 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
-                        <button onclick="app.editSection('${sec.id}', '${sec.nombre}', '${sec.anio}')" class="h-8 w-8 rounded-full bg-white text-slate-400 hover:text-blue-600 hover:bg-blue-50 border border-slate-200 shadow-sm flex items-center justify-center transition" title="Editar">
+                grid.innerHTML += `
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 card-hover flex flex-col justify-between h-full relative group">
+                    
+                    <!-- BOTONES FLOTANTES (SOLO AL PASAR MOUSE) -->
+                    <div class="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <button onclick="app.editSection('${sec.id}', '${sec.nombre}', '${sec.anio}')" class="h-8 w-8 rounded-full bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600 flex items-center justify-center transition shadow-sm" title="Editar">
                             <i class="fas fa-pen text-xs"></i>
                         </button>
-                        <button onclick="app.deleteSection('${sec.id}')" class="h-8 w-8 rounded-full bg-white text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-200 shadow-sm flex items-center justify-center transition" title="Eliminar">
+                        <button onclick="app.deleteSection('${sec.id}')" class="h-8 w-8 rounded-full bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition shadow-sm" title="Eliminar">
                             <i class="fas fa-trash text-xs"></i>
                         </button>
                     </div>
 
-                    <div class="p-6">
-                        <!-- Encabezado Tarjeta -->
-                        <div class="flex justify-between items-start mb-4 pr-8">
-                            <div>
-                                <h3 class="text-xl font-bold text-slate-800 group-hover:text-indigo-600 transition truncate" title="${sec.nombre}">${sec.nombre}</h3>
-                                <p class="text-xs text-slate-500 mt-1 flex items-center gap-1 truncate">
-                                    <i class="fas fa-university"></i> ${sec.institucion}
-                                </p>
+                    <div>
+                        <div class="flex justify-between items-start mb-2 pr-10">
+                            <h3 class="text-lg font-bold text-indigo-700 truncate" title="${sec.nombre}">${sec.nombre}</h3>
+                            
+                            <!-- AQUI ESTÁ EL CAMBIO: PERIODO + AÑO -->
+                            <div class="flex items-center gap-2 shrink-0">
+                                ${etiquetaPeriodo}
+                                <span class="bg-blue-50 text-blue-600 text-[10px] px-2 py-1 rounded-full border border-blue-100 font-bold">${sec.anio}</span>
                             </div>
-                            <span class="bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-md font-bold border border-indigo-100 shrink-0">
-                                ${sec.anio}
-                            </span>
                         </div>
-
-                        <!-- Botones de Acción (Más sólidos y profesionales) -->
-                        <div class="grid grid-cols-2 gap-3 mt-4">
-                            <button onclick="app.openStudents('${sec.id}', '${sec.nombre}')" class="flex items-center justify-center gap-2 bg-slate-50 text-slate-700 border border-slate-200 py-2.5 rounded-lg text-sm font-bold hover:bg-white hover:border-indigo-300 hover:text-indigo-600 transition shadow-sm">
-                                <i class="fas fa-users"></i> Alumnos
-                            </button>
-                            <button onclick="app.openMaterias('${sec.id}', '${sec.nombre}')" class="flex items-center justify-center gap-2 bg-indigo-600 text-white border border-transparent py-2.5 rounded-lg text-sm font-bold hover:bg-indigo-700 transition shadow-md shadow-indigo-200">
-                                <i class="fas fa-book"></i> Materias
-                            </button>
-                        </div>
+                        <p class="text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded border border-gray-100 truncate"><i class="fas fa-university mr-1"></i> ${sec.institucion}</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mt-2">
+                        <button onclick="app.openStudents('${sec.id}', '${sec.nombre}')" class="flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-600 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition">
+                            <i class="fas fa-users"></i> Alumnos
+                        </button>
+                        <button onclick="app.openMaterias('${sec.id}', '${sec.nombre}')" class="flex items-center justify-center gap-2 bg-amber-50 border border-amber-100 text-amber-700 py-2 rounded-lg text-sm font-bold hover:bg-amber-100 transition">
+                            <i class="fas fa-book"></i> Materias
+                        </button>
                     </div>
                 </div>`;
             });
@@ -1224,24 +1250,118 @@ openStudents: async (idSec, nombreSec) => {
         // FUNCIONES DE SECCIONES (EDIT/DELETE)
         // ==========================================
 
-        // EDITAR SECCIÓN
-        editSection: async (id, nombreActual, anioActual) => {
+// EDITAR SECCIÓN (VERSIÓN COMPLETA CON FECHAS)
+        editSection: async (id) => {
+            // 1. Buscar los datos actuales de la sección
+            const sec = app.data.secciones.find(s => s.id === id);
+            if(!sec) return;
+
+            // 2. Parsear las fechas existentes (si las hay)
+            let fechasGuardadas = [];
+            try { fechasGuardadas = JSON.parse(sec.fechas); } catch(e){}
+
+            // 3. Generar opciones de Institución
+            let optsInst = '';
+            app.data.instituciones.forEach(i => {
+                const selected = String(i.id) === String(sec.idInstitucion) ? 'selected' : '';
+                optsInst += `<option value="${i.id}" ${selected}>${i.nombre}</option>`;
+            });
+
+            // 4. ABRIR MODAL
             const { value: form } = await Swal.fire({
                 title: 'Editar Sección',
+                width: '600px',
                 html: `
-                    <label class="block text-left text-xs font-bold text-gray-500 mb-1">Nombre</label>
-                    <input id="sw-sec-nom" class="swal2-input m-0 w-full mb-3" value="${nombreActual}">
-                    <label class="block text-left text-xs font-bold text-gray-500 mb-1">Año</label>
-                    <input id="sw-sec-anio" class="swal2-input m-0 w-full" value="${anioActual}">
+                    <div class="text-left space-y-3">
+                        <!-- Institución -->
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">Institución</label>
+                            <select id="sw-edit-inst" class="swal2-input w-full m-0 h-10 text-sm">${optsInst}</select>
+                        </div>
+
+                        <!-- Nombre y Año -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs font-bold text-gray-500">Nombre</label>
+                                <input id="sw-edit-nom" class="swal2-input w-full m-0 h-10 text-sm" value="${sec.nombre}">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500">Año</label>
+                                <input id="sw-edit-anio" type="number" class="swal2-input w-full m-0 h-10 text-sm" value="${sec.anio}">
+                            </div>
+                        </div>
+
+                        <!-- Periodos -->
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">Esquema de Periodos</label>
+                            <select id="sw-edit-per" class="swal2-input w-full m-0 h-10 text-sm">
+                                <option value="1">1 Periodo (Anual)</option>
+                                <option value="2">2 Periodos (Semestral)</option>
+                                <option value="3">3 Periodos (Trimestral)</option>
+                            </select>
+                        </div>
+
+                        <!-- Contenedor de Fechas -->
+                        <div id="sw-edit-dates" class="bg-gray-50 p-2 rounded border border-gray-200 space-y-2 max-h-48 overflow-y-auto">
+                            <!-- JS lo llenará -->
+                        </div>
+                    </div>
                 `,
+                didOpen: () => {
+                    const selPer = document.getElementById('sw-edit-per');
+                    const container = document.getElementById('sw-edit-dates');
+
+                    // Función interna para dibujar inputs de fecha
+                    const drawDates = (qty) => {
+                        container.innerHTML = '';
+                        for(let i=1; i<=qty; i++) {
+                            // Buscar si ya teníamos fecha guardada para este periodo
+                            const saved = fechasGuardadas.find(f => f.p == i) || { inicio: '', fin: '' };
+                            
+                            container.innerHTML += `
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-gray-500 w-6">P${i}</span>
+                                <input type="date" class="sw-date-start form-control form-control-sm border rounded p-1 w-full text-xs" value="${saved.inicio}">
+                                <span class="text-gray-400">-</span>
+                                <input type="date" class="sw-date-end form-control form-control-sm border rounded p-1 w-full text-xs" value="${saved.fin}">
+                            </div>`;
+                        }
+                    };
+
+                    // Inicializar con valor actual
+                    // (Extraemos el número de "3 Periodos" -> 3)
+                    let currentPeriods = parseInt(sec.periodos) || 3;
+                    selPer.value = currentPeriods;
+                    drawDates(currentPeriods);
+
+                    // Evento al cambiar cantidad
+                    selPer.addEventListener('change', (e) => drawDates(e.target.value));
+                },
                 focusConfirm: false,
                 showCancelButton: true,
                 confirmButtonText: 'Guardar Cambios',
                 preConfirm: () => {
+                    // Recolectar datos
+                    const cant = document.getElementById('sw-edit-per').value;
+                    let fechas = [];
+                    const starts = document.querySelectorAll('.sw-date-start');
+                    const ends = document.querySelectorAll('.sw-date-end');
+
+                    for(let i=0; i<starts.length; i++) {
+                        if(!starts[i].value || !ends[i].value) {
+                            Swal.showValidationMessage(`Faltan fechas en el Periodo ${i+1}`);
+                            return false;
+                        }
+                        fechas.push({ p: i+1, inicio: starts[i].value, fin: ends[i].value });
+                    }
+
                     return {
                         id: id,
-                        nombre: document.getElementById('sw-sec-nom').value,
-                        anio: document.getElementById('sw-sec-anio').value
+                        idInstitucion: document.getElementById('sw-edit-inst').value,
+                        nombre: document.getElementById('sw-edit-nom').value,
+                        anio: document.getElementById('sw-edit-anio').value,
+                        cantPeriodos: cant,
+                        fechas: fechas
                     }
                 }
             });
@@ -1250,8 +1370,8 @@ openStudents: async (idSec, nombreSec) => {
                 Swal.fire({ title: 'Actualizando...', didOpen: () => Swal.showLoading() });
                 const res = await app.api({ action: 'editSection', ...form });
                 if (res && res.success) {
-                    Swal.fire('Actualizado', '', 'success');
-                    app.loadDashboardData(); // Recargar tarjetas
+                    Swal.fire('Actualizado', 'La sección y su cronograma han sido guardados.', 'success');
+                    app.loadDashboardData(); // Recargar tarjetas para ver la etiqueta verde
                 }
             }
         },
@@ -1276,7 +1396,7 @@ openStudents: async (idSec, nombreSec) => {
                 }
             }
         },
-
+     
         // 2. CREAR NUEVA MATERIA (CREATE)
         modalMateria: async () => {
             const { value: form } = await Swal.fire({
@@ -1438,11 +1558,7 @@ openStudents: async (idSec, nombreSec) => {
                 }
             }
         },
-     
-// ==========================================
-        // LÓGICA HORARIOS 2.0 (COMPACTO)
-        // ==========================================
-        
+
 // ==========================================
         // MÓDULO HORARIOS 2.0 (FINAL)
         // ==========================================
