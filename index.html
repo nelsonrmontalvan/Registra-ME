@@ -1159,56 +1159,67 @@ openStudents: async (idSec, nombreSec) => {
         // ==========================================
         
         // 1. ABRIR VISTA (READ)
+ // 1. ABRIR VISTA (READ) - ACTUALIZADA
         openMaterias: async (idSec, nombreSec) => {
             app.state.currentSecId = idSec;
             app.state.currentSecName = nombreSec;
             app.nav('materias');
-            // Cambiamos el título para saber dónde estamos
             document.getElementById('page-title').innerText = `Asignaturas: ${nombreSec}`;
             
             const tbody = document.getElementById('table-materias-body');
             tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando asignaturas...</td></tr>';
 
-            // Llamada a la API
             const list = await app.api({ action: 'getSubjects', idSeccion: idSec });
-            tbody.innerHTML = '';
+            
+            // GUARDAMOS EN MEMORIA PARA EDITAR LUEGO
+            app.state.tempMaterias = list || []; 
 
+            tbody.innerHTML = '';
             if(!list || list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-400">No hay materias asignadas a esta sección.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-400">No hay materias asignadas.</td></tr>';
                 return;
             }
 
-            // Renderizar Tabla
             list.forEach(m => {
+                // Validar nota mínima visualmente
+                const minBadge = `<span class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded border border-indigo-100 ml-2">Min: ${m.notaMinima || 65}</span>`;
+
                 tbody.innerHTML += `
                 <tr class="hover:bg-gray-50 group border-b border-gray-100">
                     <td class="p-4">
-                        <span class="font-bold text-gray-700 block">${m.nombre}</span>
+                        <span class="font-bold text-gray-700">${m.nombre}</span>
+                        ${minBadge}
                     </td>
                     <td class="p-4 text-center text-xs text-gray-500">
-                        <span class="bg-gray-100 px-2 py-1 rounded">Cot: ${m.cotidiano}%</span>
-                        <span class="bg-gray-100 px-2 py-1 rounded">Tar: ${m.tareas}%</span>
-                        <span class="bg-gray-100 px-2 py-1 rounded">Pru: ${m.pruebas}%</span>
-                        <span class="bg-gray-100 px-2 py-1 rounded">Pro: ${m.proyectos}%</span>
-                        <span class="bg-gray-100 px-2 py-1 rounded">Asi: ${m.asistencia}%</span>
+                        <span class="bg-gray-100 px-2 py-1 rounded" title="Cotidiano">C:${m.cotidiano}%</span>
+                        <span class="bg-gray-100 px-2 py-1 rounded" title="Tareas">T:${m.tareas}%</span>
+                        <span class="bg-gray-100 px-2 py-1 rounded" title="Pruebas">P:${m.pruebas}%</span>
+                        <span class="bg-gray-100 px-2 py-1 rounded" title="Proyectos">Pr:${m.proyectos}%</span>
+                        <span class="bg-gray-100 px-2 py-1 rounded" title="Asistencia">A:${m.asistencia}%</span>
                     </td>
-                    <td class="p-4 text-right">
-                        <!-- Botón para ver Notas/Indicadores -->
-                        <button onclick="app.openIndicadores('${m.id}', '${m.nombre}')" class="text-indigo-500 hover:text-indigo-700 mr-3" title="Evaluar">
-                            <i class="fas fa-edit"></i> Evaluar
+                    <td class="p-4 text-right flex justify-end gap-2">
+                        <!-- NUEVO BOTÓN EDITAR -->
+                        <button onclick="app.editMateria('${m.id}')" class="text-gray-400 hover:text-blue-600 transition" title="Editar Configuración">
+                            <i class="fas fa-pen"></i>
                         </button>
-                        <!-- Botón Borrar -->
-                      <button onclick="app.verNotasMateria('${m.id}', '${m.nombre}')" class="text-emerald-500 hover:text-emerald-700 mr-3 transition" title="Ver Notas de Todos">
+                        
+                        <!-- Evaluar -->
+                        <button onclick="app.openIndicadores('${m.id}', '${m.nombre}')" class="text-indigo-500 hover:text-indigo-700 font-bold text-sm flex items-center gap-1" title="Evaluar">
+                            <i class="fas fa-edit"></i> <span class="hidden md:inline">Evaluar</span>
+                        </button>
+                        
+                        <button onclick="app.verNotasMateria('${m.id}', '${m.nombre}')" class="text-emerald-500 hover:text-emerald-700 transition" title="Cuadro de Notas">
                             <i class="fas fa-table"></i>
-                    </button>
-                    <button onclick="app.deleteMateria('${m.id}')" class="text-red-300 hover:text-red-600 transition" title="Eliminar"><i class="fas fa-trash"></i></button>
+                        </button>
+                        
+                        <button onclick="app.deleteMateria('${m.id}')" class="text-gray-300 hover:text-red-600 transition" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </td>
                 </tr>`;
             });
         },
-
-
-
+      
         // ==========================================
         // FUNCIONES DE SECCIONES (EDIT/DELETE)
         // ==========================================
@@ -1336,6 +1347,95 @@ openStudents: async (idSec, nombreSec) => {
                 await app.api({ action: 'deleteSubject', id });
                 app.openMaterias(app.state.currentSecId, app.state.currentSecName);
                 Swal.fire('Eliminado', '', 'success');
+            }
+        },
+
+        // 2. FUNCIÓN AUXILIAR PARA EDITAR
+        editMateria: (id) => {
+            // Buscamos los datos en la memoria que guardamos en el paso anterior
+            const m = app.state.tempMaterias.find(x => x.id === id);
+            if(m) {
+                app.modalMateria(m); // Abrimos el modal pasándole los datos
+            }
+        },
+
+        // 3. MODAL MATERIA (AHORA SOPORTA EDICIÓN)
+        modalMateria: async (matToEdit = null) => {
+            const titulo = matToEdit ? 'Editar Asignatura' : 'Nueva Asignatura';
+            
+            const { value: form } = await Swal.fire({
+                title: titulo,
+                html: `
+                    <div class="text-left space-y-3">
+                        <div>
+                            <label class="text-xs font-bold text-gray-500">Nombre Materia</label>
+                            <input id="sw-mat-nom" class="swal2-input w-full m-0" placeholder="Ej: Español">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-500 text-indigo-600">Nota Mínima para Aprobar</label>
+                            <input type="number" id="sw-nota-min" class="swal2-input w-full m-0 text-center font-bold text-indigo-600" value="65">
+                        </div>
+                        
+                        <div class="grid grid-cols-3 gap-2 mt-4 bg-gray-50 p-2 rounded border">
+                            <div class="col-span-3 text-xs font-bold text-gray-400 uppercase text-center mb-1">Distribución Porcentual</div>
+                            <div><label class="text-[10px] font-bold">Cotidiano</label><input type="number" id="sw-p-cot" class="swal2-input m-0 w-full text-center h-8" value="0"></div>
+                            <div><label class="text-[10px] font-bold">Tareas</label><input type="number" id="sw-p-tar" class="swal2-input m-0 w-full text-center h-8" value="0"></div>
+                            <div><label class="text-[10px] font-bold">Pruebas</label><input type="number" id="sw-p-pru" class="swal2-input m-0 w-full text-center h-8" value="0"></div>
+                            <div><label class="text-[10px] font-bold">Proyectos</label><input type="number" id="sw-p-pro" class="swal2-input m-0 w-full text-center h-8" value="0"></div>
+                            <div><label class="text-[10px] font-bold">Asistencia</label><input type="number" id="sw-p-asi" class="swal2-input m-0 w-full text-center h-8" value="0"></div>
+                        </div>
+                    </div>
+                `,
+                didOpen: () => {
+                    // Si es edición, rellenamos los campos
+                    if(matToEdit) {
+                        document.getElementById('sw-mat-nom').value = matToEdit.nombre;
+                        document.getElementById('sw-nota-min').value = matToEdit.notaMinima || 65;
+                        document.getElementById('sw-p-cot').value = matToEdit.cotidiano;
+                        document.getElementById('sw-p-tar').value = matToEdit.tareas;
+                        document.getElementById('sw-p-pru').value = matToEdit.pruebas;
+                        document.getElementById('sw-p-pro').value = matToEdit.proyectos;
+                        document.getElementById('sw-p-asi').value = matToEdit.asistencia;
+                    }
+                },
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar',
+                preConfirm: () => {
+                    const nom = document.getElementById('sw-mat-nom').value;
+                    const min = document.getElementById('sw-nota-min').value;
+                    
+                    // Validación básica de suma 100% (Opcional, pero recomendada)
+                    const c = Number(document.getElementById('sw-p-cot').value);
+                    const t = Number(document.getElementById('sw-p-tar').value);
+                    const p = Number(document.getElementById('sw-p-pru').value);
+                    const pr = Number(document.getElementById('sw-p-pro').value);
+                    const a = Number(document.getElementById('sw-p-asi').value);
+                    
+                    if((c+t+p+pr+a) !== 100) {
+                        Swal.showValidationMessage(`La suma de porcentajes es ${c+t+p+pr+a}%. Debe ser 100%.`);
+                        return false;
+                    }
+
+                    if(!nom || !min) return Swal.showValidationMessage('Nombre y Nota Mínima requeridos');
+                    
+                    return {
+                        idMateria: matToEdit ? matToEdit.id : null, // Enviamos ID si es edición
+                        nombre: nom,
+                        notaMinima: min,
+                        cotidiano: c, tareas: t, pruebas: p, proyectos: pr, asistencia: a,
+                        idSeccion: app.state.currentSecId
+                    }
+                }
+            });
+
+            if(form) {
+                Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+                const res = await app.api({ action: 'saveSubject', ...form });
+                if(res.success) {
+                    Swal.fire('Guardado', res.message, 'success');
+                    app.openMaterias(app.state.currentSecId, app.state.currentSecName);
+                }
             }
         },
      
