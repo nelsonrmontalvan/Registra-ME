@@ -928,33 +928,39 @@ openStudents: async (idSec, nombreSec) => {
             }
 
             list.forEach(est => {
+                // Definir si tiene adecuación visualmente
+                const badgeAdec = est.adecuacion === 'SI' 
+                    ? '<span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-[10px] font-bold border border-orange-200">Adecuación</span>' 
+                    : '';
+
                 tbody.innerHTML += `
                 <tr class="hover:bg-gray-50 group border-b border-gray-100">
                     <td class="p-4 font-bold text-gray-700">${est.cedula}</td>
-                    <td class="p-4">${est.nombre}</td>
-                    <td class="p-4 text-gray-500 text-xs">${est.telefono}</td>
-                    
-                    <!-- 👇 AQUÍ HICE EL CAMBIO: MOSTRAR CORREO EN LUGAR DE ADECUACIÓN 👇 -->
-                    <td class="p-4 text-center text-xs">
-                        ${est.emailEnc ? `<span class="bg-blue-50 text-blue-600 px-2 py-1 rounded border border-blue-100">${est.emailEnc}</span>` : '<span class="text-gray-300 italic">No registrado</span>'}
+                    <td class="p-4">
+                        <div class="font-medium text-gray-800">${est.nombre}</div>
+                        ${badgeAdec}
                     </td>
-                    <!-- 👆 FIN DEL CAMBIO 👆 -->
-
+                    <td class="p-4 text-gray-500 text-xs">${est.telefono || '-'}</td>
+                    <td class="p-4 text-gray-500 text-xs">${est.emailEst || '-'}</td>
+                    
+                    <!-- AQUÍ ESTÁN LOS BOTONES CORREGIDOS -->
                     <td class="p-4 text-right flex justify-end gap-2">
-                        <!-- Ver Notas -->
-                        <button onclick="app.verNotasEstudiante('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-indigo-50 text-indigo-500 hover:bg-indigo-100 hover:text-indigo-700 flex items-center justify-center transition" title="Ver Notas">
+                        
+                        <!-- 1. VER NOTAS -->
+                        <button onclick="app.verNotasEstudiante('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-500 hover:bg-indigo-100 hover:text-indigo-700 transition flex items-center justify-center" title="Ver Notas">
                             <i class="fas fa-eye"></i>
                         </button>
-                        
-                        <!-- Trasladar -->
-                          <button onclick="app.modalTraslado('${est.id}', '${est.nombre}')" class="text-gray-400 hover:text-blue-600 transition" title="Trasladar">
-                         <i class="fas fa-exchange-alt"></i>
-                          </button>
 
-                        <!-- Eliminar -->
-                        <button onclick="app.deleteStudent('${est.id}')" class="h-8 w-8 rounded bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition" title="Eliminar">
+                        <!-- 2. TRASLADAR (Si ya tienes la función modalTraslado) -->
+                        <button onclick="app.modalTraslado('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded-lg bg-gray-50 text-gray-500 hover:bg-blue-100 hover:text-blue-600 transition flex items-center justify-center" title="Trasladar">
+                            <i class="fas fa-exchange-alt"></i>
+                        </button>
+
+                        <!-- 3. ELIMINAR (ESTE ES EL QUE FALLABA) -->
+                        <button onclick="app.deleteStudent('${est.id}')" class="h-8 w-8 rounded-lg bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600 transition flex items-center justify-center" title="Eliminar">
                             <i class="fas fa-trash"></i>
                         </button>
+
                     </td>
                 </tr>`;
             });
@@ -1051,6 +1057,34 @@ openStudents: async (idSec, nombreSec) => {
                     }
                 } else {
                     Swal.fire('Error', 'No se detectaron datos válidos.', 'warning');
+                }
+            }
+        },
+
+// ==========================================
+        // FUNCIÓN ELIMINAR ESTUDIANTE
+        // ==========================================
+        deleteStudent: async (id) => {
+            const conf = await Swal.fire({
+                title: '¿Eliminar Estudiante?',
+                text: "Se borrará todo su historial (notas, asistencia, bitácoras). No se puede deshacer.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (conf.isConfirmed) {
+                Swal.fire({ title: 'Eliminando...', didOpen: () => Swal.showLoading() });
+                
+                // Llamada al Backend
+                const res = await app.api({ action: 'deleteStudent', id: id });
+                
+                if (res && res.success) {
+                    Swal.fire('Eliminado', 'El estudiante ha sido borrado.', 'success');
+                    // Recargamos la lista para que desaparezca visualmente
+                    app.openStudents(app.state.currentSecId, app.state.currentSecName);
                 }
             }
         },
