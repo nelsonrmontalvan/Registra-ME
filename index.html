@@ -24,81 +24,109 @@
     <!-- Chart.js para gráficas futuras -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <style>
-        /* ESTILOS GLOBALES */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
-        
-        :root {
-            --primary: #4F46E5; /* Indigo 600 */
-            --primary-dark: #4338CA; /* Indigo 700 */
-            --accent: #10B981; /* Emerald 500 */
-        }
+<style>
+    /* 1. FUENTE PROFESIONAL (Inter) */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    :root {
+        --primary: #4F46E5; 
+        --background: #F8FAFC; /* Fondo un poco más gris/azulado profesional */
+    }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #F3F4F6; /* Gray 100 */
-            color: #1F2937; /* Gray 800 */
-        }
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--background);
+        color: #334155;
+        -webkit-font-smoothing: antialiased; /* Texto más nítido */
+    }
 
-        /* EFECTO CRISTAL Y TARJETAS */
-        .glass {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-        
-        .card-hover { transition: transform 0.2s, box-shadow 0.2s; }
-        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+    /* 2. SCROLLBAR ELEGANTE */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
 
-        /* SCROLLBAR PERSONALIZADO */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #c7c7c7; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    /* 3. CLASE PARA TARJETAS SENIOR (Solo visual) */
+    .card-pro {
+        background: white;
+        border: 1px solid #E2E8F0;
+        border-radius: 16px; 
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+        overflow: hidden; /* Para que el degradado no se salga */
+    }
+    .card-pro:hover {
+        transform: translateY(-4px); /* Se levanta al pasar mouse */
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        border-color: #C7D2FE;
+    }
 
-        /* ANIMACIONES */
-        .fade-in { animation: fadeIn 0.3s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        /* ESTILOS DE IMPRESIÓN (PDF) */
-        @media print {
-            body * { visibility: hidden; }
-            #printable-area, #printable-area * { visibility: visible; }
-            #printable-area { position: absolute; left: 0; top: 0; width: 100%; background: white; }
-            .no-print { display: none !important; }
-        }
-    </style>
+    /* 4. ANIMACIONES */
+    .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
 </head>
+
 <body class="h-screen flex overflow-hidden">
 
     <!-- ========================================== -->
     <!-- 1. PANTALLA DE LOGIN (UNIFICADA) -->
     <!-- ========================================== -->
-    <div id="screen-login" class="absolute inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-indigo-900 to-blue-800 p-4">
-        <div class="glass p-8 w-full max-w-md rounded-2xl text-center fade-in">
-            <div class="mb-6 flex justify-center">
-                <div class="bg-indigo-100 p-4 rounded-full">
-                    <i class="fas fa-graduation-cap text-4xl text-indigo-600"></i>
-                </div>
-            </div>
-            <h1 class="text-3xl font-bold text-gray-800 mb-1">RegistraME</h1>
-            <p class="text-gray-500 mb-8 text-sm">Plataforma de Gestión Educativa</p>
+<!-- ========================================== -->
+    <!-- 1. PANTALLA DE LOGIN (REDSEÑO SENIOR) -->
+    <!-- ========================================== -->
+    <div id="screen-login" class="absolute inset-0 z-50 flex items-center justify-center bg-slate-900 overflow-hidden">
+        
+        <!-- EFECTOS DE FONDO (GLOWS SENIOR) -->
+        <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-40 animate-pulse"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-40 animate-pulse" style="animation-delay: 2s"></div>
+
+        <!-- TARJETA DE LOGIN -->
+        <div class="bg-white p-10 w-full max-w-sm rounded-2xl shadow-2xl relative z-10 fade-in border border-slate-200">
             
-            <form onsubmit="app.login(event)">
-                <div class="mb-4 text-left">
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Correo</label>
-                    <input type="email" id="login-email" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none transition" placeholder="usuario@escuela.com" required>
+            <!-- HEADER CON LOGO -->
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-indigo-50 text-indigo-600 mb-4 shadow-sm">
+                    <i class="fas fa-graduation-cap text-3xl"></i>
                 </div>
-                <div class="mb-6 text-left">
-                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Contraseña</label>
-                    <input type="password" id="login-pass" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-500 outline-none transition" placeholder="••••••••" required>
+                <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">RegistraME <span class="text-indigo-600">V-Pro</span></h1>
+                <p class="text-slate-400 text-sm mt-1">Ingresa tus credenciales para continuar</p>
+            </div>
+            
+            <!-- FORMULARIO -->
+            <form onsubmit="app.login(event)" class="space-y-5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Correo Electrónico</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-envelope text-slate-400"></i>
+                        </div>
+                        <input type="email" id="login-email" class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder-slate-400" placeholder="usuario@escuela.com" required>
+                    </div>
                 </div>
-                <button type="submit" id="btn-login" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition transform active:scale-95 shadow-lg">
-                    INGRESAR
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Contraseña</label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <i class="fas fa-lock text-slate-400"></i>
+                        </div>
+                        <input type="password" id="login-pass" class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder-slate-400" placeholder="••••••••" required>
+                    </div>
+                </div>
+
+                <button type="submit" id="btn-login" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-500/30 transition transform active:scale-95 flex items-center justify-center gap-2">
+                    <span>Ingresar al Sistema</span> <i class="fas fa-arrow-right text-xs"></i>
                 </button>
             </form>
-            <p class="mt-6 text-xs text-gray-400">V2.0 Desarrollado por Ing. Nelson Rodriguez M</p>
+
+            <!-- FOOTER PEQUEÑO -->
+            <div class="mt-8 pt-6 border-t border-slate-100 text-center">
+                <p class="text-xs text-slate-400">
+                    &copy; 2026 RegistraME Platform.<br>
+                    <span class="opacity-75">Desarrollado con altos estándares de calidad.</span>
+                </p>
+            </div>
         </div>
     </div>
 
@@ -131,7 +159,8 @@
             <div id="menu-docente" class="space-y-1">
                 <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-2">Principal</p>
                 
-                <a onclick="app.nav('dashboard')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
+              <!-- Fíjate en el onclick: cambiamos app.nav por app.loadDashboardData -->
+                <a onclick="app.loadDashboardData()" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
                     <i class="fas fa-home w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
                     <span class="font-medium text-sm">Dashboard</span>
                 </a>
@@ -222,18 +251,26 @@
             </div>
         </header>
 
-        <!-- CONTENEDOR DE VISTAS (SCROLLEABLE) -->
+       <!-- CONTENEDOR DE VISTAS (SCROLLEABLE) -->
         <div id="views-container" class="flex-1 overflow-y-auto p-6 relative">
             
             <!-- VISTA: DASHBOARD (SECCIONES) -->
             <div id="view-dashboard" class="view fade-in">
+                               
+                <!-- 1. CONTENEDOR DE FILTROS -->
+                <div id="dashboard-filters" class="flex flex-wrap gap-3 mb-6 animate-pulse">
+                    <!-- JS lo llenará -->
+                </div>
+
+                <!-- 2. GRID DE SECCIONES -->
+                <!-- ¡AHORA SÍ ESTÁ DENTRO DEL DASHBOARD! -->
                 <div id="grid-secciones" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- Se llena con JS -->
                     <div class="col-span-full text-center py-10 text-gray-400">
                         <i class="fas fa-spinner fa-spin text-3xl mb-3"></i><br>Cargando tus datos...
                     </div>
                 </div>
-            </div>
+
+            </div> <!-- <--- ¡AQUÍ ES DONDE DEBE CERRARSE EL DASHBOARD! -->
 
             <!-- VISTA: ESTUDIANTES (CRUD) -->
             <div id="view-estudiantes" class="view hidden fade-in">
@@ -553,24 +590,33 @@
             }
         },
 
-        enterApp: async () => {
+enterApp: async () => {
             document.getElementById('screen-login').classList.add('hidden');
             document.getElementById('sidebar').classList.remove('hidden');
             document.getElementById('sidebar').classList.add('flex');
             document.getElementById('main-content').classList.remove('hidden');
             
-            // Configurar UI según Rol
+            // Configurar UI Visual
             document.getElementById('user-name').innerText = app.user.email;
             document.getElementById('user-role').innerText = app.user.role;
 
-            if(app.user.role === 'ADMIN') {
-                document.getElementById('menu-docente').classList.add('hidden');
+            // --- LÓGICA DE MENÚS CORREGIDA ---
+
+            // 1. El menú DOCENTE se muestra SIEMPRE (Porque el Admin también da clases)
+            document.getElementById('menu-docente').classList.remove('hidden');
+
+            // 2. El menú ADMIN solo se muestra si tienes el rol
+        if(app.user.role === 'ADMIN') {
                 document.getElementById('menu-admin').classList.remove('hidden');
-                app.nav('admin-users');
+                
+                // AQUÍ EL CAMBIO:
+                // En vez de mandarte a 'admin-users', cargamos tu dashboard de profe.
+                // Como ya tienes el menú admin visible, puedes ir a "Usuarios" cuando quieras.
+                app.loadDashboardData(); 
+
             } else {
-                document.getElementById('menu-docente').classList.remove('hidden');
                 document.getElementById('menu-admin').classList.add('hidden');
-                app.loadDashboardData(); // Cargar datos iniciales
+                app.loadDashboardData(); 
             }
         },
 
@@ -764,71 +810,116 @@
         },
 
         // 2. RENDER DASHBOARD (ACTUALIZADO COMPLETO)
-        renderDashboard: () => {
+// RENDER DASHBOARD CON FILTROS INTELIGENTES
+        renderDashboard: (filtroInstId = 'TODAS') => {
             const grid = document.getElementById('grid-secciones');
+            const filterContainer = document.getElementById('dashboard-filters');
+            
             grid.innerHTML = '';
+            filterContainer.innerHTML = '';
+            filterContainer.classList.remove('animate-pulse'); // Quitamos efecto carga
 
-            // CASO 1: NO TIENE INSTITUCIONES
+            // ------------------------------------------------------
+            // 1. VALIDACIONES INICIALES (Sin cambios)
+            // ------------------------------------------------------
             if (!app.data.instituciones || app.data.instituciones.length === 0) {
-                grid.innerHTML = `
-                <div class="col-span-full p-8 bg-orange-50 border-2 border-orange-200 border-dashed rounded-xl text-center">
-                    <div class="text-orange-500 text-4xl mb-3"><i class="fas fa-exclamation-circle"></i></div>
-                    <h3 class="text-lg font-bold text-orange-800 mb-1">¡Atención, Docente!</h3>
-                    <p class="text-orange-700 text-sm mb-6">Para crear una sección primero debes crear una <b>Institución</b>.</p>
-                    <button onclick="app.nav('config')" class="bg-orange-600 text-white px-6 py-3 rounded-lg font-bold shadow hover:bg-orange-700 transition"><i class="fas fa-arrow-right mr-2"></i> Ir a Configuración</button>
-                </div>`;
-                app.updateConfigView();
+                grid.innerHTML = `<div class="col-span-full p-8 bg-orange-50 border border-orange-200 rounded-xl text-center text-orange-800">No hay instituciones creadas. Ve a Configuración y crea una Institución.</div>`;
                 return;
             }
-
-            // CASO 2: TIENE INSTITUCIÓN PERO NO SECCIONES
             if(!app.data.secciones || app.data.secciones.length === 0) {
-                 grid.innerHTML = `
-                <div class="col-span-full text-center py-10 bg-white rounded-xl shadow-sm border border-gray-200">
-                    <h3 class="text-gray-700 font-bold text-lg">Todo listo</h3>
-                    <p class="text-gray-500 mb-4 text-sm">Ya tienes tu institución. Ahora crea tu primera sección.</p>
-                    <button onclick="app.nav('config')" class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow font-bold hover:bg-indigo-700">Crear Sección</button>
-                </div>`;
-                app.updateConfigView();
+                 grid.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400">No tienes secciones creadas aún.</div>`;
+                 return;
+            }
+
+            // ------------------------------------------------------
+            // 2. DIBUJAR LOS FILTROS (PILLS)
+            // ------------------------------------------------------
+            // Solo mostramos filtros si hay instituciones
+            
+            // A. Botón "Todas"
+            const styleActive = "bg-indigo-600 text-white shadow-md ring-2 ring-indigo-200 border-transparent";
+            const styleInactive = "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-indigo-300 transition";
+            
+            // Creamos lista temporal incluyendo la opción "TODAS" al inicio
+            const opciones = [{id: 'TODAS', nombre: '🏫 Todas las Instituciones'}, ...app.data.instituciones];
+
+            opciones.forEach(inst => {
+                const isActive = inst.id === filtroInstId;
+                
+                filterContainer.innerHTML += `
+                <button onclick="app.renderDashboard('${inst.id}')" 
+                    class="px-4 py-2 rounded-full text-xs font-bold transition-all duration-200 transform active:scale-95 ${isActive ? styleActive : styleInactive}">
+                    ${inst.nombre}
+                    ${isActive ? '<i class="fas fa-check ml-1"></i>' : ''}
+                </button>`;
+            });
+
+            // ------------------------------------------------------
+            // 3. FILTRAR DATOS
+            // ------------------------------------------------------
+            let seccionesVisibles = app.data.secciones;
+            
+            if (filtroInstId !== 'TODAS') {
+                seccionesVisibles = app.data.secciones.filter(s => String(s.idInstitucion) === String(filtroInstId));
+            }
+
+            // Si filtró y no hay nada
+            if (seccionesVisibles.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400 italic">No hay secciones en esta institución.</div>`;
                 return;
             }
 
-            // CASO 3: DIBUJAR TARJETAS (CON ETIQUETA DE PERIODO)
-            app.data.secciones.forEach(sec => {
-                // Calculamos la etiqueta aquí
+            // ------------------------------------------------------
+            // 4. DIBUJAR TARJETAS (TU CÓDIGO SENIOR YA LISTO)
+            // ------------------------------------------------------
+            seccionesVisibles.forEach(sec => {
                 const etiquetaPeriodo = app.getCurrentPeriodLabel(sec.fechas);
+                const gradients = ['from-blue-600 to-blue-400', 'from-indigo-600 to-violet-400', 'from-emerald-500 to-teal-400', 'from-rose-500 to-pink-500', 'from-amber-500 to-orange-400'];
+                const miGradiente = gradients[Math.floor(Math.random() * gradients.length)];
 
                 grid.innerHTML += `
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 card-hover flex flex-col justify-between h-full relative group">
+                <div class="flex flex-col justify-between h-full relative group bg-white rounded-xl overflow-hidden border border-slate-200 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 fade-in">
                     
-                    <!-- BOTONES FLOTANTES (SOLO AL PASAR MOUSE) -->
-                    <div class="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                        <button onclick="app.editSection('${sec.id}', '${sec.nombre}', '${sec.anio}')" class="h-8 w-8 rounded-full bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600 flex items-center justify-center transition shadow-sm" title="Editar">
-                            <i class="fas fa-pen text-xs"></i>
+                    <div class="h-1.5 w-full bg-gradient-to-r ${miGradiente}"></div>
+                    
+                    <div class="p-5 flex-1">
+                        <div class="flex justify-between items-start mb-3">
+                            <div>
+                                <h3 class="text-lg font-bold text-slate-800 leading-tight">${sec.nombre}</h3>
+                                <p class="text-xs font-medium text-slate-400 mt-1 uppercase tracking-wider flex items-center gap-1">
+                                    <i class="fas fa-university"></i> ${sec.institucion}
+                                </p>
+                            </div>
+                            <span class="px-2 py-1 rounded bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200">
+                                ${sec.anio}
+                            </span>
+                        </div>
+
+                        <div class="mt-4">
+                            <div class="w-full bg-slate-100 rounded-full h-1.5 mb-2 overflow-hidden">
+                                <div class="h-full bg-gradient-to-r ${miGradiente} opacity-70" style="width: 65%"></div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                ${etiquetaPeriodo}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="px-5 py-3 border-t border-slate-100 bg-slate-50 flex gap-3">
+                        <button onclick="app.openStudents('${sec.id}', '${sec.nombre}')" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-600 bg-white border border-slate-200 shadow-sm hover:text-indigo-600 hover:border-indigo-200 transition flex items-center justify-center gap-2">
+                            <i class="fas fa-users"></i> Alumnos
                         </button>
-                        <button onclick="app.deleteSection('${sec.id}')" class="h-8 w-8 rounded-full bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600 flex items-center justify-center transition shadow-sm" title="Eliminar">
-                            <i class="fas fa-trash text-xs"></i>
+                        <button onclick="app.openMaterias('${sec.id}', '${sec.nombre}')" class="flex-1 py-2 rounded-lg text-xs font-bold text-slate-600 bg-white border border-slate-200 shadow-sm hover:text-emerald-600 hover:border-emerald-200 transition flex items-center justify-center gap-2">
+                            <i class="fas fa-book"></i> Materias
                         </button>
                     </div>
 
-                    <div>
-                        <div class="flex justify-between items-start mb-2 pr-10">
-                            <h3 class="text-lg font-bold text-indigo-700 truncate" title="${sec.nombre}">${sec.nombre}</h3>
-                            
-                            <!-- AQUI ESTÁ EL CAMBIO: PERIODO + AÑO -->
-                            <div class="flex items-center gap-2 shrink-0">
-                                ${etiquetaPeriodo}
-                                <span class="bg-blue-50 text-blue-600 text-[10px] px-2 py-1 rounded-full border border-blue-100 font-bold">${sec.anio}</span>
-                            </div>
-                        </div>
-                        <p class="text-xs text-gray-500 mb-4 bg-gray-50 p-2 rounded border border-gray-100 truncate"><i class="fas fa-university mr-1"></i> ${sec.institucion}</p>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 mt-2">
-                        <button onclick="app.openStudents('${sec.id}', '${sec.nombre}')" class="flex items-center justify-center gap-2 bg-white border border-gray-200 text-gray-600 py-2 rounded-lg text-sm font-bold hover:bg-gray-50 transition">
-                            <i class="fas fa-users"></i> Alumnos
+                    <div class="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 bg-white p-1 rounded-full shadow-lg border border-slate-100">
+                        <button onclick="app.editSection('${sec.id}')" class="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition" title="Editar">
+                            <i class="fas fa-pen text-[10px]"></i>
                         </button>
-                        <button onclick="app.openMaterias('${sec.id}', '${sec.nombre}')" class="flex items-center justify-center gap-2 bg-amber-50 border border-amber-100 text-amber-700 py-2 rounded-lg text-sm font-bold hover:bg-amber-100 transition">
-                            <i class="fas fa-book"></i> Materias
+                        <button onclick="app.deleteSection('${sec.id}')" class="w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-500 transition" title="Eliminar">
+                            <i class="fas fa-trash text-[10px]"></i>
                         </button>
                     </div>
                 </div>`;
@@ -836,8 +927,9 @@
             
             app.updateConfigView();
         },
+        // ==========================================
+        // 4. CONFIGURACIÓN (NUEVAS FUNCIONES)
 
-    // 2. AGREGA ESTA NUEVA FUNCIÓN (Controla el formulario de config)
     updateConfigView: () => {
         const selInst = document.getElementById('cfg-inst');
         const alertBox = document.getElementById('alert-no-inst');
@@ -859,25 +951,42 @@
             if(formInputs) formInputs.classList.add('opacity-50', 'pointer-events-none');
         }
     },
-
-    // 3. AGREGA ESTA NUEVA FUNCIÓN (Conecta el botón "+" con Google)
+ 
+    // 5. AGREGA ESTA NUEVA FUNCIÓN (Conecta el botón "+" con Google)
     createInstitution: async () => {
-        const nombre = document.getElementById('new-inst-name').value;
-        if(!nombre) return Swal.fire('Error', 'Escribe un nombre para la institución', 'warning');
+            const nombre = document.getElementById('new-inst-name').value;
+            if(!nombre) return Swal.fire('Error', 'Escribe un nombre para la institución', 'warning');
 
-        // Efecto de carga
-        Swal.fire({ title: 'Creando...', didOpen: () => Swal.showLoading() });
+            // 1. Mostrar Spinner
+            Swal.fire({ title: 'Creando...', didOpen: () => Swal.showLoading() });
 
-        // Llamada a la API
-        const res = await app.api({ action: 'createInst', nombre: nombre });
-        
-        if(res && res.status === 'success') {
-            document.getElementById('new-inst-name').value = ''; // Limpiar input
-            await app.loadDashboardData(); // Recargar todo para que aparezca en la lista
-            Swal.fire('¡Éxito!', 'Institución creada correctamente.', 'success');
-        }
-    },
+            try {
+                // 2. Llamada a la API
+                const res = await app.api({ action: 'createInst', nombre: nombre });
+                
+                console.log("Respuesta Server:", res); // Para depurar en consola si hace falta
 
+                // 3. Verificación Flexible (Acepta success:true O status:'success')
+                if(res && (res.success === true || res.status === 'success')) {
+                    
+                    document.getElementById('new-inst-name').value = ''; // Limpiar input
+                    
+                    // 4. Recargar datos para que aparezca el nuevo botón de filtro
+                    await app.loadDashboardData(); 
+                    
+                    // 5. Mensaje de Éxito
+                    Swal.fire('¡Éxito!', 'Institución creada correctamente.', 'success');
+
+                } else {
+                    // 6. MANEJO DE ERROR (Para que no se quede pegado)
+                    Swal.fire('Error', res.message || 'No se pudo crear la institución.', 'error');
+                }
+
+            } catch (error) {
+                console.error(error);
+                Swal.fire('Error de Conexión', 'Intenta de nuevo.', 'error');
+            }
+        },
     // DIBUJAR INPUTS DE FECHAS (AGREGAR AL OBJETO APP)
         renderPeriodInputs: () => {
             const cant = document.getElementById('cfg-periodos').value;
@@ -2919,10 +3028,9 @@ adminLoadUsers: async () => {
             // 1. Petición al Server
             const users = await app.api({ action: 'getUsers' });
             
-            // 2. Referencia a la tabla (VERIFICA ESTE ID EN TU HTML)
+            // 2. Referencia a la tabla
             const tbody = document.getElementById('adm-users-table'); 
             
-            // Si el ID estaba mal antes, esto lo arregla
             if(!tbody) return console.error("No encuentro la tabla 'adm-users-table'");
 
             tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Cargando clientes...</td></tr>';
@@ -2935,34 +3043,66 @@ adminLoadUsers: async () => {
             tbody.innerHTML = ''; // Limpiar spinner
 
             users.forEach(u => {
-                // Calcular estado visual
-                let estadoHtml = '';
+                // --- A. LÓGICA DE LICENCIA (Tu código original) ---
+                let licenciaBadge = '';
                 if (u.tipo === 'Full') {
-                    estadoHtml = `<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">Vitalicio</span>`;
+                    licenciaBadge = `<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">Vitalicio</span>`;
                 } else {
-                    // Convertir fecha dd/MM/yyyy a objeto Date
-                    const parts = u.vence.split('/');
+                    const parts = u.vence.split('/'); // dd/MM/yyyy
                     const vence = new Date(parts[2], parts[1]-1, parts[0]);
                     const hoy = new Date();
-                    
                     const dias = Math.ceil((vence - hoy) / (1000 * 60 * 60 * 24));
                     
                     if (dias > 0) {
-                        estadoHtml = `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Activo (${dias} días)</span>`;
+                        licenciaBadge = `<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Activo (${dias} días)</span>`;
                     } else {
-                        estadoHtml = `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">Vencido</span>`;
+                        licenciaBadge = `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">Vencido</span>`;
                     }
                 }
 
+                // --- B. LÓGICA DE BLOQUEO (EL OJITO) ---
+                // u.estado viene del backend (recuerda que actualizamos obtenerListaUsuarios)
+                // Si viene undefined (usuarios viejos), asumimos que es 'ACTIVO'
+                const isUserActive = (u.estado === 'ACTIVO' || !u.estado); 
+
+                // Configuración visual del botón
+                const eyeIcon = isUserActive ? 'fa-eye' : 'fa-eye-slash';
+                const eyeColor = isUserActive ? 'text-green-600' : 'text-gray-400';
+                const nextState = isUserActive ? 'INACTIVO' : 'ACTIVO';
+                const tooltip = isUserActive ? 'Bloquear Acceso' : 'Restaurar Acceso';
+                
+                // Estilo de la fila: Si está bloqueado, se ve un poco gris/transparente
+                const rowStyle = isUserActive ? 'hover:bg-gray-50' : 'bg-gray-100 opacity-75';
+
+                // --- C. RENDERIZADO HTML ---
                 tbody.innerHTML += `
-                <tr class="border-b hover:bg-gray-50">
+                <tr class="border-b transition duration-300 ${rowStyle}">
                     <td class="p-3">
                         <div class="font-bold text-gray-800 text-sm">${u.nombre}</div>
                         <div class="text-xs text-gray-400">${u.email}</div>
                     </td>
-                    <td class="p-3"><span class="bg-gray-100 px-2 py-1 rounded text-xs text-gray-600 font-bold">${u.tipo}</span></td>
+                    <td class="p-3">
+                        <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-xs font-bold">${u.tipo}</span>
+                    </td>
                     <td class="p-3 text-xs font-mono text-gray-600">${u.vence}</td>
-                    <td class="p-3 text-right">${estadoHtml}</td>
+                    
+                    <!-- COLUMNA DE ACCIONES (Badge + Ojito) -->
+                    <td class="p-3 text-right">
+                        <div class="flex items-center justify-end gap-3">
+                            <!-- Estado de la Licencia (Días restantes) -->
+                            ${licenciaBadge}
+                            
+                            <!-- Separador vertical pequeño -->
+                            <div class="h-4 w-px bg-gray-300 mx-1"></div>
+
+                            <!-- BOTÓN OJITO (Toggle) -->
+                            <button onclick="app.toggleUserStatus('${u.id}', '${nextState}', '${u.nombre}')" 
+                                    class="h-8 w-8 rounded-full bg-white border border-gray-200 shadow-sm hover:shadow-md transition flex items-center justify-center group" 
+                                    title="${tooltip}">
+                                <i class="fas ${eyeIcon} ${eyeColor} group-hover:scale-110 transition-transform"></i>
+                            </button>
+                        </div>
+                    </td>
                 </tr>`;
             });
         },
@@ -3018,6 +3158,46 @@ adminLoadUsers: async () => {
                 Swal.fire('Error', res ? res.message : 'Error desconocido', 'error');
             }
         },
+
+        toggleUserStatus: async (id, nuevoEstado, nombre) => {
+    // Preguntar antes de actuar (para evitar clicks accidentales)
+    let actionText = nuevoEstado === 'INACTIVO' ? 'Desactivar' : 'Activar';
+    let color = nuevoEstado === 'INACTIVO' ? '#d33' : '#10B981';
+    
+    const confirm = await Swal.fire({
+        title: `¿${actionText} acceso?`,
+        text: `Usuario: ${nombre}. ${nuevoEstado === 'INACTIVO' ? 'No podrá ingresar al sistema.' : 'Podrá volver a ingresar.'}`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: color,
+        confirmButtonText: `Sí, ${actionText.toLowerCase()}`
+    });
+
+    if (confirm.isConfirmed) {
+        // Feedback visual rápido
+        Swal.fire({ title: 'Procesando...', didOpen: () => Swal.showLoading() });
+        
+        const res = await app.api({ 
+            action: 'toggleUserStatus', 
+            id: id, 
+            nuevoEstado: nuevoEstado 
+        });
+
+        if (res && res.success) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Actualizado',
+                text: `El usuario ahora está ${nuevoEstado}`,
+                timer: 1500,
+                showConfirmButton: false
+            });
+            // Recargar la tabla para ver el cambio de icono
+            app.adminLoadUsers();
+        } else {
+            Swal.fire('Error', 'No se pudo cambiar el estado', 'error');
+        }
+    }
+},
 
         // ==========================================
         // NUEVO: REPORTES EN VIVO (MODALES)
@@ -3528,29 +3708,38 @@ adminLoadUsers: async () => {
                 <div id="aula-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
             </div>`;
 
-            // 3. VISTA CONFIGURACIÓN (LA QUE DABA ERROR)
+// 3. VISTA CONFIGURACIÓN (LIMPIA Y CORREGIDA)
             container.innerHTML += `
             <div id="view-config" class="view hidden fade-in">
+                
+                <!-- Título de la Sección -->
+                <div class="mb-6">
+                    <h3 class="text-2xl font-bold text-slate-800"><i class="fas fa-cog text-slate-400 mr-2"></i>Configuración</h3>
+                    <p class="text-sm text-slate-500">Administra tus instituciones y crea nuevas secciones.</p>
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     
                     <!-- TARJETA 1: CREAR INSTITUCIÓN -->
-                    <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-indigo-500">
-                        <h3 class="font-bold text-gray-800 mb-2 flex items-center gap-2">
-                            <i class="fas fa-university text-indigo-500"></i> Nueva Institución
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 h-fit">
+                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg">
+                            <div class="bg-indigo-100 p-2 rounded-lg text-indigo-600"><i class="fas fa-university"></i></div>
+                            Nueva Institución
                         </h3>
-                        <p class="text-xs text-gray-500 mb-4">Registra el colegio o escuela donde trabajas.</p>
+                        <p class="text-xs text-slate-500 mb-4">Registra el colegio o escuela donde trabajas para agrupar tus secciones.</p>
                         <div class="flex gap-2">
-                            <input id="new-inst-name" type="text" placeholder="Ej: Liceo de San José" class="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none">
-                            <button onclick="app.createInstitution()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 shadow">
+                            <input id="new-inst-name" type="text" placeholder="Ej: Liceo de San José" class="flex-1 p-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-200 outline-none text-sm">
+                            <button onclick="app.createInstitution()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-indigo-700 shadow transition">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
                     </div>
 
-        <!-- TARJETA 2: CREAR SECCIÓN (ACTUALIZADA) -->
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                        <h3 class="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                            <i class="fas fa-layer-group text-gray-500"></i> Nueva Sección
+                    <!-- TARJETA 2: CREAR SECCIÓN -->
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                        <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg">
+                            <div class="bg-emerald-100 p-2 rounded-lg text-emerald-600"><i class="fas fa-layer-group"></i></div>
+                            Nueva Sección
                         </h3>
                         
                         <div id="alert-no-inst" class="hidden bg-orange-50 border border-orange-200 text-orange-800 p-3 rounded-lg text-xs mb-4 flex items-start gap-2">
@@ -3560,32 +3749,33 @@ adminLoadUsers: async () => {
 
                         <div id="form-section-inputs">
                             <div class="mb-3">
-                                <label class="text-xs font-bold text-gray-500">Institución</label>
-                                <select id="cfg-inst" class="w-full p-2 border rounded-lg mt-1 bg-gray-50"></select>
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Institución</label>
+                                <select id="cfg-inst" class="w-full p-2.5 border border-slate-300 rounded-lg mt-1 bg-white text-sm focus:border-indigo-500 outline-none"></select>
                             </div>
                             <div class="grid grid-cols-2 gap-3 mb-3">
-                                <div><label class="text-xs font-bold text-gray-500">Nombre</label><input id="cfg-nom" placeholder="Ej: 7-1" class="w-full p-2 border rounded-lg mt-1"></div>
-                                <div><label class="text-xs font-bold text-gray-500">Año</label><input id="cfg-anio" type="number" value="2025" class="w-full p-2 border rounded-lg mt-1"></div>
+                                <div><label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Nombre</label><input id="cfg-nom" placeholder="Ej: 7-1" class="w-full p-2.5 border border-slate-300 rounded-lg mt-1 text-sm focus:border-indigo-500 outline-none"></div>
+                                <div><label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Año</label><input id="cfg-anio" type="number" value="2026" class="w-full p-2.5 border border-slate-300 rounded-lg mt-1 text-sm focus:border-indigo-500 outline-none"></div>
                             </div>
                             
-                            <!-- NUEVO: SELECTOR DE PERIODOS -->
-                            <div class="mb-3">
-                                <label class="text-xs font-bold text-gray-500">Esquema de Evaluación</label>
-                                <select id="cfg-periodos" class="w-full p-2 border rounded-lg mt-1" onchange="app.renderPeriodInputs()">
+                            <!-- SELECTOR DE PERIODOS -->
+                            <div class="mb-4">
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Esquema de Evaluación</label>
+                                <select id="cfg-periodos" class="w-full p-2.5 border border-slate-300 rounded-lg mt-1 text-sm bg-white focus:border-indigo-500 outline-none" onchange="app.renderPeriodInputs()">
                                     <option value="1">1 Periodo (Anual)</option>
                                     <option value="2">2 Periodos (Semestral)</option>
                                     <option value="3" selected>3 Periodos (Trimestral)</option>
                                 </select>
                             </div>
 
-                            <!-- AQUÍ SE GENERAN LAS FECHAS AUTOMÁTICAMENTE -->
-                            <div id="cfg-fechas-container" class="space-y-2 mb-4"></div>
+                            <!-- CONTENEDOR DE FECHAS -->
+                            <div id="cfg-fechas-container" class="space-y-2 mb-5 bg-slate-50 p-3 rounded-lg border border-slate-200"></div>
 
-                            <button onclick="app.createSection()" class="w-full bg-green-600 text-white p-2 rounded-lg font-bold hover:bg-green-700 shadow transition">
-                                Guardar Sección
+                            <button onclick="app.createSection()" class="w-full bg-emerald-600 text-white py-3 rounded-lg font-bold hover:bg-emerald-700 shadow-md hover:shadow-lg transition flex items-center justify-center gap-2">
+                                <i class="fas fa-save"></i> Guardar Sección
                             </button>
                         </div>
                     </div>
+                </div>
             </div>`;
 
             // 4. VISTA INDICADORES (RUBROS)
