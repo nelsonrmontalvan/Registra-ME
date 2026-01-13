@@ -518,7 +518,7 @@
     // CONFIGURACIÓN Y ESTADO GLOBAL
     // ==========================================
     // ¡¡PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT!! 👇
-    const API_URL = "https://script.google.com/macros/s/AKfycbzBxtW4GnEdEgoIsnWwOBV3OWiG5f8douP4lHCwU3gUrP0ZW3U-PWa8bCGalRD3HwxyiQ/exec"; 
+    const API_URL = "https://script.google.com/macros/s/AKfycbzRy_80agkQlTV2eQH9uCw5Nz2aw3volDdJhorpQ8HUKJaqbO3ULKbbP6P_1KFOuoh2Ow/exec"; 
 
     const app = {
         user: null,      // Datos del usuario logueado
@@ -973,7 +973,7 @@ enterApp: async () => {
                     
                     // 4. Recargar datos para que aparezca el nuevo botón de filtro
                     await app.loadDashboardData(); 
-                    
+                          app.updateConfigView(); 
                     // 5. Mensaje de Éxito
                     Swal.fire('¡Éxito!', 'Institución creada correctamente.', 'success');
 
