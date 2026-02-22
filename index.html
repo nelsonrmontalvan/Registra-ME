@@ -25,11 +25,24 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
+/* ANIMACIÓN CINEMÁTICA (Ken Burns Effect) */
+    @keyframes slowZoom {
+        0% { transform: scale(1); }
+        100% { transform: scale(1.15); }
+    }
+    .bg-movie {
+        /* CAMBIA ESTA URL POR LA QUE ELIJAS DE ABAJO */
+        background-image: url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=2070&auto=format&fit=crop'); 
+        background-size: cover;
+        background-position: center;
+        animation: slowZoom 20s infinite alternate ease-in-out;
+    }
+
     /* 1. FUENTE PROFESIONAL (Inter) */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
     :root {
-        --primary: #4F46E5; 
+        --primary: #6a62f5; 
         --background: #F8FAFC; /* Fondo un poco más gris/azulado profesional */
     }
 
@@ -48,7 +61,7 @@
 
     /* 3. CLASE PARA TARJETAS SENIOR (Solo visual) */
     .card-pro {
-        background: white;
+        background: rgb(225, 219, 219);
         border: 1px solid #E2E8F0;
         border-radius: 16px; 
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
@@ -58,8 +71,20 @@
     .card-pro:hover {
         transform: translateY(-4px); /* Se levanta al pasar mouse */
         box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-        border-color: #C7D2FE;
+        border-color: #969fc1;
     }
+
+    /* LUCES AMBIENTALES (DENTRO DEL APP) */
+    .ambient-light {
+        position: fixed;
+        z-index: 0; /* Detrás de todo */
+        border-radius: 50%;
+        filter: blur(100px); /* El desenfoque mágico */
+        opacity: 0.5; /* Suave, no invasivo */
+        pointer-events: none; /* Que no estorbe al click */
+    }
+    .light-1 { top: -100px; right: -100px; width: 500px; height: 500px; background: #b9c5ed; } /* Indigo muy suave */
+    .light-2 { bottom: -100px; left: -100px; width: 400px; height: 400px; background: #475464; } /* Azul muy suave */
 
     /* 4. ANIMACIONES */
     .fade-in { animation: fadeIn 0.4s ease-out forwards; }
@@ -77,6 +102,13 @@
     <!-- ========================================== -->
     <div id="screen-login" class="absolute inset-0 z-50 flex items-center justify-center bg-slate-900 overflow-hidden">
         
+ <!-- A. FONDO DE PELÍCULA (Con animación) -->
+        <div class="absolute inset-0 z-0 bg-movie opacity-60"></div>
+        
+        <!-- B. CAPA OSCURA (Para que resalte la tarjeta) -->
+        <!-- Un degradado de azul oscuro a negro para darle atmósfera -->
+        <div class="absolute inset-0 z-0 bg-gradient-to-t from-slate-900 via-slate-900/80 to-indigo-900/40"></div>
+
         <!-- EFECTOS DE FONDO (GLOWS SENIOR) -->
         <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-indigo-600 rounded-full mix-blend-multiply filter blur-[128px] opacity-40 animate-pulse"></div>
         <div class="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-[128px] opacity-40 animate-pulse" style="animation-delay: 2s"></div>
@@ -232,6 +264,10 @@
     <!-- ========================================== -->
     <main id="main-content" class="flex-1 flex flex-col relative hidden h-full overflow-hidden">
         
+        <!-- AQUI PEGAS LAS LUCES -->
+        <div class="ambient-light light-1"></div>
+        <div class="ambient-light light-2"></div>
+
         <!-- HEADER SUPERIOR -->
         <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 shrink-0">
             <div class="flex items-center gap-4">
