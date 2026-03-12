@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -418,9 +419,18 @@
             </div>
 
             <!-- Botón -->
-            <button onclick="app.saveScheduleConfig()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition h-9">
-                Guardar
-            </button>
+          <!-- Botones (Guardar y Cancelar) -->
+            <div class="flex gap-2">
+                <!-- Botón Cancelar (Oculto por defecto) -->
+                <button id="btn-cancel-schedule" onclick="app.cancelEditSchedule()" class="hidden bg-slate-200 text-slate-600 px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-slate-300 transition h-9">
+                    Cancelar
+                </button>
+                
+                <!-- Botón Guardar / Actualizar -->
+                <button id="btn-save-schedule" onclick="app.saveScheduleConfig()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition h-9">
+                    Guardar
+                </button>
+            </div>
         </div>
     </div>
 
@@ -1968,7 +1978,7 @@ openStudents: async (idSec, nombreSec) => {
             }
         },
 
-        saveScheduleConfig: async () => {
+saveScheduleConfig: async () => {
             let diasConfig = {};
             document.querySelectorAll('.chk-day:checked').forEach(chk => {
                 const cant = document.getElementById(`inp-${chk.value}`).value;
@@ -1980,6 +1990,7 @@ openStudents: async (idSec, nombreSec) => {
             const payload = {
                 action: 'saveConfigHorario',
                 email: app.user.email,
+                idConfig: app.state.editingScheduleId || null, // <--- ENVIAMOS EL ID (O NULL)
                 idSeccion: document.getElementById('hc-sec').value,
                 idMateria: document.getElementById('hc-mat').value,
                 fechaIni: document.getElementById('hc-ini').value,
@@ -1987,11 +1998,133 @@ openStudents: async (idSec, nombreSec) => {
                 diasConfig: diasConfig
             };
             
-            Swal.fire({title:'Guardando...', didOpen:()=>Swal.showLoading()});
+            Swal.fire({title: payload.idConfig ? 'Actualizando...' : 'Guardando...', didOpen:()=>Swal.showLoading()});
+            
             const res = await app.api(payload);
+            
             if(res.success) {
-                Swal.fire('Guardado','','success');
+                Swal.fire(payload.idConfig ? 'Actualizado' : 'Guardado','','success');
                 app.loadScheduleList(payload.idSeccion);
+                
+                // LIMPIEZA Y RESET DEL ESTADO
+                app.state.editingScheduleId = null;
+                document.getElementById('hc-ini').value = '';
+                document.getElementById('hc-fin').value = '';
+                document.getElementById('hc-mat').value = '';
+                
+                // Resetear checkboxes
+                document.querySelectorAll('.chk-day').forEach(chk => {
+                    chk.checked = false;
+                    app.toggleDayInput(chk.value);
+                });
+
+                // Restaurar botón
+                const btn = document.querySelector('button[onclick="app.saveScheduleConfig()"]');
+                btn.innerText = "Guardar";
+                btn.classList.add('bg-indigo-600');
+                btn.classList.remove('bg-emerald-600');
+            }
+        },
+
+        // ----------------------------------------------------
+        // PEGAR ESTO DENTRO DE "const app = { ... }"
+        // ----------------------------------------------------
+
+        // 1. HELPER PARA MOSTRAR/OCULTAR INPUTS DE DÍAS (Requerido por el editar)
+        toggleDayInput: (day) => {
+            const chk = document.getElementById(`chk-${day}`);
+            const inp = document.getElementById(`inp-${day}`);
+            if(chk && inp) {
+                if(chk.checked) {
+                    inp.classList.remove('hidden'); 
+                } else {
+                    inp.classList.add('hidden'); 
+                    inp.value = 1; // Reset a 1 si se desmarca
+                }
+            }
+        },
+// 2. FUNCIÓN PARA CARGAR DATOS EN EL FORMULARIO (Modo Edición)
+        editScheduleConfig: (id) => {
+            console.log("Editando ID:", id); // Para ver si entra en la consola
+
+            // A. Buscar el objeto en memoria
+            const item = app.data.tempScheduleList.find(x => x.id === id);
+            if (!item) return console.error("No se encontró el horario en memoria");
+
+            // B. Guardar el ID en estado global
+            app.state.editingScheduleId = id;
+
+            // C. Rellenar Campos Básicos
+            const selMat = document.getElementById('hc-mat');
+            selMat.value = item.idMateria;
+
+            document.getElementById('hc-ini').value = item.ini; 
+            document.getElementById('hc-fin').value = item.fin;
+
+            // D. Rellenar Días (Checkboxes e Inputs)
+            // Primero limpiamos todo visualmente
+            document.querySelectorAll('.chk-day').forEach(chk => {
+                chk.checked = false;
+                app.toggleDayInput(chk.value); 
+            });
+
+            // Luego marcamos los que tocan
+            if(item.dias) {
+                for (const [dia, cant] of Object.entries(item.dias)) {
+                    const chk = document.getElementById(`chk-${dia}`);
+                    const inp = document.getElementById(`inp-${dia}`);
+                    if (chk && inp) {
+                        chk.checked = true;
+                        app.toggleDayInput(dia); // Mostrar input
+                        inp.value = cant;
+                    }
+                }
+            }
+
+            // E. Cambiar botones a "Modo Edición" (Verde y Mostrar Cancelar)
+            const btnSave = document.getElementById('btn-save-schedule');
+            const btnCancel = document.getElementById('btn-cancel-schedule');
+            
+            if(btnSave) {
+                btnSave.innerText = "Actualizar Bloque";
+                // Cambiamos el color a verde (Emerald)
+                btnSave.className = "bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-emerald-700 transition h-9";
+            }
+            if(btnCancel) {
+                // Hacemos visible el botón de cancelar
+                btnCancel.classList.remove('hidden'); 
+            }
+            
+            // F. Scroll suave hacia arriba
+            document.getElementById('view-horarios').scrollIntoView({ behavior: 'smooth' });
+        },
+
+        // CANCELAR EDICIÓN DE HORARIO Y REINICIAR FORMULARIO
+        cancelEditSchedule: () => {
+            // 1. Limpiar estado de memoria
+            app.state.editingScheduleId = null;
+
+            // 2. Limpiar inputs visuales
+            document.getElementById('hc-ini').value = '';
+            document.getElementById('hc-fin').value = '';
+            document.getElementById('hc-mat').value = '';
+
+            // 3. Resetear checkboxes de días
+            document.querySelectorAll('.chk-day').forEach(chk => {
+                chk.checked = false;
+                app.toggleDayInput(chk.value); // Esto oculta los inputs numéricos
+            });
+
+            // 4. Restaurar botones a estado original (Crear)
+            const btnSave = document.getElementById('btn-save-schedule');
+            const btnCancel = document.getElementById('btn-cancel-schedule');
+
+            if(btnSave) {
+                btnSave.innerText = "Guardar";
+                btnSave.className = "bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition h-9";
+            }
+            if(btnCancel) {
+                btnCancel.classList.add('hidden'); // Ocultar botón cancelar
             }
         },
 
@@ -2005,7 +2138,7 @@ openStudents: async (idSec, nombreSec) => {
             app.renderScheduleList(); 
         },
 
-        renderScheduleList: () => {
+renderScheduleList: () => {
             const div = document.getElementById('schedule-list');
             const filterDateVal = document.getElementById('filter-hc-date').value;
             
@@ -2044,24 +2177,66 @@ openStudents: async (idSec, nombreSec) => {
                             </div>
                         </div>
                     </div>
-                    <button onclick="app.delScheduleConfig('${c.id}', '${c.idSeccion}')" class="h-8 w-8 rounded-full hover:bg-red-50 text-gray-300 hover:text-red-500 transition">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
+                    
+                    <!-- AQUÍ ESTÁ EL CAMBIO: CONTENEDOR CON LOS DOS BOTONES -->
+                    <div class="flex items-center gap-1">
+                        <!-- Botón Editar (Lápiz Azul) -->
+                        <button onclick="app.editScheduleConfig('${c.id}')" class="h-8 w-8 rounded-full hover:bg-blue-50 text-gray-300 hover:text-blue-600 transition flex items-center justify-center" title="Editar">
+                            <i class="fas fa-pen text-xs"></i>
+                        </button>
+                        
+                        <!-- Botón Eliminar (Basura Roja) -->
+                        <button onclick="app.delScheduleConfig('${c.id}', '${c.idSeccion}')" class="h-8 w-8 rounded-full hover:bg-red-50 text-gray-300 hover:text-red-500 transition flex items-center justify-center" title="Eliminar">
+                            <i class="fas fa-trash-alt text-xs"></i>
+                        </button>
+                    </div>
+
                 </div>`;
             });
         },
 
+        // ELIMINAR BLOQUE DE HORARIO (VERSIÓN V-PRO)
         delScheduleConfig: async (id, idSec) => {
-            if(confirm('¿Eliminar bloque?')) {
-                await app.api({action:'delConfigHorario', id});
-                app.loadScheduleList(idSec);
+            // 1. Alerta de confirmación
+            const conf = await Swal.fire({
+                title: '¿Eliminar bloque de horario?',
+                text: "Esta acción no se puede deshacer.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (conf.isConfirmed) {
+                // 2. Animación de carga
+                Swal.fire({ title: 'Eliminando...', didOpen: () => Swal.showLoading() });
+                
+                try {
+                    // 3. Llamada al Backend
+                    const res = await app.api({ action: 'delConfigHorario', id: id });
+                    
+                    if (res && res.success) {
+                        Swal.fire({
+                            icon: 'success', 
+                            title: 'Eliminado', 
+                            text: 'El horario ha sido borrado.', 
+                            timer: 1500, 
+                            showConfirmButton: false
+                        });
+                        // 4. Recargar la lista visualmente
+                        app.loadScheduleList(idSec);
+                    } else {
+                        Swal.fire('Error', res.message || 'No se pudo eliminar.', 'error');
+                    }
+                } catch (error) {
+                    console.error("Error al borrar horario:", error);
+                    Swal.fire('Error', 'Hubo un problema de conexión.', 'error');
+                }
             }
         },
 
-        filterScheduleList: (clear = false) => {
-            if(clear) document.getElementById('filter-hc-date').value = '';
-            app.renderScheduleList();
-        },
 
         // ==========================================
         // NUEVO: ASISTENCIA 2.0 (MATRIZ)
@@ -2285,35 +2460,69 @@ openStudents: async (idSec, nombreSec) => {
                 return;
             }
 
-            list.forEach(i => {
+  list.forEach(i => {
                 tbody.innerHTML += `
-                <tr class="hover:bg-gray-50 group">
-                    <td class="p-4 font-bold text-gray-700">${i.descripcion}</td>
-                    <td class="p-4 text-center"><span class="bg-gray-100 px-3 py-1 rounded-full text-xs font-bold text-gray-600">${i.puntaje} pts</span></td>
+                <tr class="hover:bg-slate-50 group transition">
+                    <td class="p-4 font-bold text-slate-700 text-sm">${i.descripcion}</td>
+                    <td class="p-4 text-center">
+                        <span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold border border-indigo-100">${i.puntaje}%</span>
+                    </td>
                     <td class="p-4 text-right">
-                        <button onclick="app.openEvaluation('${i.id}', '${i.descripcion}', ${i.puntaje})" class="bg-green-100 text-green-700 px-3 py-1 rounded text-xs font-bold hover:bg-green-200 mr-2">
-                            <i class="fas fa-check-circle"></i> Calificar
-                        </button>
-                        <button onclick="app.deleteIndicador('${i.id}')" class="text-red-300 hover:text-red-600 transition"><i class="fas fa-trash"></i></button>
+                        <div class="flex items-center justify-end gap-2">
+                            <!-- BOTÓN CALIFICAR -->
+                            <button onclick="app.openEvaluation('${i.id}', '${i.descripcion}', ${i.puntaje})" class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 border border-emerald-200 shadow-sm transition flex items-center gap-2">
+                                <i class="fas fa-check-circle"></i> Calificar
+                            </button>
+                            
+                            <!-- BOTÓN EDITAR (NUEVO) -->
+                            <!-- Pasamos los datos actuales a la función modal -->
+                            <button onclick="app.modalIndicador('${i.id}', '${i.descripcion}', '${i.puntaje}')" class="h-8 w-8 rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition flex items-center justify-center" title="Editar">
+                                <i class="fas fa-pen text-xs"></i>
+                            </button>
+
+                            <!-- BOTÓN ELIMINAR -->
+                            <button onclick="app.deleteIndicador('${i.id}')" class="h-8 w-8 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 transition flex items-center justify-center" title="Eliminar">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>`;
             });
         },
 
-        // C. CREAR NUEVO INDICADOR
-        modalIndicador: async () => {
+        // ---------------------------------------------------------
+        // BLOQUE DE EVALUACIÓN Y RUBROS (CORREGIDO Y LIMPIO)
+        // ---------------------------------------------------------
+
+        // 1. MODAL INDICADOR (VERSIÓN INTELIGENTE: CREAR Y EDITAR)
+        modalIndicador: async (id = null, descActual = '', ptsActual = '') => {
+            const titulo = id ? 'Editar Indicador' : `Nuevo: ${app.state.currentCatLabel}`;
+            const btnText = id ? 'Actualizar' : 'Guardar';
+
             const { value: form } = await Swal.fire({
-                title: `Nuevo: ${app.state.currentCatLabel}`,
+                title: titulo,
                 html: `
-                    <input id="sw-ind-desc" class="swal2-input" placeholder="Descripción (Ej: Tarea #1)">
-                    <input id="sw-ind-pts" type="number" class="swal2-input" placeholder="Puntaje Máximo (Ej: 100)">
+                    <div class="text-left space-y-3">
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase">Descripción</label>
+                            <input id="sw-ind-desc" class="w-full p-2 border rounded bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-200 transition" 
+                                   placeholder="Ej: Tarea #1" value="${descActual}">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase">Valor Porcentual (%)</label>
+                            <input id="sw-ind-pts" type="number" class="w-full p-2 border rounded bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-200 transition font-bold text-indigo-600" 
+                                   placeholder="Ej: 5" value="${ptsActual}">
+                        </div>
+                    </div>
                 `,
                 focusConfirm: false,
                 showCancelButton: true,
+                confirmButtonText: btnText,
+                confirmButtonColor: '#4F46E5',
                 preConfirm: () => {
                     const desc = document.getElementById('sw-ind-desc').value;
                     const pts = document.getElementById('sw-ind-pts').value;
-                    if(!desc || !pts) Swal.showValidationMessage('Completa los campos');
+                    if(!desc || !pts) return Swal.showValidationMessage('Completa los campos');
                     return { descripcion: desc, puntaje: pts }
                 }
             });
@@ -2322,19 +2531,22 @@ openStudents: async (idSec, nombreSec) => {
                 Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
                 const payload = {
                     action: 'saveIndicator',
+                    idIndicador: id, // ID para editar, null para crear
                     idMateria: app.state.currentMatId,
                     categoria: app.state.currentCat,
                     descripcion: form.descripcion,
                     puntaje: form.puntaje
                 };
+                
                 const res = await app.api(payload);
                 if(res) {
-                    Swal.fire('Listo', 'Indicador creado', 'success');
+                    Swal.fire('Listo', 'Cambios guardados', 'success');
                     app.loadIndicadores();
                 }
             }
         },
 
+        // 2. BORRAR INDICADOR
         deleteIndicador: async (id) => {
             const conf = await Swal.fire({ title: '¿Borrar?', text: 'Se perderán las notas de esta actividad', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' });
             if(conf.isConfirmed) {
@@ -2343,19 +2555,19 @@ openStudents: async (idSec, nombreSec) => {
             }
         },
 
-        // D. CALIFICAR (LA GRID DE NOTAS)
+        // 3. ABRIR TABLA DE EVALUACIÓN (CON LÓGICA 0-3 RECUPERADA)
         openEvaluation: async (idInd, descInd, maxPts) => {
             app.state.currentIndId = idInd;
-            app.state.currentMaxPts = maxPts;
+            app.state.currentMaxPts = parseFloat(maxPts); 
             
             app.nav('evaluar');
             document.getElementById('eval-title').innerText = descInd;
-            document.getElementById('eval-subtitle').innerText = `${app.state.currentCatLabel} | Valor: ${maxPts} pts`;
+            document.getElementById('eval-subtitle').innerText = `${app.state.currentCatLabel} | Valor Total: ${maxPts}%`;
             
             const tbody = document.getElementById('table-eval-body');
-            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando estudiantes...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
 
-            // Traer estudiantes + notas ya existentes
+            // Usamos getEvaluationData para traer las notas guardadas
             const list = await app.api({ 
                 action: 'getEvaluationData', 
                 idSeccion: app.state.currentSecId, 
@@ -2364,55 +2576,99 @@ openStudents: async (idSec, nombreSec) => {
 
             tbody.innerHTML = '';
             if(!list || list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-400">No hay estudiantes en esta sección.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-400">No hay estudiantes.</td></tr>';
                 return;
             }
 
             list.forEach((e, idx) => {
+                // MATEMÁTICA: Convertir nota guardada a Escala 0-3
+                let selectedVal = "";
+                let ptsObtenidos = "-";
+
+                if (e.nota !== "" && e.nota !== null) {
+                    const notaNum = parseFloat(e.nota);
+                    // Fórmula: (Nota / Total) * 3
+                    const nivel = Math.round((notaNum / app.state.currentMaxPts) * 3);
+                    selectedVal = nivel; 
+                    ptsObtenidos = notaNum.toFixed(2);
+                }
+
                 tbody.innerHTML += `
-                <tr class="hover:bg-gray-50 border-b border-gray-100">
-                    <td class="p-4 text-gray-400 font-bold w-10">${idx+1}</td>
-                    <td class="p-4 font-medium text-gray-700">${e.nombre}</td>
-                    <td class="p-4 text-center">
-                        <input type="number" 
-                               class="grade-input w-24 p-2 border border-gray-300 rounded text-center font-bold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" 
-                               data-id="${e.id}" 
-                               value="${e.nota}" 
-                               max="${maxPts}"
-                               placeholder="-">
+                <tr class="hover:bg-slate-50 border-b border-slate-100 transition">
+                    <td class="p-4 text-slate-400 font-bold w-10 text-xs">${idx+1}</td>
+                    <td class="p-4 font-medium text-slate-700">${e.nombre}</td>
+                    <td class="p-4 text-right">
+                        <div class="flex items-center justify-end gap-4">
+                            <!-- Visualizador Puntos -->
+                            <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded min-w-[60px] text-center" id="pts-view-${e.id}">
+                                ${ptsObtenidos} pts
+                            </span>
+                            <!-- Selector 0-3 -->
+                            <select class="grade-select w-36 p-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-600 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm cursor-pointer" 
+                                    data-id="${e.id}"
+                                    onchange="app.updatePreviewScore(this, ${app.state.currentMaxPts})">
+                                <option value="" ${selectedVal === "" ? "selected" : ""}>- Seleccionar -</option>
+                                <option value="3" ${selectedVal === 3 ? "selected" : ""}>3 (Logrado)</option>
+                                <option value="2" ${selectedVal === 2 ? "selected" : ""}>2 (Intermedio)</option>
+                                <option value="1" ${selectedVal === 1 ? "selected" : ""}>1 (Inicial)</option>
+                                <option value="0" ${selectedVal === 0 ? "selected" : ""}>0 (Sin Evidencia)</option>
+                            </select>
+                        </div>
                     </td>
                 </tr>`;
             });
         },
 
-        saveGrades: async () => {
-            const inputs = document.querySelectorAll('.grade-input');
-            let lista = [];
-            
-            inputs.forEach(inp => {
-                // Solo guardar si tiene valor (o si es 0)
-                if(inp.value !== "") {
-                    lista.push({ idEst: inp.getAttribute('data-id'), nota: inp.value });
-                }
-            });
+        // 4. HELPER VISUAL (Calcula puntos al cambiar el select)
+        updatePreviewScore: (select, maxPts) => {
+            const idEst = select.getAttribute('data-id');
+            const span = document.getElementById(`pts-view-${idEst}`);
+            const nivel = select.value;
 
-            Swal.fire({ title: 'Guardando Notas...', didOpen: () => Swal.showLoading() });
-            
-            const payload = {
-                action: 'saveGrades',
-                idIndicador: app.state.currentIndId,
-                lista: lista
-            };
-
-            const res = await app.api(payload);
-            if(res && res.success) {
-                Swal.fire({ icon: 'success', title: 'Notas Guardadas', timer: 1500, showConfirmButton: false });
+            if(nivel === "") {
+                span.innerText = "- pts";
+                span.className = "text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded min-w-[60px] text-center";
+            } else {
+                const notaCalculada = (parseInt(nivel) / 3) * maxPts;
+                span.innerText = notaCalculada.toFixed(2) + " pts";
+                
+                if(nivel == 3) span.className = "text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded min-w-[60px] text-center transition";
+                else if(nivel == 0) span.className = "text-xs font-bold text-red-700 bg-red-100 px-2 py-1 rounded min-w-[60px] text-center transition";
+                else span.className = "text-xs font-bold text-indigo-700 bg-indigo-100 px-2 py-1 rounded min-w-[60px] text-center transition";
             }
         },
 
+        // 5. GUARDAR NOTAS
+        saveGrades: async () => {
+            const selects = document.querySelectorAll('.grade-select');
+            let lista = [];
+            const maxPts = app.state.currentMaxPts;
+            
+            selects.forEach(sel => {
+                if(sel.value !== "") {
+                    // Cálculo inverso para guardar nota real
+                    const nivel = parseInt(sel.value);
+                    const notaFinal = (nivel / 3) * maxPts;
+                    lista.push({ idEst: sel.getAttribute('data-id'), nota: notaFinal });
+                }
+            });
+
+            Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+            const res = await app.api({ action: 'saveGrades', idIndicador: app.state.currentIndId, lista: lista });
+            if(res && res.success) {
+                Swal.fire({ icon: 'success', title: 'Guardado', text: 'Notas registradas correctamente.', timer: 1500, showConfirmButton: false });
+            }
+        },
+
+        // 6. RELLENAR MÁXIMO (Adaptado para Selects)
         fillMaxScore: () => {
-            document.querySelectorAll('.grade-input').forEach(inp => {
-                if(inp.value === "") inp.value = app.state.currentMaxPts;
+            // Ahora seleccionamos "3" (Logrado) en todos los selects vacíos
+            document.querySelectorAll('.grade-select').forEach(sel => {
+                if(sel.value === "") {
+                    sel.value = "3";
+                    // Disparamos el evento visual manualmente
+                    app.updatePreviewScore(sel, app.state.currentMaxPts);
+                }
             });
         },
 
@@ -3987,6 +4243,8 @@ adminLoadUsers: async () => {
             </div>`;
         },
     };
+
+    
     // INICIAR APLICACIÓN
     document.addEventListener("DOMContentLoaded", app.init);
 
@@ -3994,4 +4252,4 @@ adminLoadUsers: async () => {
     </script>
 
 </body>
-</html>
+</html><script async data-explicit-opt-in="true" data-cookie-opt-in="true" data-deployment-id="dpl_3Bp5q62sQiBS4P29kopTegcjHcvf" src="https://vercel.live/_next-live/feedback/feedback.js"></script>
