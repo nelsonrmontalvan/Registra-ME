@@ -2444,46 +2444,44 @@ renderScheduleList: () => {
         },
 
         // B. CARGAR LISTA DE INDICADORES
-        loadIndicadores: async () => {
+loadIndicadores: async () => {
             const tbody = document.getElementById('table-ind-body');
             tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
 
-            const list = await app.api({ 
-                action: 'getIndicators', 
-                idMateria: app.state.currentMatId, 
-                categoria: app.state.currentCat 
-            });
+            const list = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: app.state.currentCat });
+            
+            // SACAR EL TOTAL DEL COTIDIANO DE LA MATERIA
+            const materiaActual = app.state.tempMaterias.find(m => String(m.id) === String(app.state.currentMatId));
+            const totalCot = materiaActual ? parseFloat(materiaActual.cotidiano) : 30;
+            const isCotidiano = app.state.currentCat === 'TRAB_COT';
+
+            // DIVISIÓN MÁGICA
+            const valorDinamico = (isCotidiano && list.length > 0) ? (totalCot / list.length) : 0;
 
             tbody.innerHTML = '';
             if(!list || list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-gray-400">No hay actividades en ${app.state.currentCatLabel}.<br>¡Crea la primera!</td></tr>`;
+                tbody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-400">No hay actividades. ¡Crea la primera!</td></tr>';
                 return;
             }
 
-  list.forEach(i => {
+            list.forEach(i => {
+                // Si es cotidiano usa la división, sino usa el valor que el profe escribió
+                const finalPts = isCotidiano ? valorDinamico : parseFloat(i.puntaje);
+                const badgeLabel = isCotidiano ? `<i class="fas fa-robot mr-1"></i> ${finalPts.toFixed(2)}%` : `${finalPts}%`;
+
                 tbody.innerHTML += `
                 <tr class="hover:bg-slate-50 group transition">
                     <td class="p-4 font-bold text-slate-700 text-sm">${i.descripcion}</td>
                     <td class="p-4 text-center">
-                        <span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold border border-indigo-100">${i.puntaje}%</span>
+                        <span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold border border-indigo-100">${badgeLabel}</span>
                     </td>
                     <td class="p-4 text-right">
                         <div class="flex items-center justify-end gap-2">
-                            <!-- BOTÓN CALIFICAR -->
-                            <button onclick="app.openEvaluation('${i.id}', '${i.descripcion}', ${i.puntaje})" class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 border border-emerald-200 shadow-sm transition flex items-center gap-2">
+                            <button onclick="app.openEvaluation('${i.id}', '${i.descripcion}', ${finalPts})" class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 border border-emerald-200 transition flex items-center gap-2">
                                 <i class="fas fa-check-circle"></i> Calificar
                             </button>
-                            
-                            <!-- BOTÓN EDITAR (NUEVO) -->
-                            <!-- Pasamos los datos actuales a la función modal -->
-                            <button onclick="app.modalIndicador('${i.id}', '${i.descripcion}', '${i.puntaje}')" class="h-8 w-8 rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition flex items-center justify-center" title="Editar">
-                                <i class="fas fa-pen text-xs"></i>
-                            </button>
-
-                            <!-- BOTÓN ELIMINAR -->
-                            <button onclick="app.deleteIndicador('${i.id}')" class="h-8 w-8 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 transition flex items-center justify-center" title="Eliminar">
-                                <i class="fas fa-trash text-xs"></i>
-                            </button>
+                            <button onclick="app.modalIndicador('${i.id}', '${i.descripcion}', '${i.puntaje}')" class="h-8 w-8 rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition flex items-center justify-center"><i class="fas fa-pen text-xs"></i></button>
+                            <button onclick="app.deleteIndicador('${i.id}')" class="h-8 w-8 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 transition flex items-center justify-center"><i class="fas fa-trash text-xs"></i></button>
                         </div>
                     </td>
                 </tr>`;
@@ -2494,10 +2492,20 @@ renderScheduleList: () => {
         // BLOQUE DE EVALUACIÓN Y RUBROS (CORREGIDO Y LIMPIO)
         // ---------------------------------------------------------
 
-        // 1. MODAL INDICADOR (VERSIÓN INTELIGENTE: CREAR Y EDITAR)
-        modalIndicador: async (id = null, descActual = '', ptsActual = '') => {
+modalIndicador: async (id = null, descActual = '', ptsActual = '') => {
+            const isCotidiano = app.state.currentCat === 'TRAB_COT';
             const titulo = id ? 'Editar Indicador' : `Nuevo: ${app.state.currentCatLabel}`;
-            const btnText = id ? 'Actualizar' : 'Guardar';
+            
+            // Si es cotidiano, ocultamos el input y mostramos un mensaje mágico
+            const divValor = isCotidiano 
+                ? `<div class="hidden"><input id="sw-ind-pts" type="number" value="0"></div>
+                   <div class="bg-indigo-50 text-indigo-700 p-3 rounded-lg text-xs font-bold border border-indigo-200 flex items-center gap-2">
+                       <i class="fas fa-magic text-lg"></i> El porcentaje se calculará automáticamente dividiendo el total del Cotidiano entre la cantidad de indicadores.
+                   </div>`
+                : `<div>
+                       <label class="text-xs font-bold text-slate-500 uppercase">Valor Porcentual (%)</label>
+                       <input id="sw-ind-pts" type="number" class="w-full p-2 border rounded bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-200 transition font-bold text-indigo-600" placeholder="Ej: 5" value="${ptsActual}">
+                   </div>`;
 
             const { value: form } = await Swal.fire({
                 title: titulo,
@@ -2505,44 +2513,28 @@ renderScheduleList: () => {
                     <div class="text-left space-y-3">
                         <div>
                             <label class="text-xs font-bold text-slate-500 uppercase">Descripción</label>
-                            <input id="sw-ind-desc" class="w-full p-2 border rounded bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-200 transition" 
-                                   placeholder="Ej: Tarea #1" value="${descActual}">
+                            <input id="sw-ind-desc" class="w-full p-2 border rounded bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-200" value="${descActual}">
                         </div>
-                        <div>
-                            <label class="text-xs font-bold text-slate-500 uppercase">Valor Porcentual (%)</label>
-                            <input id="sw-ind-pts" type="number" class="w-full p-2 border rounded bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-200 transition font-bold text-indigo-600" 
-                                   placeholder="Ej: 5" value="${ptsActual}">
-                        </div>
+                        ${divValor}
                     </div>
                 `,
                 focusConfirm: false,
                 showCancelButton: true,
-                confirmButtonText: btnText,
+                confirmButtonText: id ? 'Actualizar' : 'Guardar',
                 confirmButtonColor: '#4F46E5',
                 preConfirm: () => {
                     const desc = document.getElementById('sw-ind-desc').value;
                     const pts = document.getElementById('sw-ind-pts').value;
-                    if(!desc || !pts) return Swal.showValidationMessage('Completa los campos');
+                    if(!desc) return Swal.showValidationMessage('Escribe una descripción');
                     return { descripcion: desc, puntaje: pts }
                 }
             });
 
             if(form) {
                 Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
-                const payload = {
-                    action: 'saveIndicator',
-                    idIndicador: id, // ID para editar, null para crear
-                    idMateria: app.state.currentMatId,
-                    categoria: app.state.currentCat,
-                    descripcion: form.descripcion,
-                    puntaje: form.puntaje
-                };
-                
-                const res = await app.api(payload);
-                if(res) {
-                    Swal.fire('Listo', 'Cambios guardados', 'success');
-                    app.loadIndicadores();
-                }
+                await app.api({ action: 'saveIndicator', idIndicador: id, idMateria: app.state.currentMatId, categoria: app.state.currentCat, descripcion: form.descripcion, puntaje: form.puntaje });
+                app.loadIndicadores();
+                Swal.close();
             }
         },
 
@@ -2562,35 +2554,41 @@ renderScheduleList: () => {
             
             app.nav('evaluar');
             document.getElementById('eval-title').innerText = descInd;
-            document.getElementById('eval-subtitle').innerText = `${app.state.currentCatLabel} | Valor Total: ${maxPts}%`;
+            document.getElementById('eval-subtitle').innerText = `${app.state.currentCatLabel} | Valor Dinámico: ${app.state.currentMaxPts.toFixed(2)}%`;
             
             const tbody = document.getElementById('table-eval-body');
             tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
 
-            // Usamos getEvaluationData para traer las notas guardadas
-            const list = await app.api({ 
-                action: 'getEvaluationData', 
-                idSeccion: app.state.currentSecId, 
-                idIndicador: idInd 
-            });
-
+            const list = await app.api({ action: 'getEvaluationData', idSeccion: app.state.currentSecId, idIndicador: idInd });
             tbody.innerHTML = '';
-            if(!list || list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-400">No hay estudiantes.</td></tr>';
-                return;
-            }
+            
+            if(!list || list.length === 0) return;
 
             list.forEach((e, idx) => {
-                // MATEMÁTICA: Convertir nota guardada a Escala 0-3
                 let selectedVal = "";
                 let ptsObtenidos = "-";
+                let badgeFecha = ""; 
 
-                if (e.nota !== "" && e.nota !== null) {
+                // LÓGICA INTELIGENTE DE RECUPERACIÓN DE DATOS
+                if (e.nivel !== null && e.nivel !== "" && e.nivel !== undefined) {
+                    // Si existe el nivel en la BD (Código Nuevo)
+                    selectedVal = Number(e.nivel); 
+                    ptsObtenidos = ((selectedVal / 3) * app.state.currentMaxPts).toFixed(2);
+                } else if (e.nota !== "" && e.nota !== null && e.nota !== undefined) {
+                    // BACKUP: Si la BD es vieja y solo tiene la nota guardada
                     const notaNum = parseFloat(e.nota);
-                    // Fórmula: (Nota / Total) * 3
-                    const nivel = Math.round((notaNum / app.state.currentMaxPts) * 3);
-                    selectedVal = nivel; 
+                    // Hacemos el cálculo inverso para saber qué nivel era
+                    selectedVal = Math.round((notaNum / app.state.currentMaxPts) * 3);
                     ptsObtenidos = notaNum.toFixed(2);
+                }
+
+                // Construir Badge de Fecha
+                if (e.fecha) {
+                    badgeFecha = `<span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-100 flex items-center gap-1 shadow-sm" id="badge-fecha-${e.id}">
+                                    <i class="far fa-calendar-check"></i> Eval: ${e.fecha}
+                                  </span>`;
+                } else {
+                    badgeFecha = `<span class="hidden" id="badge-fecha-${e.id}"></span>`;
                 }
 
                 tbody.innerHTML += `
@@ -2598,21 +2596,22 @@ renderScheduleList: () => {
                     <td class="p-4 text-slate-400 font-bold w-10 text-xs">${idx+1}</td>
                     <td class="p-4 font-medium text-slate-700">${e.nombre}</td>
                     <td class="p-4 text-right">
-                        <div class="flex items-center justify-end gap-4">
-                            <!-- Visualizador Puntos -->
-                            <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded min-w-[60px] text-center" id="pts-view-${e.id}">
-                                ${ptsObtenidos} pts
-                            </span>
-                            <!-- Selector 0-3 -->
-                            <select class="grade-select w-36 p-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-600 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm cursor-pointer" 
-                                    data-id="${e.id}"
-                                    onchange="app.updatePreviewScore(this, ${app.state.currentMaxPts})">
-                                <option value="" ${selectedVal === "" ? "selected" : ""}>- Seleccionar -</option>
-                                <option value="3" ${selectedVal === 3 ? "selected" : ""}>3 (Logrado)</option>
-                                <option value="2" ${selectedVal === 2 ? "selected" : ""}>2 (Intermedio)</option>
-                                <option value="1" ${selectedVal === 1 ? "selected" : ""}>1 (Inicial)</option>
-                                <option value="0" ${selectedVal === 0 ? "selected" : ""}>0 (Sin Evidencia)</option>
-                            </select>
+                        <div class="flex flex-col items-end gap-1">
+                            ${badgeFecha}
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded min-w-[60px] text-center" id="pts-view-${e.id}">
+                                    ${ptsObtenidos !== "-" ? ptsObtenidos + " pts" : "- pts"}
+                                </span>
+                                <select class="grade-select w-36 p-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-600 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm cursor-pointer" 
+                                        data-id="${e.id}"
+                                        onchange="app.updatePreviewScore(this, ${app.state.currentMaxPts})">
+                                    <option value="" ${selectedVal === "" ? "selected" : ""}>- Seleccionar -</option>
+                                    <option value="3" ${selectedVal === 3 ? "selected" : ""}>3 (Logrado)</option>
+                                    <option value="2" ${selectedVal === 2 ? "selected" : ""}>2 (Intermedio)</option>
+                                    <option value="1" ${selectedVal === 1 ? "selected" : ""}>1 (Inicial)</option>
+                                    <option value="0" ${selectedVal === 0 ? "selected" : ""}>0 (Nulo)</option>
+                                </select>
+                            </div>
                         </div>
                     </td>
                 </tr>`;
@@ -2639,24 +2638,37 @@ renderScheduleList: () => {
         },
 
         // 5. GUARDAR NOTAS
-        saveGrades: async () => {
+       saveGrades: async () => {
             const selects = document.querySelectorAll('.grade-select');
-            let lista = [];
+            let lista =[];
             const maxPts = app.state.currentMaxPts;
             
             selects.forEach(sel => {
                 if(sel.value !== "") {
-                    // Cálculo inverso para guardar nota real
                     const nivel = parseInt(sel.value);
                     const notaFinal = (nivel / 3) * maxPts;
-                    lista.push({ idEst: sel.getAttribute('data-id'), nota: notaFinal });
+                    
+                    // Enviamos LA NOTA CALCULADA y EL NIVEL 0-3
+                    lista.push({ 
+                        idEst: sel.getAttribute('data-id'), 
+                        nota: notaFinal,
+                        nivel: nivel 
+                    });
                 }
             });
 
             Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
             const res = await app.api({ action: 'saveGrades', idIndicador: app.state.currentIndId, lista: lista });
             if(res && res.success) {
-                Swal.fire({ icon: 'success', title: 'Guardado', text: 'Notas registradas correctamente.', timer: 1500, showConfirmButton: false });
+                // Pequeño truco UX: Actualizar las etiquetas de fecha visualmente a "Hoy"
+                lista.forEach(item => {
+                    const badge = document.getElementById(`badge-fecha-${item.idEst}`);
+                    if(badge) {
+                        badge.className = "bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200 flex items-center gap-1 shadow-sm fade-in";
+                        badge.innerHTML = `<i class="far fa-calendar-check"></i> Eval: Hoy`;
+                    }
+                });
+                Swal.fire({ icon: 'success', title: 'Guardado', timer: 1500, showConfirmButton: false });
             }
         },
 
