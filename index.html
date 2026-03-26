@@ -26,8 +26,23 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
+    
+    /* 1. FUENTE PROFESIONAL (Inter) */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    :root {
+        --primary: #6a62f5; 
+        --background: #F8FAFC; /* Fondo un poco más gris/azulado profesional */
+    }
 
-/* --- 1. THEMA PREMIUM PARA SWEETALERT2 --- */
+    body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--background);
+        color: #334155;
+        -webkit-font-smoothing: antialiased; /* Texto más nítido */
+    }
+
+    /* --- 1. THEMA PREMIUM PARA SWEETALERT2 --- */
     div:where(.swal2-container) div:where(.swal2-popup) {
         border-radius: 1.5rem !important; /* Bordes súper redondos */
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important; /* Sombra profunda Apple */
@@ -52,7 +67,7 @@
         to { opacity: 1; transform: translateY(0); }
     }
 
-/* ANIMACIÓN CINEMÁTICA (Ken Burns Effect) */
+    /* ANIMACIÓN CINEMÁTICA (Ken Burns Effect) */
     @keyframes slowZoom {
         0% { transform: scale(1); }
         100% { transform: scale(1.15); }
@@ -63,21 +78,6 @@
         background-size: cover;
         background-position: center;
         animation: slowZoom 20s infinite alternate ease-in-out;
-    }
-
-    /* 1. FUENTE PROFESIONAL (Inter) */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    
-    :root {
-        --primary: #6a62f5; 
-        --background: #F8FAFC; /* Fondo un poco más gris/azulado profesional */
-    }
-
-    body {
-        font-family: 'Inter', sans-serif;
-        background-color: var(--background);
-        color: #334155;
-        -webkit-font-smoothing: antialiased; /* Texto más nítido */
     }
 
     /* 2. SCROLLBAR ELEGANTE */
@@ -116,6 +116,60 @@
     /* 4. ANIMACIONES */
     .fade-in { animation: fadeIn 0.4s ease-out forwards; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+
+    /* ======================================================================= */
+    /* --- 5. OPTIMIZACIÓN RESPONSIVA (MÓVILES Y TABLETS) - AGREGADO NUEVO --- */
+    /* ======================================================================= */
+    
+    /* Reglas para Tablets y pantallas medianas (Menos de 1024px) */
+    @media (max-width: 1024px) {
+        /* Evita que las tablas se aplasten. Permite deslizar con el dedo (Swipe) */
+        #views-container .overflow-hidden {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch; 
+        }
+        /* Mantiene un ancho mínimo para que las columnas no se monten unas sobre otras */
+        #views-container table {
+            min-width: 800px !important; 
+        }
+    }
+
+    /* Reglas para Celulares (Menos de 640px) */
+    @media (max-width: 640px) {
+        /* 1. Convierte los formularios de 2 o 3 columnas a 1 sola columna hacia abajo */
+        .swal2-html-container .grid-cols-2, 
+        .swal2-html-container .grid-cols-3,
+        #view-config .grid-cols-2,
+        #view-config .grid-cols-3 {
+            grid-template-columns: 1fr !important;
+            gap: 1rem !important;
+        }
+        
+        /* 2. Ajusta el tamaño de los modales para que no se salgan del celular */
+        div:where(.swal2-container) div:where(.swal2-popup) {
+            width: 95% !important;
+            padding: 1.5rem 1rem !important;
+        }
+        
+        /* 3. Apila los botones de "Guardar" y "Cancelar" (Para no equivocarse con el dedo grueso) */
+        .swal2-actions {
+            width: 100%;
+            flex-direction: column-reverse; /* El botón cancelar queda abajo */
+            gap: 0.5rem;
+        }
+        .swal2-actions button {
+            width: 100%;
+            margin: 0 !important;
+            padding: 0.8rem !important;
+        }
+        
+        /* 4. Evita que los textos largos escondidos rompan el diseño en el celular */
+        .truncate {
+            white-space: normal !important;
+            word-break: break-word !important;
+        }
+    }
 </style>
 </head>
 
@@ -2837,7 +2891,7 @@ modalIndicador: async (id = null, descActual = '', ptsActual = '') => {
             app.renderBitacoraTable();
         },
 
-        // 2. RENDERIZAR TABLA (CON FILTROS)
+// 2. RENDERIZAR TABLA DE BITÁCORAS (CASCADA Y EMPTY STATE)
         renderBitacoraTable: () => {
             const tbody = document.getElementById('bitacora-table-body');
             const filterSec = document.getElementById('bit-filter-sec').value;
@@ -2852,41 +2906,70 @@ modalIndicador: async (id = null, descActual = '', ptsActual = '') => {
             });
 
             tbody.innerHTML = '';
+            
+            // ----------------------------------------------------
+            // 1. MAGIA UX: EMPTY STATE (ESTADO VACÍO PREMIUM)
+            // ----------------------------------------------------
             if(filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-400">Sin incidencias</td></tr>';
+                tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="p-12 text-center">
+                        <div class="flex flex-col items-center justify-center fade-in">
+                            <!-- Ícono gigante de Bitácora (Naranja) -->
+                            <div class="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mb-4 text-orange-400 shadow-inner">
+                                <i class="fas fa-book-reader text-4xl"></i>
+                            </div>
+                            <h4 class="text-slate-700 font-bold text-lg mb-1">Sin incidencias</h4>
+                            <p class="text-slate-400 text-sm mb-5">No hay registros en la bitácora para esta búsqueda.</p>
+                            
+                            <!-- Botón para crear nueva incidencia -->
+                            <button onclick="app.modalBitacora()" class="bg-amber-500 text-white px-5 py-2.5 rounded-lg font-bold shadow-md shadow-amber-200 hover:bg-amber-600 transition transform hover:-translate-y-0.5">
+                                <i class="fas fa-plus mr-2"></i> Nueva Entrada
+                            </button>
+                        </div>
+                    </td>
+                </tr>`;
                 return;
             }
 
-            filtered.forEach(b => {
-                // Estilos
+            // ----------------------------------------------------
+            // 2. MAGIA UX: ANIMACIÓN EN CASCADA (STAGGERED)
+            // ----------------------------------------------------
+            filtered.forEach((b, index) => {
+                // Estilos de los Badges
                 const typeBadge = b.tipo === 'Estudiante' 
-                    ? '<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">Individual</span>'
-                    : '<span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold">Grupal</span>';
+                    ? '<span class="bg-blue-50 text-blue-600 border border-blue-200 px-2 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider">Individual</span>'
+                    : '<span class="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider">Grupal</span>';
                 
                 const statusBadge = b.estado === 'Abierto'
-                    ? '<span class="bg-red-100 text-red-600 px-2 py-1 rounded-full text-xs font-bold">Pendiente</span>'
-                    : '<span class="bg-green-100 text-green-600 px-2 py-1 rounded-full text-xs font-bold">Cerrado</span>';
+                    ? '<span class="bg-rose-50 text-rose-600 border border-rose-200 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm flex items-center gap-1"><i class="fas fa-exclamation-circle text-[10px]"></i> Pendiente</span>'
+                    : '<span class="bg-emerald-50 text-emerald-600 border border-emerald-200 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm flex items-center gap-1"><i class="fas fa-check-circle text-[10px]"></i> Cerrado</span>';
 
                 // Botón Cerrar Caso (Solo si está abierto)
                 const closeBtn = b.estado === 'Abierto' 
-                    ? `<button onclick="app.closeBitacora('${b.id}')" class="text-green-500 hover:text-green-700 mr-2" title="Cerrar Caso"><i class="fas fa-check-circle"></i></button>` 
+                    ? `<button onclick="app.closeBitacora('${b.id}')" class="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-100 hover:text-emerald-700 hover:scale-110 transition flex items-center justify-center mr-1" title="Marcar como Resuelto"><i class="fas fa-check"></i></button>` 
                     : '';
 
+                // Calculamos el retraso de la animación
+                const delay = index * 0.05;
+
                 tbody.innerHTML += `
-                <tr class="hover:bg-gray-50 group">
-                    <td class="p-4 whitespace-nowrap text-gray-600">${b.fecha}</td>
+                <tr class="fade-in-up hover:bg-slate-50 group border-b border-slate-100 transition" style="animation-delay: ${delay}s">
+                    <td class="p-4 whitespace-nowrap text-slate-600 font-mono text-xs">${b.fecha}</td>
                     <td class="p-4">${typeBadge}</td>
                     <td class="p-4">
-                        <div class="font-bold text-gray-800">${b.nombreEstudiante}</div>
-                        <div class="text-xs text-gray-500">${b.nombreSeccion} ${b.idMateria!=='GENERAL' ? '• '+b.nombreMateria : ''}</div>
+                        <div class="font-bold text-slate-800 text-sm">${b.nombreEstudiante}</div>
+                        <div class="text-xs text-slate-400 mt-0.5"><i class="fas fa-users mr-1"></i>${b.nombreSeccion} ${b.idMateria!=='GENERAL' ? '<span class="mx-1">&bull;</span>'+b.nombreMateria : ''}</div>
                     </td>
-                    <td class="p-4 text-gray-600 max-w-xs truncate" title="${b.desc}">${b.desc}</td>
+                    <td class="p-4 text-slate-500 text-sm max-w-xs truncate" title="${b.desc}">${b.desc}</td>
                     <td class="p-4 text-center">${statusBadge}</td>
-                    <td class="p-4 text-right flex justify-end">
-                        ${closeBtn}
-                        <button onclick="app.editBitacora('${b.id}')" class="text-gray-400 hover:text-blue-600 mr-2"><i class="fas fa-pen"></i></button>
-                        <button onclick="app.downloadPdf('pdfBitacora', '${b.id}')" class="text-gray-400 hover:text-red-600 mr-2"><i class="fas fa-file-pdf"></i></button>
-                        <button onclick="app.deleteBitacora('${b.id}')" class="text-gray-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
+                    <td class="p-4 text-right">
+                        <div class="flex justify-end items-center gap-1">
+                            ${closeBtn}
+                            <button onclick="app.editBitacora('${b.id}')" class="h-8 w-8 rounded-lg bg-slate-100 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition flex items-center justify-center" title="Editar"><i class="fas fa-pen text-xs"></i></button>
+                            <button onclick="app.downloadPdf('pdfBitacora', '${b.id}')" class="h-8 w-8 rounded-lg bg-rose-50 text-rose-400 hover:bg-rose-100 hover:text-rose-600 transition flex items-center justify-center" title="Descargar PDF"><i class="fas fa-file-pdf text-xs"></i></button>
+                            <button onclick="app.deleteBitacora('${b.id}')" class="h-8 w-8 rounded-lg bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition flex items-center justify-center" title="Eliminar"><i class="fas fa-trash text-xs"></i></button>
+                        </div>
                     </td>
                 </tr>`;
             });
@@ -3283,18 +3366,46 @@ modalIndicador: async (id = null, descActual = '', ptsActual = '') => {
             app.modalBitacora(b);
         },
 
+       // 3. ELIMINAR BITÁCORA (VERSIÓN PREMIUM)
         deleteBitacora: async (id) => {
-            if(confirm('¿Eliminar incidencia?')) {
-                Swal.showLoading();
+            const conf = await Swal.fire({
+                title: '¿Eliminar incidencia?',
+                text: "Esta acción borrará el registro para siempre.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444', // Rojo (red-500)
+                cancelButtonColor: '#64748b',  // Gris (slate-500)
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (conf.isConfirmed) {
+                Swal.fire({ title: 'Eliminando...', didOpen: () => Swal.showLoading() });
                 await app.api({ action: 'deleteBitacora', id });
+                
+                Swal.fire({ icon: 'success', title: 'Eliminada', showConfirmButton: false, timer: 1500 });
                 app.loadBitacoras();
-                Swal.close();
             }
         },
 
+        // 4. CERRAR CASO DE BITÁCORA (VERSIÓN PREMIUM)
         closeBitacora: async (id) => {
-            if(confirm('¿Marcar como caso cerrado?')) {
+            const conf = await Swal.fire({
+                title: '¿Cerrar este caso?',
+                text: "La incidencia pasará a estado resuelto.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#10b981', // Verde (emerald-500)
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, cerrar caso',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (conf.isConfirmed) {
+                Swal.fire({ title: 'Actualizando...', didOpen: () => Swal.showLoading() });
                 await app.api({ action: 'closeBitacora', id });
+                
+                Swal.fire({ icon: 'success', title: 'Caso Cerrado', showConfirmButton: false, timer: 1500 });
                 app.loadBitacoras();
             }
         },
@@ -3851,48 +3962,69 @@ adminLoadUsers: async () => {
         // MÓDULO PLANEAMIENTO (LÓGICA FRONTAL)
         // ==========================================
 
-// 1. CARGAR LISTA (ACTUALIZADO CON BOTONES)
+// CARGAR LISTA DE PLANEAMIENTOS (CASCADA Y EMPTY STATE)
         loadPlanes: async () => {
             const div = document.getElementById('plan-list');
-            div.innerHTML = '<div class="text-center py-10"><i class="fas fa-spinner fa-spin text-indigo-600 text-2xl"></i></div>';
+            
+            // Spinner Moderno
+            div.innerHTML = '<div class="col-span-full text-center py-10"><i class="fas fa-spinner fa-spin text-indigo-500 text-xl"></i><br><span class="text-slate-400 text-xs">Cargando planes...</span></div>';
             
             const planes = await app.api({ action: 'getPlanning' });
             div.innerHTML = '';
 
             // GUARDAMOS EN MEMORIA PARA USAR AL EDITAR
-            app.data.planes = planes || [];
+            app.data.planes = planes ||[];
 
+            // ----------------------------------------------------
+            // 1. MAGIA UX: EMPTY STATE (ESTADO VACÍO PREMIUM)
+            // ----------------------------------------------------
             if(!planes || planes.length === 0) {
                 div.innerHTML = `
-                <div class="bg-white border-2 border-dashed border-gray-300 rounded-xl p-10 text-center">
-                    <h4 class="text-gray-500 font-bold mb-2">No tienes planeamientos</h4>
-                    <button onclick="app.modalPlan()" class="bg-blue-600 text-white px-4 py-2 rounded font-bold shadow hover:bg-blue-700">Crear Plan</button>
+                <div class="col-span-full bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
+                    <div class="flex flex-col items-center justify-center fade-in">
+                        <!-- Ícono gigante de Planeamiento (Azul) -->
+                        <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-4 text-blue-400 shadow-inner">
+                            <i class="fas fa-clipboard-list text-4xl"></i>
+                        </div>
+                        <h4 class="text-slate-700 font-bold text-lg mb-1">Sin planeamientos</h4>
+                        <p class="text-slate-400 text-sm mb-5">Diseña tu primer plan didáctico con estrategias e instrumentos de evaluación.</p>
+                        
+                        <button onclick="app.modalPlan()" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg font-bold shadow-md shadow-blue-200 hover:bg-blue-700 transition transform hover:-translate-y-0.5">
+                            <i class="fas fa-plus mr-2"></i> Nuevo Planeamiento
+                        </button>
+                    </div>
                 </div>`;
                 return;
             }
 
-            planes.forEach(p => {
+            // ----------------------------------------------------
+            // 2. MAGIA UX: ANIMACIÓN EN CASCADA (STAGGERED)
+            // ----------------------------------------------------
+            planes.forEach((p, index) => {
+                // Calculamos el retraso de la animación
+                const delay = index * 0.05;
+
                 div.innerHTML += `
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center hover:shadow-md transition gap-4">
+                <div class="fade-in-up bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center transition-all hover:shadow-md hover:-translate-y-1 gap-4" style="animation-delay: ${delay}s">
                     <div class="flex-1">
                         <div class="flex items-center gap-3 mb-1">
-                            <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-xs font-bold border border-indigo-100">${p.periodo}</span>
-                            <h4 class="font-bold text-gray-800 text-lg">${p.nombreMateria}</h4>
+                            <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-[10px] uppercase tracking-wider font-bold border border-indigo-100">${p.periodo}</span>
+                            <h4 class="font-bold text-slate-800 text-lg">${p.nombreMateria}</h4>
                         </div>
-                        <p class="text-sm text-gray-500 mb-2"><i class="fas fa-users mr-1"></i> ${p.nombreSeccion} &bull; <i class="fas fa-calendar mr-1"></i> Inicio: ${p.fechaIni}</p>
-                        <p class="text-xs text-gray-400 italic truncate max-w-md">${p.aprendizaje}</p>
+                        <p class="text-sm text-slate-500 mb-2"><i class="fas fa-users mr-1"></i> ${p.nombreSeccion} <span class="text-slate-300 mx-1">&bull;</span> <i class="fas fa-calendar-alt mr-1"></i> Inicio: ${p.fechaIni}</p>
+                        <p class="text-xs text-slate-400 italic truncate max-w-2xl" title="${p.aprendizaje}">${p.aprendizaje}</p>
                     </div>
                     
-                    <!-- BOTONES DE ACCIÓN -->
+                    <!-- BOTONES DE ACCIÓN (Modernizados) -->
                     <div class="flex items-center gap-2">
-                        <button onclick="app.editPlan('${p.id}')" class="h-9 w-9 rounded-lg bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600 transition flex items-center justify-center" title="Editar">
-                            <i class="fas fa-pen"></i>
+                        <button onclick="app.editPlan('${p.id}')" class="h-9 w-9 rounded-lg bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition flex items-center justify-center" title="Editar">
+                            <i class="fas fa-pen text-sm"></i>
                         </button>
-                        <button onclick="app.downloadPdf('pdfPlanning', '${p.id}')" class="h-9 px-3 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-700 border border-red-100 font-bold text-xs transition flex items-center gap-2" title="PDF">
+                        <button onclick="app.downloadPdf('pdfPlanning', '${p.id}')" class="h-9 px-3 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600 border border-rose-100 font-bold text-xs transition flex items-center gap-2 shadow-sm" title="Descargar PDF">
                             <i class="fas fa-file-pdf"></i> PDF
                         </button>
-                        <button onclick="app.deletePlan('${p.id}')" class="h-9 w-9 rounded-lg bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600 transition flex items-center justify-center" title="Eliminar">
-                            <i class="fas fa-trash"></i>
+                        <button onclick="app.deletePlan('${p.id}')" class="h-9 w-9 rounded-lg bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition flex items-center justify-center" title="Eliminar">
+                            <i class="fas fa-trash text-sm"></i>
                         </button>
                     </div>
                 </div>`;
