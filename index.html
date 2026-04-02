@@ -228,16 +228,27 @@
                     </div>
                 </div>
 
-                <button type="submit" id="btn-login" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-500/30 transition transform active:scale-95 flex items-center justify-center gap-2">
-                    <span>Ingresar al Sistema</span> <i class="fas fa-arrow-right text-xs"></i>
+           <button type="submit" id="btn-login" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/40 transition transform active:scale-95 flex items-center justify-center gap-2">
+                    <span>Acceder</span> <i class="fas fa-arrow-right text-xs"></i>
                 </button>
 
-                                <!-- NUEVO: BOTÓN "¿QUÉ ES REGISTRAME?" -->
+                <!-- ========================================== -->
+                <!-- SECCIÓN PARA NUEVOS USUARIOS (MÁS VISIBLE) -->
+                <!-- ========================================== -->
+                <div class="mt-6 relative flex items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink-0 mx-4 text-slate-400 text-[10px] uppercase tracking-widest font-bold">¿Primera vez aquí?</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
                 <div class="mt-4 text-center">
-                    <button type="button" onclick="app.showAboutRegistrame()" class="text-sm text-indigo-400 hover:text-indigo-300 font-bold transition flex items-center justify-center gap-2 mx-auto bg-white/10 hover:bg-white/20 px-4 py-2 rounded-full border border-white/10 backdrop-blur-sm">
-                        <i class="fas fa-info-circle"></i> ¿Qué es RegistraME V-Pro?
+                    <button type="button" onclick="app.showAboutRegistrame()" class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-700 border border-emerald-200 font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-sm group">
+                        <i class="fas fa-rocket group-hover:-translate-y-1 transition transform"></i> Descubre RegistraME V-Pro
                     </button>
                 </div>
+                <!-- ========================================== -->
+
+            </form> <!-- Aquí cierra el formulario -->
 
             </form>
 
@@ -928,10 +939,16 @@
         // ==========================================
         // 2. AUTENTICACIÓN Y NAVEGACIÓN
         // ==========================================
-   init: () => {
+init: () => {
             // 1. PRIMERO: Construimos el HTML (Inyectar vistas)
-            // ¡Esta línea debe ir arriba de todo!
             app.injectDynamicViews(); 
+
+            // --- TRUCO NINJA PARA REDES SOCIALES ---
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('info') === 'true') {
+                setTimeout(() => app.showAboutRegistrame(), 500); // Abre el popup a medio segundo de entrar
+            }
+            // ----------------------------------------
 
             // 2. SEGUNDO: Ahora sí, verificamos sesión y cargamos datos
             const savedUser = localStorage.getItem('registrame_user');
