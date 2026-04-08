@@ -4775,7 +4775,7 @@ adminLoadUsers: async () => {
             </div>`;
 
             // ----------------------------------------------------
-            // NUEVA VISTA: AYUDA Y SOPORTE
+            // NUEVA VISTA: AYUDA Y SOPORTE (CON BANNER PREMIUM)
             // ----------------------------------------------------
             container.innerHTML += `
             <div id="view-ayuda" class="view hidden fade-in">
@@ -4783,6 +4783,28 @@ adminLoadUsers: async () => {
                     <h3 class="text-2xl font-bold text-slate-800"><i class="fas fa-life-ring text-indigo-500 mr-2"></i>Centro de Ayuda</h3>
                     <p class="text-sm text-slate-500">Recursos, tutoriales y contacto de soporte técnico.</p>
                 </div>
+
+                <!-- ========================================== -->
+                <!-- BANNER CLICKEABLE (MARKETING Y SOPORTE) -->
+                <!-- ========================================== -->
+                <a href="https://wa.me/50671023115?text=Hola%20Ing.%20Nelson,%20me%20gustar%C3%ADa%20hacer%20una%20consulta%20sobre%20RegistraME%20V-Pro" 
+                   target="_blank" 
+                   class="block w-full mb-6 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group border border-slate-200 relative">
+                    
+                    <!-- Imagen de fondo (puedes cambiar esta URL por la tuya si tienes una) -->
+                    <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2000&auto=format&fit=crop" 
+                         alt="Soporte RegistraME" 
+                         class="w-full h-32 md:h-48 object-cover group-hover:scale-105 transition-transform duration-700">
+                    
+                    <!-- Capa oscura degradada para que el texto resalte -->
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent flex flex-col justify-end p-6 md:p-8">
+                        <h4 class="text-white font-extrabold text-xl md:text-2xl flex items-center gap-2 mb-1">
+                            <i class="fab fa-whatsapp text-emerald-400"></i> ¿Necesitas atención personalizada?
+                        </h4>
+                        <p class="text-slate-200 text-xs md:text-sm font-medium">Haz clic aquí para chatear directamente con el Ing. Nelson Rodríguez, creador del sistema.</p>
+                    </div>
+                </a>
+                <!-- ========================================== -->
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     
@@ -4819,15 +4841,15 @@ adminLoadUsers: async () => {
                     </div>
 
                     <!-- Tarjeta Derecha: Enlaces Externos -->
-                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
                         <h4 class="font-bold text-slate-800 text-lg mb-6 flex items-center gap-2">
                             <div class="p-2 bg-emerald-50 text-emerald-500 rounded-lg"><i class="fas fa-headset"></i></div>
                             Recursos Oficiales
                         </h4>
                         
-                        <div class="space-y-4">
+                        <div class="space-y-4 flex-1">
                             <!-- Botón Youtube -->
-                            <a href="https://youtu.be/BasJ6W8AGxE?si=wzXd1RRfAouizPQB" target="_blank" class="block bg-red-50 hover:bg-red-100 border border-red-100 p-4 rounded-xl transition group">
+                            <a href="https://www.youtube.com/watch?v=TU_VIDEO_AQUI" target="_blank" class="block bg-red-50 hover:bg-red-100 border border-red-100 p-4 rounded-xl transition group">
                                 <div class="flex items-center gap-4">
                                     <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-red-500 group-hover:scale-110 transition">
                                         <i class="fab fa-youtube text-2xl"></i>
@@ -4853,7 +4875,7 @@ adminLoadUsers: async () => {
                             </a>
                         </div>
                         
-                        <div class="mt-8 pt-6 border-t border-slate-100 text-center">
+                        <div class="mt-6 pt-6 border-t border-slate-100 text-center">
                             <p class="text-xs text-slate-400">RegistraME V-Pro &copy; 2026</p>
                         </div>
                     </div>
