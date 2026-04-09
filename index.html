@@ -699,7 +699,7 @@
     // CONFIGURACIÓN Y ESTADO GLOBAL
     // ==========================================
     // ¡¡PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT!! 👇
-    const API_URL = "https://script.google.com/macros/s/AKfycbzYlORVb59Kj83gjWACufWccmM9RDBo0kHX_tH_axR5r2_hCss5SO_8KNjlSF0siU__5Q/exec"; 
+    const API_URL = "https://script.google.com/macros/s/AKfycbwhdy3gBgJobKmremJl50tOKNpX2TGZtoKXL5EXZutresDNxXjT5mgWhwcpNXLCxT37EA/exec"; 
 
     const app = {
         user: null,      // Datos del usuario logueado
@@ -2889,16 +2889,90 @@ renderScheduleList: () => {
         // ==========================================
 
         // A. ENTRAR A INDICADORES
-        openIndicadores: (idMat, nomMat) => {
+// ---------------------------------------------------------
+        // MAGIA UX: PESTAÑAS DINÁMICAS (SUMATORIA DE PORCENTAJES)
+        // ---------------------------------------------------------
+
+        openIndicadores: async (idMat, nomMat) => {
             app.state.currentMatId = idMat;
             app.state.currentMatName = nomMat;
-            app.state.currentCat = 'TRAB_COT'; // Por defecto empezamos en Cotidiano
+            app.state.currentCat = 'TRAB_COT'; 
             app.state.currentCatLabel = 'Cotidiano';
             
             app.nav('indicadores');
             document.getElementById('ind-title').innerText = `Evaluación: ${nomMat}`;
-            app.updateTabsUI();
+            
+            // 1. Mostrar cargando en las pestañas
+            document.getElementById('dynamic-tabs-container').innerHTML = '<span class="text-xs text-slate-400"><i class="fas fa-spinner fa-spin"></i> Calculando rubros...</span>';
+            
+            // 2. Traer TODOS los indicadores de esta materia de un solo golpe
+            app.state.allIndicators = await app.api({ action: 'getIndicators', idMateria: idMat, categoria: 'ALL' });
+            
+            // 3. Dibujar Pestañas y Tabla
+            app.renderDynamicTabs();
             app.loadIndicadores();
+        },
+
+        setCategory: (catCode, catLabel) => {
+            app.state.currentCat = catCode;
+            app.state.currentCatLabel = catLabel;
+            app.renderDynamicTabs(); // Redibujar colores
+            app.loadIndicadores();
+        },
+
+        renderDynamicTabs: () => {
+            // Obtener el valor original de los rubros para esta materia
+            const mat = app.state.tempMaterias.find(m => String(m.id) === String(app.state.currentMatId));
+            if(!mat) return;
+
+            const categorias =[
+                { code: 'TRAB_COT', label: 'Cotidiano', max: parseFloat(mat.cotidiano) },
+                { code: 'TAREAS', label: 'Tareas', max: parseFloat(mat.tareas) },
+                { code: 'PRUEBAS', label: 'Pruebas', max: parseFloat(mat.pruebas) },
+                { code: 'PROYECTOS', label: 'Proyectos', max: parseFloat(mat.proyectos) },
+                { code: 'ASIST', label: 'Asistencia', max: parseFloat(mat.asistencia) }
+            ];
+
+            let htmlTabs = '';
+
+            categorias.forEach(cat => {
+                // Sumar los porcentajes de los indicadores creados en esta categoría
+                let suma = 0;
+                if(app.state.allIndicators) {
+                    app.state.allIndicators.forEach(ind => {
+                        if(ind.categoria === cat.code) suma += parseFloat(ind.puntaje || 0);
+                    });
+                }
+
+                // Lógica Cotidiano (Siempre es perfecto porque se divide solo)
+                if(cat.code === 'TRAB_COT') suma = cat.max; 
+                // Lógica Asistencia (No tiene indicadores manuales, siempre es perfecto)
+                if(cat.code === 'ASIST') suma = cat.max;
+
+                // Definir colores
+                const isSelected = app.state.currentCat === cat.code;
+                const isPerfect = suma === cat.max;
+                
+                // Color del badge (Verde si cuadra, Rojo si falta o sobra)
+                const badgeColor = isPerfect ? 'text-emerald-600 bg-emerald-100' : 'text-rose-600 bg-rose-100';
+                
+                // Color del Tab
+                const tabStyle = isSelected 
+                    ? 'ring-2 ring-indigo-500 bg-indigo-50 border-transparent text-indigo-700' 
+                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50';
+
+                htmlTabs += `
+                <button onclick="app.setCategory('${cat.code}', '${cat.label}')" 
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border transition ${tabStyle}">
+                    ${cat.label}
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold ${badgeColor}">
+                        ${suma}% / ${cat.max}%
+                    </span>
+                </button>`;
+            });
+
+            // NECESITAS ASEGURARTE DE TENER ESTE ID EN TU HTML (Paso 4)
+            document.getElementById('dynamic-tabs-container').innerHTML = htmlTabs;
         },
 
         // Cambiar de Pestaña (Cotidiano, Tareas, etc.)
@@ -2909,12 +2983,14 @@ renderScheduleList: () => {
             app.loadIndicadores();
         },
 
-        updateTabsUI: () => {
+  updateTabsUI: () => {
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                if(btn.innerText.includes(app.state.currentCatLabel)) {
-                    btn.className = 'tab-btn px-4 py-2 rounded-full text-sm font-bold bg-indigo-100 text-indigo-700 ring-2 ring-indigo-500 transition';
+                // Buscamos cuál es la categoría activa
+                const catCode = btn.getAttribute('data-cat');
+                if(catCode === app.state.currentCat) {
+                    btn.className = 'tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 text-white shadow-md transition';
                 } else {
-                    btn.className = 'tab-btn px-4 py-2 rounded-full text-sm font-bold bg-white text-gray-500 hover:bg-gray-50 border transition';
+                    btn.className = 'tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-white text-slate-500 hover:bg-slate-50 border border-slate-200 transition';
                 }
             });
         },
@@ -2953,10 +3029,10 @@ loadIndicadores: async () => {
                     </td>
                     <td class="p-4 text-right">
                         <div class="flex items-center justify-end gap-2">
-                            <button onclick="app.openEvaluation('${i.id}', '${i.descripcion}', ${finalPts})" class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 border border-emerald-200 transition flex items-center gap-2">
+                            <button onclick="app.openEvaluation('${i.id}', '${i.descripcion}', ${finalPts}, ${i.puntosTotales})"  class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 border border-emerald-200 transition flex items-center gap-2">
                                 <i class="fas fa-check-circle"></i> Calificar
                             </button>
-                            <button onclick="app.modalIndicador('${i.id}', '${i.descripcion}', '${i.puntaje}')" class="h-8 w-8 rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition flex items-center justify-center"><i class="fas fa-pen text-xs"></i></button>
+                            <button onclick="app.modalIndicador('${i.id}', '${i.descripcion}', '${i.puntaje}', '${i.puntosTotales}')" class="h-8 w-8 rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition flex items-center justify-center"><i class="fas fa-pen text-xs"></i></button>
                             <button onclick="app.deleteIndicador('${i.id}')" class="h-8 w-8 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 transition flex items-center justify-center"><i class="fas fa-trash text-xs"></i></button>
                         </div>
                     </td>
@@ -2964,23 +3040,27 @@ loadIndicadores: async () => {
             });
         },
 
-        // ---------------------------------------------------------
-        // BLOQUE DE EVALUACIÓN Y RUBROS (CORREGIDO Y LIMPIO)
+// ---------------------------------------------------------
+        // EVALUACIÓN V-PRO: REGLA DE 3 PARA EXÁMENES / ESCALA PARA COTIDIANO
         // ---------------------------------------------------------
 
-modalIndicador: async (id = null, descActual = '', ptsActual = '') => {
+        modalIndicador: async (id = null, descActual = '', ptsActual = '', ptsTotalesActual = '100') => {
             const isCotidiano = app.state.currentCat === 'TRAB_COT';
             const titulo = id ? 'Editar Indicador' : `Nuevo: ${app.state.currentCatLabel}`;
             
-            // Si es cotidiano, ocultamos el input y mostramos un mensaje mágico
+            // Si NO es cotidiano, pedimos Valor (%) Y Puntos Totales (Ej: Examen de 50 pts)
             const divValor = isCotidiano 
-                ? `<div class="hidden"><input id="sw-ind-pts" type="number" value="0"></div>
-                   <div class="bg-indigo-50 text-indigo-700 p-3 rounded-lg text-xs font-bold border border-indigo-200 flex items-center gap-2">
-                       <i class="fas fa-magic text-lg"></i> El porcentaje se calculará automáticamente dividiendo el total del Cotidiano entre la cantidad de indicadores.
-                   </div>`
-                : `<div>
-                       <label class="text-xs font-bold text-slate-500 uppercase">Valor Porcentual (%)</label>
-                       <input id="sw-ind-pts" type="number" class="w-full p-2 border rounded bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-200 transition font-bold text-indigo-600" placeholder="Ej: 5" value="${ptsActual}">
+                ? `<div class="hidden"><input id="sw-ind-pts" type="number" value="0"><input id="sw-ind-tot" type="number" value="100"></div>
+                   <div class="bg-indigo-50 text-indigo-700 p-3 rounded-lg text-xs font-bold border border-indigo-200"><i class="fas fa-magic text-lg"></i> % Auto-calculado.</div>`
+                : `<div class="grid grid-cols-2 gap-3">
+                       <div>
+                           <label class="text-xs font-bold text-slate-500 uppercase">Valor (%)</label>
+                           <input id="sw-ind-pts" type="number" class="w-full p-2 border rounded bg-slate-50 font-bold text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Ej: 15" value="${ptsActual}">
+                       </div>
+                       <div>
+                           <label class="text-[10px] font-bold text-rose-500 uppercase">Puntos Totales (Examen)</label>
+                           <input id="sw-ind-tot" type="number" class="w-full p-2 border rounded bg-rose-50 font-bold text-rose-600 outline-none focus:ring-2 focus:ring-rose-200" placeholder="Ej: 45" value="${ptsTotalesActual}">
+                       </div>
                    </div>`;
 
             const { value: form } = await Swal.fire({
@@ -2999,72 +3079,80 @@ modalIndicador: async (id = null, descActual = '', ptsActual = '') => {
                 confirmButtonText: id ? 'Actualizar' : 'Guardar',
                 confirmButtonColor: '#4F46E5',
                 preConfirm: () => {
-                    const desc = document.getElementById('sw-ind-desc').value;
-                    const pts = document.getElementById('sw-ind-pts').value;
-                    if(!desc) return Swal.showValidationMessage('Escribe una descripción');
-                    return { descripcion: desc, puntaje: pts }
+                    return { 
+                        descripcion: document.getElementById('sw-ind-desc').value, 
+                        puntaje: document.getElementById('sw-ind-pts').value,
+                        puntosTotales: document.getElementById('sw-ind-tot').value
+                    }
                 }
             });
 
             if(form) {
+                if(!form.descripcion) return;
                 Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
-                await app.api({ action: 'saveIndicator', idIndicador: id, idMateria: app.state.currentMatId, categoria: app.state.currentCat, descripcion: form.descripcion, puntaje: form.puntaje });
+                await app.api({ action: 'saveIndicator', idIndicador: id, idMateria: app.state.currentMatId, categoria: app.state.currentCat, ...form });
+                // Recargamos TODO para que los TABS se actualicen
+                app.state.allIndicators = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: 'ALL' });
+                app.renderDynamicTabs();
                 app.loadIndicadores();
                 Swal.close();
             }
         },
 
-        // 2. BORRAR INDICADOR
-        deleteIndicador: async (id) => {
-            const conf = await Swal.fire({ title: '¿Borrar?', text: 'Se perderán las notas de esta actividad', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' });
-            if(conf.isConfirmed) {
-                await app.api({ action: 'deleteIndicator', id });
-                app.loadIndicadores();
-            }
-        },
-
-        // 3. ABRIR TABLA DE EVALUACIÓN (CON LÓGICA 0-3 RECUPERADA)
-        openEvaluation: async (idInd, descInd, maxPts) => {
+// 3. ABRIR TABLA DE EVALUACIÓN (CON ESCALA 0-3 Y PUNTOS)
+        openEvaluation: async (idInd, descInd, maxPtsPorcentaje, ptsTotalesObj) => {
             app.state.currentIndId = idInd;
-            app.state.currentMaxPts = parseFloat(maxPts); 
+            app.state.currentMaxPts = parseFloat(maxPtsPorcentaje); 
+            app.state.currentPtsTotales = parseFloat(ptsTotalesObj) || 100;
+            const isCotidiano = app.state.currentCat === 'TRAB_COT';
             
             app.nav('evaluar');
             document.getElementById('eval-title').innerText = descInd;
-            document.getElementById('eval-subtitle').innerText = `${app.state.currentCatLabel} | Valor Dinámico: ${app.state.currentMaxPts.toFixed(2)}%`;
+            document.getElementById('eval-subtitle').innerText = isCotidiano 
+                ? `${app.state.currentCatLabel} | Valor Auto: ${app.state.currentMaxPts.toFixed(2)}%`
+                : `${app.state.currentCatLabel} | Valor: ${app.state.currentMaxPts}% | Prueba de: ${app.state.currentPtsTotales} Pts`;
             
             const tbody = document.getElementById('table-eval-body');
-            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin text-indigo-500"></i></td></tr>';
 
+            // Cargar datos
             const list = await app.api({ action: 'getEvaluationData', idSeccion: app.state.currentSecId, idIndicador: idInd });
             tbody.innerHTML = '';
             
-            if(!list || list.length === 0) return;
+            if(!list || list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">Sin estudiantes.</td></tr>';
+                return;
+            }
 
+            // DIBUJAR FILAS
             list.forEach((e, idx) => {
-                let selectedVal = "";
-                let ptsObtenidos = "-";
-                let badgeFecha = ""; 
+                let badgeFecha = e.fecha ? `<span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-100 shadow-sm" id="badge-fecha-${e.id}"><i class="far fa-calendar-check"></i> ${e.fecha}</span>` : `<span class="hidden" id="badge-fecha-${e.id}"></span>`;
+                
+                let inputHtml = '';
+               let inputVal = (e.nivel !== null && e.nivel !== undefined) ? e.nivel : "";  
 
-                // LÓGICA INTELIGENTE DE RECUPERACIÓN DE DATOS
-                if (e.nivel !== null && e.nivel !== "" && e.nivel !== undefined) {
-                    // Si existe el nivel en la BD (Código Nuevo)
-                    selectedVal = Number(e.nivel); 
-                    ptsObtenidos = ((selectedVal / 3) * app.state.currentMaxPts).toFixed(2);
-                } else if (e.nota !== "" && e.nota !== null && e.nota !== undefined) {
-                    // BACKUP: Si la BD es vieja y solo tiene la nota guardada
-                    const notaNum = parseFloat(e.nota);
-                    // Hacemos el cálculo inverso para saber qué nivel era
-                    selectedVal = Math.round((notaNum / app.state.currentMaxPts) * 3);
-                    ptsObtenidos = notaNum.toFixed(2);
-                }
-
-                // Construir Badge de Fecha
-                if (e.fecha) {
-                    badgeFecha = `<span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-100 flex items-center gap-1 shadow-sm" id="badge-fecha-${e.id}">
-                                    <i class="far fa-calendar-check"></i> Eval: ${e.fecha}
-                                  </span>`;
+                if (isCotidiano) {
+                    // LÓGICA COTIDIANO (ESCALA 0-3)
+                    let selectedVal = (e.nivel !== null && e.nivel !== undefined) ? Number(e.nivel) : "";
+                    
+                    inputHtml = `
+                        <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded min-w-[60px] text-center" id="pts-view-${e.id}">- pts</span>
+                        <select class="grade-input w-36 p-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-600 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm" 
+                                data-id="${e.id}" onchange="app.updatePreviewScore(this)">
+                            <option value="" ${selectedVal === "" ? "selected" : ""}>- Seleccionar -</option>
+                            <option value="3" ${selectedVal === 3 ? "selected" : ""}>3 (Logrado)</option>
+                            <option value="2" ${selectedVal === 2 ? "selected" : ""}>2 (Intermedio)</option>
+                            <option value="1" ${selectedVal === 1 ? "selected" : ""}>1 (Inicial)</option>
+                            <option value="0" ${selectedVal === 0 ? "selected" : ""}>0 (Nulo)</option>
+                        </select>`;
                 } else {
-                    badgeFecha = `<span class="hidden" id="badge-fecha-${e.id}"></span>`;
+                    // LÓGICA EXÁMENES / TAREAS (PUNTOS REALES)
+                    inputHtml = `
+                        <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded min-w-[50px] text-center" id="nota100-view-${e.id}" title="Nota 1-100">Nota: -</span>
+                        <span class="text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1 rounded min-w-[60px] text-center" id="pts-view-${e.id}" title="Porcentaje para el reporte">- %</span>
+                        <input type="number" class="grade-input w-20 p-2 border border-rose-300 rounded-lg text-center font-bold text-rose-600 focus:ring-2 focus:ring-rose-500 outline-none shadow-sm" 
+                               data-id="${e.id}" value="${inputVal}" onkeyup="app.updatePreviewScore(this)" onchange="app.updatePreviewScore(this)">
+                        `;
                 }
 
                 tbody.innerHTML += `
@@ -3075,89 +3163,128 @@ modalIndicador: async (id = null, descActual = '', ptsActual = '') => {
                         <div class="flex flex-col items-end gap-1">
                             ${badgeFecha}
                             <div class="flex items-center gap-2">
-                                <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded min-w-[60px] text-center" id="pts-view-${e.id}">
-                                    ${ptsObtenidos !== "-" ? ptsObtenidos + " pts" : "- pts"}
-                                </span>
-                                <select class="grade-select w-36 p-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-600 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm cursor-pointer" 
-                                        data-id="${e.id}"
-                                        onchange="app.updatePreviewScore(this, ${app.state.currentMaxPts})">
-                                    <option value="" ${selectedVal === "" ? "selected" : ""}>- Seleccionar -</option>
-                                    <option value="3" ${selectedVal === 3 ? "selected" : ""}>3 (Logrado)</option>
-                                    <option value="2" ${selectedVal === 2 ? "selected" : ""}>2 (Intermedio)</option>
-                                    <option value="1" ${selectedVal === 1 ? "selected" : ""}>1 (Inicial)</option>
-                                    <option value="0" ${selectedVal === 0 ? "selected" : ""}>0 (Nulo)</option>
-                                </select>
+                                ${inputHtml}
                             </div>
                         </div>
                     </td>
                 </tr>`;
             });
+
+            // -------------------------------------------------------------
+            // DISPARADOR AUTOMÁTICO DE CÁLCULO AL ABRIR
+            // -------------------------------------------------------------
+            document.querySelectorAll('.grade-input').forEach(input => {
+                // Si el input tiene valor (porque ya tenía nota guardada), actualizamos los badges
+                if(input.value !== "" && input.value !== "undefined") {
+                    app.updatePreviewScore(input);
+                }
+            });
         },
 
-        // 4. HELPER VISUAL (Calcula puntos al cambiar el select)
-        updatePreviewScore: (select, maxPts) => {
-            const idEst = select.getAttribute('data-id');
-            const span = document.getElementById(`pts-view-${idEst}`);
-            const nivel = select.value;
+updatePreviewScore: (inputObj) => {
+            const idEst = inputObj.getAttribute('data-id');
+            const spanPorc = document.getElementById(`pts-view-${idEst}`);
+            const spanNota100 = document.getElementById(`nota100-view-${idEst}`);
+            const isCotidiano = app.state.currentCat === 'TRAB_COT';
+            const val = inputObj.value;
 
-            if(nivel === "") {
-                span.innerText = "- pts";
-                span.className = "text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded min-w-[60px] text-center";
-            } else {
-                const notaCalculada = (parseInt(nivel) / 3) * maxPts;
-                span.innerText = notaCalculada.toFixed(2) + " pts";
+            // Si está vacío, reseteamos las etiquetas
+            if(val === "") {
+                spanPorc.innerText = "- %";
+                spanPorc.className = "text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1 rounded min-w-[60px] text-center";
+                if(spanNota100) spanNota100.innerText = "Nota: -";
+                return;
+            }
+
+            if (isCotidiano) {
+                const nivel = parseInt(val);
+                const notaCalculada = (nivel / 3) * app.state.currentMaxPts;
                 
-                if(nivel == 3) span.className = "text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded min-w-[60px] text-center transition";
-                else if(nivel == 0) span.className = "text-xs font-bold text-red-700 bg-red-100 px-2 py-1 rounded min-w-[60px] text-center transition";
-                else span.className = "text-xs font-bold text-indigo-700 bg-indigo-100 px-2 py-1 rounded min-w-[60px] text-center transition";
+                spanPorc.innerText = notaCalculada.toFixed(2) + "%";
+                spanPorc.className = `text-xs font-bold px-2 py-1 rounded min-w-[60px] text-center transition ${nivel==3?'text-emerald-700 bg-emerald-100':nivel==0?'text-red-700 bg-red-100':'text-indigo-700 bg-indigo-100'}`;
+            } else {
+                // EXÁMENES: 
+                const ptsDigitados = parseFloat(val);
+                
+                // Validar Máximo
+                if(ptsDigitados > app.state.currentPtsTotales) {
+                    Swal.fire({toast:true, position:'top-end', icon:'warning', title:`Máx ${app.state.currentPtsTotales} pts`, showConfirmButton:false, timer:2000});
+                    inputObj.value = app.state.currentPtsTotales;
+                    return app.updatePreviewScore(inputObj); 
+                }
+
+                // Cálculo de Nota 1-100
+                const nota100 = (ptsDigitados / app.state.currentPtsTotales) * 100;
+                // Cálculo de Porcentaje para reporte
+                const porcObtenido = (ptsDigitados / app.state.currentPtsTotales) * app.state.currentMaxPts;
+                
+                spanPorc.innerText = porcObtenido.toFixed(2) + "%";
+                spanPorc.className = "text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded min-w-[60px] text-center transition";
+                
+                if(spanNota100) {
+                    spanNota100.innerText = "Nota: " + Math.round(nota100);
+                    spanNota100.className = `text-[10px] font-bold px-2 py-1 rounded min-w-[50px] text-center border transition ${nota100 >= 65 ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-rose-600 bg-rose-50 border-rose-200'}`;
+                }
             }
         },
 
-        // 5. GUARDAR NOTAS
-       saveGrades: async () => {
-            const selects = document.querySelectorAll('.grade-select');
-            let lista =[];
+                // 2. BORRAR INDICADOR
+        deleteIndicador: async (id) => {
+            const conf = await Swal.fire({ title: '¿Borrar?', text: 'Se perderán las notas de esta actividad', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' });
+            if(conf.isConfirmed) {
+                await app.api({ action: 'deleteIndicator', id });
+                app.loadIndicadores();
+            }
+        },
+
+// ----------------------------------------------------
+        // MOTOR DE GUARDADO DE NOTAS (BLINDADO)
+        // ----------------------------------------------------
+        saveGrades: async () => {
+            const selects = document.querySelectorAll('.grade-input'); // Fíjate: usamos grade-input tanto para SELECT como para INPUT
+            let lista = [];
             const maxPts = app.state.currentMaxPts;
+            const ptsTotales = app.state.currentPtsTotales;
+            const isCotidiano = app.state.currentCat === 'TRAB_COT';
             
             selects.forEach(sel => {
                 if(sel.value !== "") {
-                    const nivel = parseInt(sel.value);
-                    const notaFinal = (nivel / 3) * maxPts;
+                    let notaFinal = 0;
+                    let nivelOBruto = parseFloat(sel.value); // Aquí recibimos 0-3 o los pts del examen
                     
-                    // Enviamos LA NOTA CALCULADA y EL NIVEL 0-3
+                    if (isCotidiano) {
+                        // Cotidiano: Convertimos escala 0-3 a nota final
+                        notaFinal = (nivelOBruto / 3) * maxPts;
+                    } else {
+                        // Examen/Tarea: Regla de 3
+                        notaFinal = (nivelOBruto / ptsTotales) * maxPts;
+                    }
+                    
                     lista.push({ 
                         idEst: sel.getAttribute('data-id'), 
-                        nota: notaFinal,
-                        nivel: nivel 
+                        nota: notaFinal.toFixed(2), // El porcentaje final (lo que va a la boleta)
+                        nivel: nivelOBruto // El dato original (0-3 o Puntos) para recuperar al editar
                     });
                 }
             });
 
             Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
-            const res = await app.api({ action: 'saveGrades', idIndicador: app.state.currentIndId, lista: lista });
-            if(res && res.success) {
-                // Pequeño truco UX: Actualizar las etiquetas de fecha visualmente a "Hoy"
-                lista.forEach(item => {
-                    const badge = document.getElementById(`badge-fecha-${item.idEst}`);
-                    if(badge) {
-                        badge.className = "bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200 flex items-center gap-1 shadow-sm fade-in";
-                        badge.innerHTML = `<i class="far fa-calendar-check"></i> Eval: Hoy`;
-                    }
-                });
-                Swal.fire({ icon: 'success', title: 'Guardado', timer: 1500, showConfirmButton: false });
-            }
-        },
-
-        // 6. RELLENAR MÁXIMO (Adaptado para Selects)
-        fillMaxScore: () => {
-            // Ahora seleccionamos "3" (Logrado) en todos los selects vacíos
-            document.querySelectorAll('.grade-select').forEach(sel => {
-                if(sel.value === "") {
-                    sel.value = "3";
-                    // Disparamos el evento visual manualmente
-                    app.updatePreviewScore(sel, app.state.currentMaxPts);
-                }
+            
+            const res = await app.api({ 
+                action: 'saveGrades', 
+                idIndicador: app.state.currentIndId, 
+                lista: lista 
             });
+            
+            if(res && res.success) {
+                // Éxito: Ocultar spinner y avisar
+                Swal.fire({ icon: 'success', title: 'Guardado', text: 'Notas registradas correctamente.', timer: 1500, showConfirmButton: false });
+                
+                // OPCIONAL: Refrescar la tabla para que aparezcan las fechas "Eval: Hoy"
+                app.openEvaluation(app.state.currentIndId, document.getElementById('eval-title').innerText, maxPts, ptsTotales);
+            } else {
+                Swal.fire('Error', 'No se pudieron guardar las notas', 'error');
+            }
         },
 
         // ==========================================
@@ -4754,12 +4881,8 @@ adminLoadUsers: async () => {
                 </div>
 
                 <!-- TABS DE CATEGORÍAS -->
-                <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
-                    <button onclick="app.setCategory('TRAB_COT', 'Cotidiano')" class="tab-btn px-4 py-2 rounded-full text-sm font-bold bg-indigo-100 text-indigo-700 ring-2 ring-indigo-500">Cotidiano</button>
-                    <button onclick="app.setCategory('TAREAS', 'Tareas')" class="tab-btn px-4 py-2 rounded-full text-sm font-bold bg-white text-gray-500 hover:bg-gray-50 border">Tareas</button>
-                    <button onclick="app.setCategory('PRUEBAS', 'Pruebas')" class="tab-btn px-4 py-2 rounded-full text-sm font-bold bg-white text-gray-500 hover:bg-gray-50 border">Pruebas</button>
-                    <button onclick="app.setCategory('PROYECTOS', 'Proyectos')" class="tab-btn px-4 py-2 rounded-full text-sm font-bold bg-white text-gray-500 hover:bg-gray-50 border">Proyectos</button>
-                    <button onclick="app.setCategory('ASIST', 'Asistencia')" class="tab-btn px-4 py-2 rounded-full text-sm font-bold bg-white text-gray-500 hover:bg-gray-50 border">Asistencia</button>
+            <div id="dynamic-tabs-container" class="flex gap-2 mb-6 overflow-x-auto pb-2">
+                    <!-- JS DIBUJA LOS TABS AQUÍ -->
                 </div>
 
                 <!-- TABLA DE INDICADORES -->
