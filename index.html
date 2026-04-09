@@ -1787,121 +1787,155 @@ openStudents: async (idSec, nombreSec) => {
         // MÓDULO COMUNICACIÓN (ENVÍO MASIVO)
         // ==========================================
         
+       // MÓDULO COMUNICACIÓN (ENVÍO MASIVO O IMPRESIÓN MÚLTIPLE)
         modalEnvioMasivo: async () => {
-            // 1. Obtener estudiantes de la sección actual
-            // (Podemos llamar a la API o usar una caché si la tuviéramos, llamemos a la API para estar seguros)
             Swal.showLoading();
             const estudiantes = await app.api({ action: 'getStudents', idSeccion: app.state.currentSecId });
             Swal.close();
 
             if(!estudiantes || estudiantes.length === 0) return Swal.fire('Aviso', 'No hay estudiantes en esta sección.', 'info');
 
-            // 2. Construir la lista HTML
-            let listaHtml = `<div class="max-h-60 overflow-y-auto border rounded bg-white text-left text-sm">`;
-            
-            // Header con "Marcar Todos"
+            // Construir lista de checkboxes
+            let listaHtml = `<div class="max-h-60 overflow-y-auto border border-slate-200 rounded-lg bg-slate-50 text-left text-sm">`;
             listaHtml += `
-                <div class="sticky top-0 bg-gray-100 p-2 border-b flex items-center justify-between font-bold text-gray-600">
+                <div class="sticky top-0 bg-slate-200 p-2.5 border-b border-slate-300 flex items-center justify-between font-bold text-slate-700 shadow-sm z-10">
                     <span>Estudiantes</span>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" onchange="app.toggleAllChecks(this)" checked> Todos
+                    <label class="flex items-center gap-2 cursor-pointer hover:text-indigo-600 transition">
+                        <input type="checkbox" onchange="app.toggleAllChecks(this)" checked class="w-4 h-4 accent-indigo-600"> Todos
                     </label>
                 </div>
-                <div class="divide-y">`;
+                <div class="divide-y divide-slate-200">`;
 
             estudiantes.forEach(e => {
-                // Verificar si tiene correo para mostrar aviso
-                const tieneEmail = e.emailEnc && e.emailEnc.includes('@'); // emailEnc viene de getStudents (asegúrate que el backend lo envíe)
-                const aviso = tieneEmail ? `<span class="text-green-600 text-xs ml-2">(${e.emailEnc})</span>` : `<span class="text-red-500 text-xs ml-2 font-bold">(Sin correo)</span>`;
-                const disabled = !tieneEmail ? 'disabled' : 'checked'; // Deshabilitar si no tiene correo
+                const tieneEmail = e.emailEnc && e.emailEnc.includes('@');
+                const aviso = tieneEmail ? `<span class="text-emerald-600 text-[10px] ml-2 font-mono">(${e.emailEnc})</span>` : `<span class="text-rose-500 text-[10px] ml-2 font-bold">(Sin correo)</span>`;
+                const disabled = !tieneEmail ? 'data-no-email="true"' : 'checked'; 
                 
                 listaHtml += `
-                <div class="p-2 hover:bg-gray-50 flex items-center gap-3">
-                    <input type="checkbox" class="chk-send-student w-4 h-4 text-indigo-600" value="${e.id}" ${disabled}>
+                <div class="p-2.5 bg-white hover:bg-indigo-50 flex items-center gap-3 transition">
+                    <input type="checkbox" class="chk-send-student w-4 h-4 accent-indigo-600 cursor-pointer" value="${e.id}" ${disabled}>
                     <div>
-                        <span class="font-medium text-gray-800">${e.nombre}</span>
+                        <span class="font-bold text-slate-700 text-xs">${e.nombre}</span>
                         ${aviso}
                     </div>
                 </div>`;
             });
             listaHtml += `</div></div>`;
 
-            // 3. Mostrar Modal
+            // Mostrar Modal con el Switch
             const { value: form } = await Swal.fire({
-                title: 'Enviar Informe al Hogar',
-                width: '600px',
+                title: 'Informes de Rendimiento',
+                width: '650px',
                 html: `
                     <div class="space-y-4">
-                        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 text-left text-xs text-blue-700">
-                            <p>Se generará el <b>PDF de Notas</b> actual y se enviará por correo electrónico a los encargados seleccionados.</p>
+                        <div class="bg-indigo-50 border-l-4 border-indigo-500 p-3 text-left text-xs text-indigo-700 font-medium">
+                            Selecciona los estudiantes. Puedes enviar los informes por correo electrónico o descargar un solo archivo PDF con todas las boletas listas para imprimir.
                         </div>
                         
-                        <div class="text-left">
-                            <label class="text-xs font-bold text-gray-500">Mensaje para los padres</label>
-                            <textarea id="sw-msg-body" class="w-full p-2 border rounded h-24 text-sm" placeholder="Estimados padres, adjunto envío el reporte de calificaciones..."></textarea>
+                        <!-- SWITCH DE ACCIÓN -->
+                        <div class="mb-4">
+                            <label class="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-wider text-left">¿Qué deseas hacer?</label>
+                            <div class="flex gap-3">
+                                <label class="flex items-center justify-center gap-2 cursor-pointer bg-blue-50 hover:bg-blue-100 p-3 rounded-xl border border-blue-200 flex-1 transition transform hover:-translate-y-0.5">
+                                    <input type="radio" name="sw-action-type" value="email" checked onchange="document.getElementById('email-msg-box').classList.remove('hidden')"> 
+                                    <span class="text-sm font-bold text-blue-700"><i class="fas fa-envelope"></i> Enviar Correo</span>
+                                </label>
+                                <label class="flex items-center justify-center gap-2 cursor-pointer bg-emerald-50 hover:bg-emerald-100 p-3 rounded-xl border border-emerald-200 flex-1 transition transform hover:-translate-y-0.5">
+                                    <input type="radio" name="sw-action-type" value="download" onchange="document.getElementById('email-msg-box').classList.add('hidden')"> 
+                                    <span class="text-sm font-bold text-emerald-700"><i class="fas fa-print"></i> Solo Imprimir</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- MENSAJE (Se oculta si elige Imprimir) -->
+                        <div id="email-msg-box" class="text-left mb-2 transition-all">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Mensaje para los padres</label>
+                            <textarea id="sw-msg-body" class="w-full p-3 border border-slate-200 bg-slate-50 rounded-xl h-20 text-sm outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Estimados padres, adjunto envío el reporte..."></textarea>
                         </div>
 
                         <div class="text-left">
-                            <label class="text-xs font-bold text-gray-500 mb-1 block">Seleccionar Destinatarios</label>
+                            <label class="text-xs font-bold text-slate-500 mb-1 block uppercase tracking-wider">Destinatarios</label>
                             ${listaHtml}
                         </div>
                     </div>
                 `,
                 showCancelButton: true,
-                confirmButtonText: 'Enviar Correos',
-                confirmButtonColor: '#10B981', // Green
-            preConfirm: () => {
+                confirmButtonText: 'Procesar Selección',
+                confirmButtonColor: '#4F46E5', 
+                preConfirm: () => {
+                    const actionType = document.querySelector('input[name="sw-action-type"]:checked').value;
                     const msg = document.getElementById('sw-msg-body').value;
-                    if(!msg) return Swal.showValidationMessage('Escribe un mensaje');
                     
-                    let ids = [];
-                    document.querySelectorAll('.chk-send-student:checked').forEach(c => ids.push(c.value));
+                    if(actionType === 'email' && !msg) return Swal.showValidationMessage('Escribe un mensaje para el correo');
                     
-                    if(ids.length === 0) return Swal.showValidationMessage('Selecciona al menos un estudiante');
+                    let ids =[];
+                    // Si es email, descartamos los que no tienen correo marcado. Si es imprimir, jalamos todos los marcados.
+                    document.querySelectorAll('.chk-send-student:checked').forEach(c => {
+                        if(actionType === 'email' && c.getAttribute('data-no-email') === 'true') {
+                            // Lo ignoramos para email porque fallaría
+                        } else {
+                            ids.push(c.value);
+                        }
+                    });
+                    
+                    if(ids.length === 0) return Swal.showValidationMessage('Selecciona al menos un estudiante válido para esta acción');
+
+                    // Extraer el nombre del profe limpio (Quitando el "Buenos días,")
+                    let nombreDocente = "Docente";
+                    const spanUser = document.getElementById('user-name').innerText;
+                    if(spanUser.includes(',')) nombreDocente = spanUser.split(',')[1].trim();
 
                     return { 
+                        tipoAccion: actionType,
                         mensaje: msg, 
                         ids: ids,
-                        // 👇 AGREGAMOS ESTOS DATOS DEL DOCENTE 👇
-                        nombreDocente: "Prof. " + (document.getElementById('user-name').innerText || "Docente"),
+                        nombreDocente: "Prof. " + nombreDocente,
                         emailDocente: app.user.email 
                     };
                 }
             });
 
             if(form) {
-                // Confirmación final
-                const confirm = await Swal.fire({
-                    title: `¿Enviar a ${form.ids.length} personas?`,
-                    text: "Esto puede tomar unos segundos. No cierres la ventana.",
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, enviar'
-                });
-
-                if(confirm.isConfirmed) {
+                if (form.tipoAccion === 'email') {
+                    // LÓGICA 1: ENVIAR CORREOS
                     Swal.fire({
-                        title: 'Enviando...',
-                        html: 'Generando PDFs y enviando correos.<br><b>Por favor espera.</b>',
+                        title: 'Enviando Correos...',
+                        html: 'Generando radiografías y enviando.<br><b>Por favor espera.</b>',
                         allowOutsideClick: false,
                         didOpen: () => Swal.showLoading()
                     });
 
-                    const res = await app.api({
-                        action: 'sendBulkReport',
-                        ids: form.ids,
-                        mensaje: form.mensaje
+                    const res = await app.api({ action: 'sendBulkReport', ids: form.ids, mensaje: form.mensaje, nombreDocente: form.nombreDocente, emailDocente: form.emailDocente });
+                    if(res && res.success) Swal.fire('Proceso Finalizado', res.message, 'success');
+                    else Swal.fire('Error', res.message || 'Hubo un problema', 'error');
+
+                } else {
+                    // LÓGICA 2: DESCARGA MASIVA PARA IMPRESIÓN (UN SOLO PDF)
+                    Swal.fire({
+                        title: 'Generando Documento...',
+                        html: 'Uniendo todas las boletas en un solo PDF.<br><b>Esto tomará unos segundos.</b>',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
                     });
 
+                    const res = await app.api({ action: 'bulkDownloadReport', ids: form.ids, nombreDocente: form.nombreDocente });
+
                     if(res && res.success) {
-                        Swal.fire('Proceso Finalizado', res.message, 'success');
+                        Swal.close();
+                        // Descargar el archivo localmente
+                        const link = document.createElement('a');
+                        link.href = "data:application/pdf;base64," + res.base64;
+                        link.download = res.nombre;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
                     } else {
-                        Swal.fire('Error', res.message || 'Hubo un problema', 'error');
+                        Swal.fire('Error', res.message || 'No se pudo generar el PDF', 'error');
                     }
                 }
             }
         },
-
+        
         // Helper para "Marcar Todos"
         toggleAllChecks: (source) => {
             const checkboxes = document.querySelectorAll('.chk-send-student:not(:disabled)');
