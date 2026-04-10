@@ -699,7 +699,7 @@
     // CONFIGURACIÓN Y ESTADO GLOBAL
     // ==========================================
     // ¡¡PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT!! 👇
-    const API_URL = "https://script.google.com/macros/s/AKfycbwhdy3gBgJobKmremJl50tOKNpX2TGZtoKXL5EXZutresDNxXjT5mgWhwcpNXLCxT37EA/exec"; 
+    const API_URL = "https://script.google.com/macros/s/AKfycbygEyJXaLBjvjQ026-FvCzWoZKEOAVQFVIx_hHmo4Lpgb068ODko-Mua1T5-ezF9-iGZQ/exec"; 
 
     const app = {
         user: null,      // Datos del usuario logueado
@@ -2998,7 +2998,18 @@ renderScheduleList: () => {
         // B. CARGAR LISTA DE INDICADORES
 loadIndicadores: async () => {
             const tbody = document.getElementById('table-ind-body');
-            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+            
+            // 1. Ajuste del Encabezado (Punto de la Imagen)
+            const header = document.querySelector('#view-indicadores thead tr');
+            if (header) {
+                header.innerHTML = `
+                    <th class="p-4">DESCRIPCIÓN / ACTIVIDAD</th>
+                    <th class="p-4 text-center">VALOR (%)</th>
+                    <th class="p-4 text-right">ACCIONES</th>
+                `;
+            }
+
+            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin text-indigo-500 text-xl"></i><br><span class="text-slate-400 text-xs">Cargando...</span></td></tr>';
 
             const list = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: app.state.currentCat });
             
@@ -3019,21 +3030,28 @@ loadIndicadores: async () => {
             list.forEach(i => {
                 // Si es cotidiano usa la división, sino usa el valor que el profe escribió
                 const finalPts = isCotidiano ? valorDinamico : parseFloat(i.puntaje);
-                const badgeLabel = isCotidiano ? `<i class="fas fa-robot mr-1"></i> ${finalPts.toFixed(2)}%` : `${finalPts}%`;
+                
+                // Formateamos el badge para que siempre sea claro (si es auto muestra el icono de robot)
+                const iconoAuto = isCotidiano ? '<i class="fas fa-robot mr-1 text-[9px]"></i>' : '';
+                const badgeLabel = `${iconoAuto}${finalPts.toFixed(2)}%`;
 
                 tbody.innerHTML += `
-                <tr class="hover:bg-slate-50 group transition">
+                <tr class="hover:bg-slate-50 group transition border-b border-slate-100">
                     <td class="p-4 font-bold text-slate-700 text-sm">${i.descripcion}</td>
                     <td class="p-4 text-center">
                         <span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold border border-indigo-100">${badgeLabel}</span>
                     </td>
                     <td class="p-4 text-right">
                         <div class="flex items-center justify-end gap-2">
-                            <button onclick="app.openEvaluation('${i.id}', '${i.descripcion}', ${finalPts}, ${i.puntosTotales})"  class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 border border-emerald-200 transition flex items-center gap-2">
+                            <button onclick="app.openEvaluation('${i.id}', '${i.descripcion}', ${finalPts}, ${i.puntosTotales})" class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 border border-emerald-200 shadow-sm transition flex items-center gap-2">
                                 <i class="fas fa-check-circle"></i> Calificar
                             </button>
-                            <button onclick="app.modalIndicador('${i.id}', '${i.descripcion}', '${i.puntaje}', '${i.puntosTotales}')" class="h-8 w-8 rounded-full text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition flex items-center justify-center"><i class="fas fa-pen text-xs"></i></button>
-                            <button onclick="app.deleteIndicador('${i.id}')" class="h-8 w-8 rounded-full text-slate-400 hover:text-red-600 hover:bg-red-50 transition flex items-center justify-center"><i class="fas fa-trash text-xs"></i></button>
+                            <button onclick="app.modalIndicador('${i.id}', '${i.descripcion}', '${i.puntaje}', '${i.puntosTotales}')" class="h-8 w-8 rounded-full text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition flex items-center justify-center" title="Editar">
+                                <i class="fas fa-pen text-xs"></i>
+                            </button>
+                            <button onclick="app.deleteIndicador('${i.id}')" class="h-8 w-8 rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 transition flex items-center justify-center" title="Eliminar">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
                         </div>
                     </td>
                 </tr>`;
