@@ -702,7 +702,7 @@
     // 👇👇👇  ¡¡PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT!! 👇👇👇
     
     const API_URL = "https://script.google.com/macros/s/AKfycbyP_7V3VCQfi1j74zog7rOw6gWIsvexP6AqKjpPaqkCikqMump29BM0ox958MF8-TZDmA/exec"; 
-
+                    
     const app = {
         user: null,      // Datos del usuario logueado
         data: {},        // Cache de datos (Secciones, Instituciones)
@@ -1051,6 +1051,8 @@ enterApp: async () => {
                 ov.classList.add('hidden');
             }
         },
+
+        
 
         // ==========================================
         // 2. NAVEGACIÓN (CEREBRO DE RUTAS)
@@ -4672,6 +4674,26 @@ adminLoadUsers: async () => {
             }
         },
 
+        // Agrega esto dentro del objeto 'app'
+loadAuditoriaData: async () => {
+    const indId = document.getElementById('aud-ind-id').value;
+    if(!indId) return Swal.fire('Error', 'Necesito el ID del indicador', 'warning');
+    
+    const tbody = document.getElementById('aud-table-body');
+    tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center">Cargando...</td></tr>';
+    
+    const data = await app.api({ action: 'obtenerReporteAuditoriaNotas', idIndicador: indId });
+    tbody.innerHTML = '';
+    
+    data.forEach(r => {
+        tbody.innerHTML += `<tr>
+            <td class="p-3">${r.idNota}</td>
+            <td class="p-3 font-bold text-red-600">${r.nota}</td>
+            <td class="p-3"><button onclick="alert('Manual: ${r.idNota}')" class="text-blue-600 underline text-xs">Ver en BD</button></td>
+        </tr>`;
+    });
+},
+
         // 3. EDITAR PLAN (CORREGIDO)
         editPlan: async (id) => {
             // 1. Buscar datos en memoria
@@ -5058,6 +5080,35 @@ adminLoadUsers: async () => {
                         </div>
                     </div>
 
+                </div>
+            </div>`;
+
+            container.innerHTML += `
+            <div id="view-auditoria" class="view hidden fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-slate-800"><i class="fas fa-search text-indigo-500 mr-2"></i>Auditoría de Rescate</h3>
+                    <button onclick="app.nav('dashboard')" class="text-slate-500 text-sm font-bold"><i class="fas fa-times"></i> Cerrar</button>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <div class="flex gap-3 mb-6 items-end">
+                        <div class="flex-1">
+                            <label class="text-xs font-bold text-slate-500">Indicador a Revisar</label>
+                            <input id="aud-ind-id" class="w-full p-2 border rounded-lg text-sm" placeholder="Pega aquí el ID del Indicador (ej: IND-...)">
+                        </div>
+                        <button onclick="app.loadAuditoriaData()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 transition">
+                            Cargar Datos Crudos
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto border rounded-lg">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-100 font-bold text-gray-600">
+                                <tr><th class="p-3">Estudiante ID</th><th class="p-3">Nota Bruta (BD)</th><th class="p-3">Acción</th></tr>
+                            </thead>
+                            <tbody id="aud-table-body" class="divide-y"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>`;
             
