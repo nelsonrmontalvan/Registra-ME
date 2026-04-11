@@ -698,8 +698,10 @@
         // ==========================================
     // CONFIGURACIÓN Y ESTADO GLOBAL
     // ==========================================
-    // ¡¡PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT!! 👇
-    const API_URL = "https://script.google.com/macros/s/AKfycbx63W-efRw5yHsotQ7njrutrjsncckbrnn_sSsJanS-vwn_gjEo3jls6RBaBcNfkxOVTg/exec"; 
+
+    // 👇👇👇  ¡¡PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT!! 👇👇👇
+    
+    const API_URL = "https://script.google.com/macros/s/AKfycbyP_7V3VCQfi1j74zog7rOw6gWIsvexP6AqKjpPaqkCikqMump29BM0ox958MF8-TZDmA/exec"; 
 
     const app = {
         user: null,      // Datos del usuario logueado
@@ -3200,51 +3202,50 @@ loadIndicadores: async () => {
         },
 
 updatePreviewScore: (inputObj) => {
-            const idEst = inputObj.getAttribute('data-id');
-            const spanPorc = document.getElementById(`pts-view-${idEst}`);
-            const spanNota100 = document.getElementById(`nota100-view-${idEst}`);
-            const isCotidiano = app.state.currentCat === 'TRAB_COT';
-            const val = inputObj.value;
+    const idEst = inputObj.getAttribute('data-id');
+    const spanPorc = document.getElementById(`pts-view-${idEst}`);
+    const spanNota100 = document.getElementById(`nota100-view-${idEst}`);
+    const isCotidiano = app.state.currentCat === 'TRAB_COT';
+    const val = inputObj.value;
 
-            // Si está vacío, reseteamos las etiquetas
-            if(val === "") {
-                spanPorc.innerText = "- %";
-                spanPorc.className = "text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1 rounded min-w-[60px] text-center";
-                if(spanNota100) spanNota100.innerText = "Nota: -";
-                return;
-            }
+    if(val === "") {
+        spanPorc.innerText = "- %";
+        spanPorc.className = "text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1 rounded min-w-[60px] text-center";
+        if(spanNota100) spanNota100.innerText = "Nota: -";
+        return;
+    }
 
-            if (isCotidiano) {
-                const nivel = parseInt(val);
-                const notaCalculada = (nivel / 3) * app.state.currentMaxPts;
-                
-                spanPorc.innerText = notaCalculada.toFixed(2) + "%";
-                spanPorc.className = `text-xs font-bold px-2 py-1 rounded min-w-[60px] text-center transition ${nivel==3?'text-emerald-700 bg-emerald-100':nivel==0?'text-red-700 bg-red-100':'text-indigo-700 bg-indigo-100'}`;
-            } else {
-                // EXÁMENES: 
-                const ptsDigitados = parseFloat(val);
-                
-                // Validar Máximo
-                if(ptsDigitados > app.state.currentPtsTotales) {
-                    Swal.fire({toast:true, position:'top-end', icon:'warning', title:`Máx ${app.state.currentPtsTotales} pts`, showConfirmButton:false, timer:2000});
-                    inputObj.value = app.state.currentPtsTotales;
-                    return app.updatePreviewScore(inputObj); 
-                }
+    if (isCotidiano) {
+        const nivel = parseFloat(val); // Cambié parseInt por parseFloat por seguridad
+        const notaCalculada = (nivel / 3) * app.state.currentMaxPts;
+        
+        spanPorc.innerText = notaCalculada.toFixed(2) + "%";
+        spanPorc.className = `text-xs font-bold px-2 py-1 rounded min-w-[60px] text-center transition ${nivel==3?'text-emerald-700 bg-emerald-100':nivel==0?'text-red-700 bg-red-100':'text-indigo-700 bg-indigo-100'}`;
+    } else {
+        // EXÁMENES / TAREAS
+        const ptsDigitados = parseFloat(val);
+        const totalPuntos = app.state.currentPtsTotales || 100; // Aseguramos que nunca sea 0
 
-                // Cálculo de Nota 1-100
-                const nota100 = (ptsDigitados / app.state.currentPtsTotales) * 100;
-                // Cálculo de Porcentaje para reporte
-                const porcObtenido = (ptsDigitados / app.state.currentPtsTotales) * app.state.currentMaxPts;
-                
-                spanPorc.innerText = porcObtenido.toFixed(2) + "%";
-                spanPorc.className = "text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded min-w-[60px] text-center transition";
-                
-                if(spanNota100) {
-                    spanNota100.innerText = "Nota: " + Math.round(nota100);
-                    spanNota100.className = `text-[10px] font-bold px-2 py-1 rounded min-w-[50px] text-center border transition ${nota100 >= 65 ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-rose-600 bg-rose-50 border-rose-200'}`;
-                }
-            }
-        },
+        // Validar Máximo
+        if(ptsDigitados > totalPuntos) {
+            Swal.fire({toast:true, position:'top-end', icon:'warning', title:`Máx ${totalPuntos} pts`, showConfirmButton:false, timer:2000});
+            inputObj.value = totalPuntos;
+            return app.updatePreviewScore(inputObj); 
+        }
+
+        // CÁLCULO PRECISO
+        const nota100 = (ptsDigitados / totalPuntos) * 100;
+        const porcObtenido = (ptsDigitados / totalPuntos) * app.state.currentMaxPts;
+        
+        spanPorc.innerText = porcObtenido.toFixed(2) + "%";
+        spanPorc.className = "text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded min-w-[60px] text-center transition";
+        
+        if(spanNota100) {
+            spanNota100.innerText = "Nota: " + Math.round(nota100);
+            spanNota100.className = `text-[10px] font-bold px-2 py-1 rounded min-w-[50px] text-center border transition ${nota100 >= 65 ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-rose-600 bg-rose-50 border-rose-200'}`;
+        }
+    }
+},
 
                 // 2. BORRAR INDICADOR
         deleteIndicador: async (id) => {
@@ -3258,52 +3259,54 @@ updatePreviewScore: (inputObj) => {
 // ----------------------------------------------------
         // MOTOR DE GUARDADO DE NOTAS (BLINDADO)
         // ----------------------------------------------------
-        saveGrades: async () => {
-            const selects = document.querySelectorAll('.grade-input'); // Fíjate: usamos grade-input tanto para SELECT como para INPUT
-            let lista = [];
-            const maxPts = app.state.currentMaxPts;
-            const ptsTotales = app.state.currentPtsTotales;
-            const isCotidiano = app.state.currentCat === 'TRAB_COT';
-            
-            selects.forEach(sel => {
-                if(sel.value !== "") {
-                    let notaFinal = 0;
-                    let nivelOBruto = parseFloat(sel.value); // Aquí recibimos 0-3 o los pts del examen
-                    
-                    if (isCotidiano) {
-                        // Cotidiano: Convertimos escala 0-3 a nota final
-                        notaFinal = (nivelOBruto / 3) * maxPts;
-                    } else {
-                        // Examen/Tarea: Regla de 3
-                        notaFinal = (nivelOBruto / ptsTotales) * maxPts;
-                    }
-                    
-                    lista.push({ 
-                        idEst: sel.getAttribute('data-id'), 
-                        nota: notaFinal.toFixed(2), // El porcentaje final (lo que va a la boleta)
-                        nivel: nivelOBruto // El dato original (0-3 o Puntos) para recuperar al editar
-                    });
-                }
-            });
+saveGrades: async () => {
+    // --- 1. BLOQUEO DE BOTÓN (EVITA DOBLE CLIC) ---
+    const btnSave = event.target; // Capturamos el botón que fue clickeado
+    btnSave.disabled = true;
+    btnSave.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Guardando...';
 
-            Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+    const selects = document.querySelectorAll('.grade-input');
+    let lista = [];
+    const maxPts = app.state.currentMaxPts;
+    const ptsTotales = app.state.currentPtsTotales;
+    const isCotidiano = app.state.currentCat === 'TRAB_COT';
+    
+    selects.forEach(sel => {
+        if(sel.value !== "") {
+            let notaFinal = 0;
+            let nivelOBruto = parseFloat(sel.value);
             
-            const res = await app.api({ 
-                action: 'saveGrades', 
-                idIndicador: app.state.currentIndId, 
-                lista: lista 
-            });
-            
-            if(res && res.success) {
-                // Éxito: Ocultar spinner y avisar
-                Swal.fire({ icon: 'success', title: 'Guardado', text: 'Notas registradas correctamente.', timer: 1500, showConfirmButton: false });
-                
-                // OPCIONAL: Refrescar la tabla para que aparezcan las fechas "Eval: Hoy"
-                app.openEvaluation(app.state.currentIndId, document.getElementById('eval-title').innerText, maxPts, ptsTotales);
+            if (isCotidiano) {
+                notaFinal = (nivelOBruto / 3) * maxPts;
             } else {
-                Swal.fire('Error', 'No se pudieron guardar las notas', 'error');
+                notaFinal = (nivelOBruto / ptsTotales) * maxPts;
             }
-        },
+            
+            lista.push({ 
+                idEst: sel.getAttribute('data-id'), 
+                nota: notaFinal.toFixed(2),
+                nivel: nivelOBruto
+            });
+        }
+    });
+
+    const res = await app.api({ 
+        action: 'saveGrades', 
+        idIndicador: app.state.currentIndId, 
+        lista: lista 
+    });
+    
+    // --- 2. RESTAURACIÓN DEL BOTÓN ---
+    btnSave.disabled = false;
+    btnSave.innerHTML = '<i class="fas fa-save mr-2"></i> Guardar Notas';
+
+    if(res && res.success) {
+        Swal.fire({ icon: 'success', title: 'Guardado', text: 'Notas registradas correctamente.', timer: 1500, showConfirmButton: false });
+        app.openEvaluation(app.state.currentIndId, document.getElementById('eval-title').innerText, maxPts, ptsTotales);
+    } else {
+        Swal.fire('Error', 'No se pudieron guardar las notas', 'error');
+    }
+},
 
         // ==========================================
         // MÓDULO BITÁCORA (LÓGICA COMPLETA)
