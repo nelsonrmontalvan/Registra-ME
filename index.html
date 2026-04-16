@@ -3310,6 +3310,42 @@ saveGrades: async () => {
     }
 },
 
+// --- FUNCIÓN PARA RELLENAR CON NOTA MÁXIMA ---
+fillMaxScore: () => {
+    // 1. Determinamos cuál es el "máximo" para este contexto
+    // Si es cotidiano, la escala es siempre 3. Si es otra categoría, usamos los Puntos Totales configurados.
+    const isCotidiano = app.state.currentCat === 'TRAB_COT';
+    const valorMaximo = isCotidiano ? 3 : app.state.currentPtsTotales;
+    
+    // 2. Buscamos todos los inputs de nota en la tabla
+    const inputs = document.querySelectorAll('.grade-input');
+    
+    if(inputs.length === 0) {
+        Swal.fire('Atención', 'No hay estudiantes en esta lista.', 'warning');
+        return;
+    }
+
+    // 3. Aplicamos el valor a cada input
+    inputs.forEach(input => {
+        // Solo rellenamos si el input está vacío o si el docente quiere sobrescribir
+        input.value = valorMaximo;
+        
+        // 4. IMPORTANTE: Disparamos la lógica de cálculo visual
+        // Esto hace que el porcentaje y la nota de 1-100 aparezcan instantáneamente
+        app.updatePreviewScore(input);
+    });
+    
+    // Feedback visual para el docente
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: 'Puntaje máximo asignado: ' + valorMaximo,
+        showConfirmButton: false,
+        timer: 1500
+    });
+},
+
         // ==========================================
         // MÓDULO BITÁCORA (LÓGICA COMPLETA)
         // ==========================================
