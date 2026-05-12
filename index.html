@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -25,19 +26,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-/* ANIMACIÓN CINEMÁTICA (Ken Burns Effect) */
-    @keyframes slowZoom {
-        0% { transform: scale(1); }
-        100% { transform: scale(1.15); }
-    }
-    .bg-movie {
-        /* CAMBIA ESTA URL POR LA QUE ELIJAS DE ABAJO */
-        background-image: url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=2070&auto=format&fit=crop'); 
-        background-size: cover;
-        background-position: center;
-        animation: slowZoom 20s infinite alternate ease-in-out;
-    }
-
+    
     /* 1. FUENTE PROFESIONAL (Inter) */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     
@@ -51,6 +40,44 @@
         background-color: var(--background);
         color: #334155;
         -webkit-font-smoothing: antialiased; /* Texto más nítido */
+    }
+
+    /* --- 1. THEMA PREMIUM PARA SWEETALERT2 --- */
+    div:where(.swal2-container) div:where(.swal2-popup) {
+        border-radius: 1.5rem !important; /* Bordes súper redondos */
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important; /* Sombra profunda Apple */
+        border: 1px solid #f1f5f9 !important;
+    }
+    div:where(.swal2-container) button:where(.swal2-styled) {
+        border-radius: 0.75rem !important;
+        font-weight: 700 !important;
+        transition: all 0.2s !important;
+    }
+    div:where(.swal2-container) button:where(.swal2-styled):active {
+        transform: scale(0.95) !important; /* Efecto click nativo */
+    }
+
+    /* --- 2. ANIMACIÓN CASCADA PARA TABLAS --- */
+    .fade-in-up {
+        animation: fadeInUp 0.4s ease-out forwards;
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    @keyframes fadeInUp {
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ANIMACIÓN CINEMÁTICA (Ken Burns Effect) */
+    @keyframes slowZoom {
+        0% { transform: scale(1); }
+        100% { transform: scale(1.15); }
+    }
+    .bg-movie {
+        /* CAMBIA ESTA URL POR LA QUE ELIJAS DE ABAJO */
+        background-image: url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=2070&auto=format&fit=crop'); 
+        background-size: cover;
+        background-position: center;
+        animation: slowZoom 20s infinite alternate ease-in-out;
     }
 
     /* 2. SCROLLBAR ELEGANTE */
@@ -89,6 +116,60 @@
     /* 4. ANIMACIONES */
     .fade-in { animation: fadeIn 0.4s ease-out forwards; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+
+    /* ======================================================================= */
+    /* --- 5. OPTIMIZACIÓN RESPONSIVA (MÓVILES Y TABLETS) - AGREGADO NUEVO --- */
+    /* ======================================================================= */
+    
+    /* Reglas para Tablets y pantallas medianas (Menos de 1024px) */
+    @media (max-width: 1024px) {
+        /* Evita que las tablas se aplasten. Permite deslizar con el dedo (Swipe) */
+        #views-container .overflow-hidden {
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch; 
+        }
+        /* Mantiene un ancho mínimo para que las columnas no se monten unas sobre otras */
+        #views-container table {
+            min-width: 800px !important; 
+        }
+    }
+
+    /* Reglas para Celulares (Menos de 640px) */
+    @media (max-width: 640px) {
+        /* 1. Convierte los formularios de 2 o 3 columnas a 1 sola columna hacia abajo */
+        .swal2-html-container .grid-cols-2, 
+        .swal2-html-container .grid-cols-3,
+        #view-config .grid-cols-2,
+        #view-config .grid-cols-3 {
+            grid-template-columns: 1fr !important;
+            gap: 1rem !important;
+        }
+        
+        /* 2. Ajusta el tamaño de los modales para que no se salgan del celular */
+        div:where(.swal2-container) div:where(.swal2-popup) {
+            width: 95% !important;
+            padding: 1.5rem 1rem !important;
+        }
+        
+        /* 3. Apila los botones de "Guardar" y "Cancelar" (Para no equivocarse con el dedo grueso) */
+        .swal2-actions {
+            width: 100%;
+            flex-direction: column-reverse; /* El botón cancelar queda abajo */
+            gap: 0.5rem;
+        }
+        .swal2-actions button {
+            width: 100%;
+            margin: 0 !important;
+            padding: 0.8rem !important;
+        }
+        
+        /* 4. Evita que los textos largos escondidos rompan el diseño en el celular */
+        .truncate {
+            white-space: normal !important;
+            word-break: break-word !important;
+        }
+    }
 </style>
 </head>
 
@@ -147,16 +228,36 @@
                     </div>
                 </div>
 
-                <button type="submit" id="btn-login" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-500/30 transition transform active:scale-95 flex items-center justify-center gap-2">
-                    <span>Ingresar al Sistema</span> <i class="fas fa-arrow-right text-xs"></i>
+           <button type="submit" id="btn-login" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/40 transition transform active:scale-95 flex items-center justify-center gap-2">
+                    <span>Acceder</span> <i class="fas fa-arrow-right text-xs"></i>
                 </button>
+
+                <!-- ========================================== -->
+                <!-- SECCIÓN PARA NUEVOS USUARIOS (MÁS VISIBLE) -->
+                <!-- ========================================== -->
+                <div class="mt-6 relative flex items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink-0 mx-4 text-slate-400 text-[10px] uppercase tracking-widest font-bold">¿Primera vez aquí?</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <div class="mt-4 text-center">
+                    <button type="button" onclick="app.showAboutRegistrame()" class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-600 hover:text-emerald-700 border border-emerald-200 font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-sm group">
+                        <i class="fas fa-rocket group-hover:-translate-y-1 transition transform"></i> Descubre RegistraME V-Pro
+                    </button>
+                </div>
+                <!-- ========================================== -->
+
+            </form> <!-- Aquí cierra el formulario -->
+
             </form>
 
             <!-- FOOTER PEQUEÑO -->
             <div class="mt-8 pt-6 border-t border-slate-100 text-center">
                 <p class="text-xs text-slate-400">
                     &copy; 2026 RegistraME Platform.<br>
-                    <span class="opacity-75">Desarrollado con altos estándares de calidad.</span>
+                    <span class="opacity-75">Desarrollado con altos estándares de calidad.</span><br>
+                    <span class="opacity-75">Ing. Nelson Rodríguez Montalván.</span>
                 </p>
             </div>
         </div>
@@ -235,6 +336,13 @@
                     <i class="fas fa-clock w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
                     <span class="font-medium text-sm">Horarios</span>
                 </a>
+
+                <!-- NUEVO BOTÓN: AYUDA Y SOPORTE -->
+                <a onclick="app.nav('ayuda')" class="menu-item flex items-center px-3 py-2.5 text-slate-400 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group mt-6 border-t border-slate-800/50 pt-4">
+                    <i class="fas fa-life-ring w-6 text-slate-400 group-hover:text-indigo-500 transition"></i>
+                    <span class="font-medium text-sm">Ayuda y Soporte</span>
+                </a>
+
             </div>
 
             <!-- SECCIÓN ADMIN (Oculta por defecto) -->
@@ -245,6 +353,8 @@
                     <span class="font-medium text-sm">Usuarios</span>
                 </a>
             </div>
+
+
 
         </nav>
 
@@ -269,30 +379,23 @@
         <div class="ambient-light light-2"></div>
 
         <!-- HEADER SUPERIOR -->
-<header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 shrink-0">
-    <div class="flex items-center gap-4">
-        <button onclick="app.toggleSidebar()" class="md:hidden text-gray-500 hover:text-gray-700">
-            <i class="fas fa-bars text-xl"></i>
-        </button>
-        <h2 id="page-title" class="text-xl font-bold text-gray-800">Dashboard</h2>
-    </div>
-
-    <!-- AQUÍ VA EL INDICADOR DE SINCRONIZACIÓN -->
-    <div class="flex items-center gap-4">
-        <div id="sync-status" class="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 text-gray-500 text-[10px] font-bold transition-all">
-            <i class="fas fa-cloud"></i>
-            <span id="sync-text">SINCRO OK</span>
-        </div>
-
-        <div class="hidden md:flex flex-col text-right mr-2">
-            <span id="user-name" class="text-sm font-bold text-gray-700">Cargando...</span>
-            <span id="user-role" class="text-xs text-gray-500 uppercase">Docente</span>
-        </div>
-        <div class="h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold border border-indigo-200 shadow-sm">
-            <i class="fas fa-user"></i>
-        </div>
-    </div>
-</header>
+        <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 shrink-0">
+            <div class="flex items-center gap-4">
+                <button onclick="app.toggleSidebar()" class="md:hidden text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <h2 id="page-title" class="text-xl font-bold text-gray-800">Dashboard</h2>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="hidden md:flex flex-col text-right mr-2">
+                    <span id="user-name" class="text-sm font-bold text-gray-700">Cargando...</span>
+                    <span id="user-role" class="text-xs text-gray-500 uppercase">Docente</span>
+                </div>
+                <div class="h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold border border-indigo-200 shadow-sm">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+        </header>
 
        <!-- CONTENEDOR DE VISTAS (SCROLLEABLE) -->
         <div id="views-container" class="flex-1 overflow-y-auto p-6 relative">
@@ -322,23 +425,15 @@
                         <i class="fas fa-arrow-left"></i> Volver
                     </button>
                     <div class="flex gap-2">
-
-                        <button onclick="app.downloadPdf('pdfStudentList', app.state.currentSecId)"
-                            class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition border border-gray-200 shadow-sm">
-                            <i class="fas fa-print mr-2"></i> Imprimir Lista
-                        </button>
-               
-                        <button onclick="app.modalEnvioMasivo()"
-                            class="bg-amber-100 text-amber-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-amber-200 transition border border-amber-200 shadow-sm">
+                        <!-- BOTÓN NUEVO -->
+                        <button onclick="app.modalEnvioMasivo()" class="bg-amber-100 text-amber-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-amber-200 transition border border-amber-200 shadow-sm">
                             <i class="fas fa-paper-plane mr-2"></i> Informe al Hogar
                         </button>
-                    
-                        <button onclick="app.modalImportar()"
-                            class="bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-200 transition">
+                        
+                        <button onclick="app.modalImportar()" class="bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-200 transition">
                             <i class="fas fa-file-excel mr-2"></i> Importar
                         </button>
-                        <button onclick="app.modalEstudiante()"
-                            class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition shadow">
+                        <button onclick="app.modalEstudiante()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition shadow">
                             <i class="fas fa-plus mr-2"></i> Nuevo Estudiante
                         </button>
                     </div>
@@ -433,9 +528,18 @@
             </div>
 
             <!-- Botón -->
-            <button onclick="app.saveScheduleConfig()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition h-9">
-                Guardar
-            </button>
+          <!-- Botones (Guardar y Cancelar) -->
+            <div class="flex gap-2">
+                <!-- Botón Cancelar (Oculto por defecto) -->
+                <button id="btn-cancel-schedule" onclick="app.cancelEditSchedule()" class="hidden bg-slate-200 text-slate-600 px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-slate-300 transition h-9">
+                    Cancelar
+                </button>
+                
+                <!-- Botón Guardar / Actualizar -->
+                <button id="btn-save-schedule" onclick="app.saveScheduleConfig()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition h-9">
+                    Guardar
+                </button>
+            </div>
         </div>
     </div>
 
@@ -551,157 +655,325 @@
                         </div>
                     </div>
                 </div>
-            </div>
-                
+            </div>              
 
             <!-- OTRAS VISTAS (Planeamiento, Bitácora, Config, Mi Aula) se generan dinámicamente con JS para ahorrar espacio en este mensaje -->
             <!-- ... -->
-
+            
         </div>
+
+        <!-- ========================================== -->
+        <!-- FOOTER PROFESIONAL (ULTRA COMPACTO) -->
+        <!-- ========================================== -->
+        <footer class="bg-white/70 backdrop-blur-md border-t border-slate-200 z-20 shrink-0 px-6 py-1.5 flex flex-col sm:flex-row justify-between items-center shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)]">
+            
+            <!-- Izquierda: Derechos y Autor -->
+            <div class="text-[10px] text-slate-500 font-medium text-center sm:text-left tracking-wide">
+                &copy; 2026 RegistraME V-Pro. <span class="hidden sm:inline text-slate-300 mx-1">|</span> Desarrollado por <b class="text-slate-700">Ing. Nelson Rodriguez M.</b>
+            </div>
+            
+            <!-- Derecha: Contacto (Botones minimalistas) -->
+            <div class="flex items-center gap-2 text-[10px] font-bold text-slate-600 mt-1 sm:mt-0">
+                <!-- Botón Correo -->
+                <a href="mailto:nelson.rmontalvan@gmail.com" class="hover:text-indigo-600 transition flex items-center gap-1 bg-white/60 px-2 py-1 rounded border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-px" title="Enviar correo">
+                    <i class="fas fa-envelope text-indigo-500"></i> 
+                    <span class="hidden lg:inline font-mono">nelson.rmontalvan@gmail.com</span>
+                </a>
+                
+                <!-- Botón WhatsApp -->
+                <a href="https://wa.me/50671023115" target="_blank" class="hover:text-emerald-600 transition flex items-center gap-1 bg-white/60 px-2 py-1 rounded border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-px" title="WhatsApp">
+                    <i class="fab fa-whatsapp text-emerald-500 text-xs"></i> 
+                    <span class="hidden md:inline">+506 7102 3115</span>
+                </a>
+            </div>
+            
+        </footer>
     </main>
 
-    <!-- ÁREA DE IMPRESIÓN (OCULTA) -->
+     <!-- ÁREA DE IMPRESIÓN (OCULTA) -->
     <div id="printable-area" class="hidden"></div>
 
     <!-- JAVASCRIPT LOGIC (PARTE 2 SE INYECTA AQUÍ) -->
     <script>
         // ==========================================
-    
-    // ¡¡PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT!! 👇
-    const API_URL = "https://script.google.com/macros/s/AKfycbxXmay1LSITglw3JKEP9j-k0e_bUZDz_KQP4roCF8BVWumZ3TCI-H1OOnEZ4w0eUDMZBw/exec"; 
+    // CONFIGURACIÓN Y ESTADO GLOBAL
+    // ==========================================
 
-const app = {
+    // 👇👇👇  ¡¡PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT!! 👇👇👇
+    
+    const API_URL = "https://script.google.com/macros/s/AKfycbxXmay1LSITglw3JKEP9j-k0e_bUZDz_KQP4roCF8BVWumZ3TCI-H1OOnEZ4w0eUDMZBw/exec"; 
+                    
+                    
+    const app = {
         user: null,      // Datos del usuario logueado
         data: {},        // Cache de datos (Secciones, Instituciones)
         state: {},       // Estado temporal (Sección activa, Materia activa)
+        
+// ----------------------------------------------------
+        // MAGIA UX: POPUP DE ONBOARDING (TUTORIAL DE INICIO)
+        // ----------------------------------------------------
+        showWelcomeTutorial: () => {
+            Swal.fire({
+                width: '850px',
+                padding: '0', // Cero padding para que el color toque los bordes
+                showConfirmButton: false,
+                showCloseButton: true,
+                customClass: { popup: 'overflow-hidden rounded-2xl' },
+                html: `
+                    <div class="flex flex-col md:flex-row h-full text-left">
+                        
+                        <!-- Lado Izquierdo: Imagen / Banner -->
+                        <div class="md:w-5/12 bg-slate-900 p-8 text-white flex flex-col justify-center items-center text-center relative overflow-hidden">
+                            <!-- Fondo sutil de aula/cine -->
+                            <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=800&auto=format&fit=crop')] opacity-20 bg-cover bg-center"></div>
+                            
+                            <div class="relative z-10">
+                                <div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-indigo-500/50">
+                                    <i class="fas fa-graduation-cap text-3xl"></i>
+                                </div>
+                                <h2 class="text-2xl font-extrabold tracking-tight mb-2">RegistraME <span class="text-indigo-400">V-Pro</span></h2>
+                                <p class="text-sm text-slate-300 font-medium">La evolución de la gestión educativa.</p>
+                            </div>
+                        </div>
+
+                        <!-- Lado Derecho: Pasos a seguir -->
+                        <div class="md:w-7/12 p-8 md:p-10 bg-white">
+                            <h3 class="text-2xl font-bold text-slate-800 mb-3">Primeros Pasos 🚀</h3>
+                            <p class="text-sm text-slate-500 mb-8">Parece que eres nuevo por aquí. Sigue estos 3 pasos para configurar tu cuenta y desbloquear todo el sistema:</p>
+                            
+                            <ul class="space-y-6 mb-8">
+                                <li class="flex gap-4 items-start">
+                                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center shrink-0 shadow-sm mt-0.5">1</div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-700 text-sm">Crea una Institución</h4>
+                                        <p class="text-xs text-slate-500 mt-1">Ve a Configuración y registra el colegio o escuela donde trabajas.</p>
+                                    </div>
+                                </li>
+                                <li class="flex gap-4 items-start">
+                                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 font-bold flex items-center justify-center shrink-0 shadow-sm mt-0.5">2</div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-700 text-sm">Agrega una Sección</h4>
+                                        <p class="text-xs text-slate-500 mt-1">Asigna un grupo (ej: 7-1) a la institución que acabas de crear.</p>
+                                    </div>
+                                </li>
+                                <li class="flex gap-4 items-start">
+                                    <div class="w-8 h-8 rounded-full bg-red-50 text-red-500 text-lg flex items-center justify-center shrink-0 shadow-sm mt-0.5"><i class="fab fa-youtube"></i></div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-700 text-sm">Mira los Tutoriales</h4>
+                                        <p class="text-xs text-slate-500 mt-1">Visita nuestra sección de ayuda o Youtube para dominar la plataforma.</p>
+                                    </div>
+                                </li>
+                            </ul>
+
+                            <button onclick="Swal.close(); app.nav('config')" class="w-full bg-indigo-600 text-white py-3.5 rounded-xl font-bold hover:bg-indigo-700 transition shadow-md shadow-indigo-200 flex items-center justify-center gap-2">
+                                Ir a Configuración <i class="fas fa-arrow-right text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                `
+            });
+        },
+
+        // ----------------------------------------------------
+        // MAGIA UX/MARKETING: POPUP "¿QUÉ ES REGISTRAME?" (VERSIÓN 10 FEATURES)
+        // ----------------------------------------------------
+        showAboutRegistrame: () => {
+            Swal.fire({
+                width: '1100px', // Lo hacemos mucho más ancho para que quepan las 2 columnas
+                padding: '0', 
+                showConfirmButton: false,
+                showCloseButton: true,
+                customClass: { popup: 'overflow-hidden rounded-2xl' },
+                html: `
+                    <div class="flex flex-col lg:flex-row h-full text-left">
+                        
+                        <!-- Lado Izquierdo: Imagen / Banner Vendedor -->
+                        <!-- Usamos w-4/12 para que la imagen ocupe 1/3 y deje 2/3 al texto -->
+                        <div class="lg:w-4/12 bg-slate-900 p-8 text-white flex flex-col justify-center items-center text-center relative overflow-hidden">
+                            <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=800&auto=format&fit=crop')] opacity-20 bg-cover bg-center"></div>
+                            
+                            <div class="relative z-10">
+                                <div class="w-20 h-20 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-500/50 transform hover:scale-105 transition duration-500">
+                                    <i class="fas fa-rocket text-4xl"></i>
+                                </div>
+                                <h2 class="text-3xl font-extrabold tracking-tight mb-2">RegistraME <span class="text-indigo-400">V-Pro</span></h2>
+                                <p class="text-sm text-slate-300 font-medium leading-relaxed">El estándar definitivo en gestión educativa integral para docentes.</p>
+                            </div>
+                        </div>
+
+                        <!-- Lado Derecho: Pitch de Ventas (10 Funcionalidades en 2 Columnas) -->
+                        <div class="lg:w-8/12 p-8 lg:p-10 bg-white flex flex-col justify-center">
+                            <h3 class="text-2xl font-bold text-slate-800 mb-2">Descubre el Poder del Sistema 🎯</h3>
+                            <p class="text-sm text-slate-500 mb-6">10 razones por las que los educadores están migrando a RegistraME V-Pro:</p>
+                            
+                            <!-- GRID DE 2 COLUMNAS -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 mb-8">
+                                
+                                <!-- COLUMNA 1 -->
+                                <div class="flex gap-3 items-start group">
+                                    <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 shadow-sm group-hover:bg-emerald-100 transition"><i class="fas fa-star"></i></div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-700 text-[13px]">Evaluación Dinámica 0-3</h4>
+                                        <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">Calificación interactiva que calcula porcentajes y promedios en vivo.</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex gap-3 items-start group">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 shadow-sm group-hover:bg-blue-100 transition"><i class="fas fa-file-excel"></i></div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-700 text-[13px]">Reportes SEA (MEP)</h4>
+                                        <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">Generación de Excel oficial con sumatoria de Tareas y Proyectos.</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-3 items-start group">
+                                    <div class="w-8 h-8 rounded-lg bg-orange-50 text-orange-600 flex items-center justify-center shrink-0 shadow-sm group-hover:bg-orange-100 transition"><i class="fas fa-calendar-check"></i></div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-700 text-[13px]">Asistencia Matricial</h4>
+                                        <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">Control visual cruzado con configuración de horarios por sección.</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-3 items-start group">
+                                    <div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center shrink-0 shadow-sm group-hover:bg-teal-100 transition"><i class="fas fa-id-card"></i></div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-700 text-[13px]">Expedientes V-Pro</h4>
+                                        <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">Cálculo automático de edades y generación de correos MEP.</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-3 items-start group">
+                                    <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 shadow-sm group-hover:bg-indigo-100 transition"><i class="fas fa-clipboard-list"></i></div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-700 text-[13px]">Planeamiento Didáctico</h4>
+                                        <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">Diseño de estrategias e instrumentos con descargas en PDF.</p>
+                                    </div>
+                                </div>
+
+                                <!-- COLUMNA 2 -->
+                                <div class="flex gap-3 items-start group">
+                                    <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 shadow-sm group-hover:bg-amber-100 transition"><i class="fas fa-book-reader"></i></div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-700 text-[13px]">Bitácora de Incidencias</h4>
+                                        <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">Registro conductual con alertas tempranas y PDFs imprimibles.</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-3 items-start group">
+                                    <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 shadow-sm group-hover:bg-rose-100 transition"><i class="fas fa-paper-plane"></i></div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-700 text-[13px]">Envío de Boletas (Email)</h4>
+                                        <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">Envía masivamente reportes de notas al correo de los padres.</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-3 items-start group">
+                                    <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 shadow-sm group-hover:bg-purple-100 transition"><i class="fas fa-university"></i></div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-700 text-[13px]">Multi-Institución</h4>
+                                        <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">Filtros de Dashboard para gestionar varios colegios sin confusión.</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-3 items-start group">
+                                    <div class="w-8 h-8 rounded-lg bg-cyan-50 text-cyan-600 flex items-center justify-center shrink-0 shadow-sm group-hover:bg-cyan-100 transition"><i class="fas fa-file-import"></i></div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-700 text-[13px]">Importación Excel</h4>
+                                        <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">Carga masiva de estudiantes en segundos, sin digitar uno por uno.</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex gap-3 items-start group">
+                                    <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0 shadow-sm group-hover:bg-slate-200 transition"><i class="fas fa-cloud"></i></div>
+                                    <div>
+                                        <h4 class="font-bold text-slate-700 text-[13px]">100% Nube & Multi-dispositivo</h4>
+                                        <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">Arquitectura "Serverless" segura, accesible desde celular o PC.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Botones Inferiores (Lado a lado en PC, apilados en móvil) -->
+                            <div class="flex flex-col sm:flex-row gap-3 mt-auto">
+                                <!-- Botón Regresar al Login -->
+                                <button onclick="Swal.close()" class="flex-1 bg-slate-100 text-slate-700 hover:text-indigo-600 py-3 rounded-xl font-bold hover:bg-indigo-50 transition shadow-sm border border-slate-200 flex items-center justify-center gap-2">
+                                    <i class="fas fa-sign-in-alt"></i> Volver a Login
+                                </button>
+                                
+                                <!-- Botón Ventas (WhatsApp) -->
+                                <a href="https://wa.me/50671023115?text=Hola,%20me%20gustar%C3%ADa%20solicitar%20una%20demo%20de%20RegistraME%20V-Pro" target="_blank" class="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-bold hover:bg-emerald-600 transition shadow-md shadow-emerald-200 flex items-center justify-center gap-2">
+                                    <i class="fab fa-whatsapp text-lg"></i> Solicitar Demo
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `
+            });
+        },
+
 
         // ==========================================
-        // 1. NÚCLEO DE COMUNICACIÓN (FETCH + OFFLINE)
+        // 1. NÚCLEO DE COMUNICACIÓN (FETCH)
         // ==========================================
         api: async (payload) => {
-            // A. Lógica para trabajar sin internet (Asistencia y Notas)
-            if (!navigator.onLine && (payload.action === 'saveMark' || payload.action === 'saveGrades')) {
-                app.saveToOutbox(payload);
-                return { success: true, offline: true }; 
-            }
-
             try {
+                // Si hay usuario, inyectamos el email en cada petición automáticamente
                 if(app.user?.email) payload.email = app.user.email;
+                
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     body: JSON.stringify(payload)
                 });
                 const res = await response.json();
                 
-                // Guardamos en caché si es carga de datos para poder verlos offline después
-                if (res && !res.error && (payload.action === 'getInitialData' || payload.action === 'getStudents')) {
-                    localStorage.setItem('cache_' + payload.action + (payload.idSeccion || ''), JSON.stringify(res));
-                }
-
+                // Manejo de errores global
+                if(res.status === 'error') throw new Error(res.msg || res.error);
                 return res;
             } catch (error) {
-                // B. Si el fetch falla por pérdida de señal repentina
-                if (payload.action === 'saveMark' || payload.action === 'saveGrades') {
-                    app.saveToOutbox(payload);
-                    return { success: true, offline: true };
-                }
-                throw error;
+                console.error("API Error:", error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de Conexión',
+                    text: error.message || 'No se pudo contactar con el servidor.'
+                });
+                return null;
             }
-        },
-
-        // 2. LA "CAJA DE SALIDA" (OUTBOX)
-        saveToOutbox: (payload) => {
-            let outbox = JSON.parse(localStorage.getItem('registrame_outbox') || '[]');
-            outbox.push({ ...payload, timestamp: Date.now(), idSync: Math.random().toString(36).substr(2, 9) });
-            localStorage.setItem('registrame_outbox', JSON.stringify(outbox));
-            app.updateSyncUI();
-            
-            const Toast = Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3000 });
-            Toast.fire({ icon: 'info', title: 'Modo Offline: Guardado localmente' });
-        },
-
-        // 3. ACTUALIZAR EL ÍCONO DE ESTADO (NUBE)
-        updateSyncUI: () => {
-            const outbox = JSON.parse(localStorage.getItem('registrame_outbox') || '[]');
-            const statusDiv = document.getElementById('sync-status');
-            const statusText = document.getElementById('sync-text');
-
-            if (!statusDiv) return; // Evitar errores si no existe el elemento
-
-            if (outbox.length > 0) {
-                statusDiv.className = "flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold animate-pulse";
-                statusText.innerText = `${outbox.length} PENDIENTES`;
-            } else {
-                if (navigator.onLine) {
-                    statusDiv.className = "flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-700 text-[10px] font-bold";
-                    statusText.innerText = "SINCRO OK";
-                } else {
-                    statusDiv.className = "flex items-center gap-2 px-3 py-1 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold";
-                    statusText.innerText = "OFFLINE";
-                }
-            }
-        },
-
-        // 4. EL MOTOR DE SINCRONIZACIÓN
-        syncData: async () => {
-            if (!navigator.onLine) return;
-            
-            let outbox = JSON.parse(localStorage.getItem('registrame_outbox') || '[]');
-            if (outbox.length === 0) return;
-
-            console.log("Sincronizando datos pendientes...");
-            
-            for (let i = 0; i < outbox.length; i++) {
-                const item = outbox[i];
-                try {
-                    await fetch(API_URL, { method: 'POST', body: JSON.stringify(item) });
-                } catch (e) {
-                    console.error("Error sincronizando:", e);
-                    return; 
-                }
-            }
-
-            localStorage.setItem('registrame_outbox', '[]');
-            app.updateSyncUI();
-            Swal.fire({
-                icon: 'success',
-                title: '¡Sincronizado!',
-                text: 'Tus cambios offline ya están en la nube.',
-                timer: 2000,
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false
-            });
         },
 
         // ==========================================
         // 2. AUTENTICACIÓN Y NAVEGACIÓN
         // ==========================================
-        init: () => {
+init: () => {
+            // 1. PRIMERO: Construimos el HTML (Inyectar vistas)
             app.injectDynamicViews(); 
-            app.updateSyncUI();
 
+            // --- TRUCO NINJA PARA REDES SOCIALES ---
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('info') === 'true') {
+                setTimeout(() => app.showAboutRegistrame(), 500); // Abre el popup a medio segundo de entrar
+            }
+            // ----------------------------------------
+
+            // 2. SEGUNDO: Ahora sí, verificamos sesión y cargamos datos
             const savedUser = localStorage.getItem('registrame_user');
             if(savedUser) {
                 app.user = JSON.parse(savedUser);
                 app.enterApp();
             }
-
-            // Intentar sincronización inicial
-            setTimeout(app.syncData, 3000);
         },
 
-        calcAge: (fechaNac) => {
-            if (!fechaNac) return null; 
-            const nacimiento = new Date(fechaNac.replace(/-/g, '\/'));
-            const hoy = new Date();
-            let edad = hoy.getFullYear() - nacimiento.getFullYear();
-            const m = hoy.getMonth() - nacimiento.getMonth();
-            if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) {
-                edad--;
-            }
-            return (isNaN(edad) || edad < 0) ? null : edad;
-        },
+         // HELPER: CALCULAR EDAD
+    calcAge: (fechaNac) => {
+        if (!fechaNac) return null; 
+        const nacimiento = new Date(fechaNac.replace(/-/g, '\/'));
+        const hoy = new Date();
+        let edad = hoy.getFullYear() - nacimiento.getFullYear();
+        const m = hoy.getMonth() - nacimiento.getMonth();
+        if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) {
+            edad--;
+        }
+        return (isNaN(edad) || edad < 0) ? null : edad;
+    },
+
 
         login: async (e) => {
             e.preventDefault();
@@ -724,20 +996,40 @@ const app = {
             }
         },
 
-        enterApp: async () => {
+enterApp: async () => {
             document.getElementById('screen-login').classList.add('hidden');
             document.getElementById('sidebar').classList.remove('hidden');
             document.getElementById('sidebar').classList.add('flex');
             document.getElementById('main-content').classList.remove('hidden');
             
-            document.getElementById('user-name').innerText = app.user.email;
+            // --- MAGIA UX: SALUDO CONTEXTUAL ---
+            const hora = new Date().getHours();
+            let saludo = "🌙 Buenas noches";
+            if (hora < 12) saludo = "☀️ Buenos días";
+            else if (hora < 19) saludo = "☕ Buenas tardes";
+            
+            // Extraer el nombre del correo (ej: nelson.rmontalvan@... -> Nelson.rmontalvan)
+            let nombreCorto = app.user.email.split('@')[0];
+            // Poner la primera letra en mayúscula para que se vea elegante
+            nombreCorto = nombreCorto.charAt(0).toUpperCase() + nombreCorto.slice(1);
+
+            // Inyectamos el saludo y el nombre
+            document.getElementById('user-name').innerHTML = `<span class="text-xs text-slate-400 font-normal mr-1">${saludo},</span> ${nombreCorto}`;
             document.getElementById('user-role').innerText = app.user.role;
 
+            // --- LÓGICA DE MENÚS CORREGIDA (Queda intacta) ---
+
+            // 1. El menú DOCENTE se muestra SIEMPRE (Porque el Admin también da clases)
             document.getElementById('menu-docente').classList.remove('hidden');
 
+            // 2. El menú ADMIN solo se muestra si tienes el rol
             if(app.user.role === 'ADMIN') {
                 document.getElementById('menu-admin').classList.remove('hidden');
+                
+                // AQUÍ EL CAMBIO:
+                // En vez de mandarte a 'admin-users', cargamos tu dashboard de profe.
                 app.loadDashboardData(); 
+
             } else {
                 document.getElementById('menu-admin').classList.add('hidden');
                 app.loadDashboardData(); 
@@ -748,34 +1040,6 @@ const app = {
             localStorage.removeItem('registrame_user');
             location.reload();
         },
-
-          // --- FUNCIÓN PARA EL CHECKBOX DE EXIMIDOS ---
-        toggleExempt: async (idEst, isChecked) => {
-            // 1. CAMBIO VISUAL INSTANTÁNEO
-            const label = document.getElementById(`label-ex-${idEst}`);
-            if (label) {
-                label.innerText = isChecked ? 'NO RECIBE' : 'RECIBE';
-                label.className = `text-[9px] font-bold ${isChecked ? 'text-red-500' : 'text-gray-400'}`;
-            }
-
-            // 2. ENVÍO DE DATOS AL SERVIDOR
-            const res = await app.api({ 
-                action: 'toggleExempt', 
-                id: idEst, 
-                status: isChecked 
-            });
-            
-            if(res && res.success) {
-                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
-                Toast.fire({ icon: 'success', title: isChecked ? 'Estudiante Eximido' : 'Estudiante Reactivado' });
-            } else {
-                if (label) {
-                    label.innerText = !isChecked ? 'NO RECIBE' : 'RECIBE';
-                    label.className = `text-[9px] font-bold ${!isChecked ? 'text-red-500' : 'text-gray-400'}`;
-                }
-                Swal.fire('Error', 'No se pudo guardar el cambio en la nube.', 'error');
-            }
-        }, 
 
         toggleSidebar: () => {
             const sb = document.getElementById('sidebar');
@@ -789,6 +1053,8 @@ const app = {
             }
         },
 
+        
+
         // ==========================================
         // 2. NAVEGACIÓN (CEREBRO DE RUTAS)
         // ==========================================
@@ -801,15 +1067,41 @@ const app = {
             if(target) target.classList.remove('hidden');
 
             // ----------------------------------------------------
-            // AJUSTE: LIMPIEZA AUTOMÁTICA
+            // AJUSTE: LIMPIEZA AUTOMÁTICA (Intacto)
             // ----------------------------------------------------
-            // Si navego a cualquier lado que NO SEA 'sea', limpio el reporte
             if (viewId !== 'sea') {
-                // Verificamos si la función existe antes de llamarla para evitar errores
                 if (app.clearSeaView) app.clearSeaView();
             }
+
+            // ----------------------------------------------------
+            // MAGIA UX: INDICADOR DE MENÚ ACTIVO (NUEVO)
+            // ----------------------------------------------------
+            // A. Resetear todos los botones del menú (volverlos grises)
+            document.querySelectorAll('.menu-item').forEach(btn => {
+                // Quitamos las clases de "encendido"
+                btn.classList.remove('bg-indigo-50', 'text-indigo-600', 'border-r-4', 'border-indigo-600');
+                // Devolvemos el texto a gris
+                btn.classList.add('text-gray-600'); 
+            });
             
-            // 3. Actualizar Título del Header
+            // B. Buscar el botón que corresponde a la vista actual
+            let activeBtn = document.querySelector(`.menu-item[onclick*="nav('${viewId}')"]`);
+            
+            // Caso especial: El Dashboard no usa app.nav() directo, usa loadDashboardData()
+            if (viewId === 'dashboard') {
+                activeBtn = document.querySelector(`.menu-item[onclick*="loadDashboardData"]`);
+            }
+            
+            // C. Encender el botón encontrado
+            if (activeBtn) {
+                activeBtn.classList.remove('text-gray-600');
+                // Le ponemos fondo azul, texto azul y una rayita a la derecha
+                activeBtn.classList.add('bg-indigo-50', 'text-indigo-600', 'border-r-4', 'border-indigo-600');
+            }
+
+            // ----------------------------------------------------
+            // 3. Actualizar Título del Header (Intacto)
+            // ----------------------------------------------------
             const titles = {
                 'dashboard': 'Mis Secciones', 
                 'estudiantes': 'Gestión de Estudiantes',
@@ -821,41 +1113,23 @@ const app = {
                 'bitacoras': 'Bitácora de Incidencias',
                 'miaula': 'Mi Aula Virtual', 
                 'config': 'Configuración',
-                'sea': 'Informe Oficial SEA' // <--- Agregué el título para esta vista
+                'sea': 'Informe Oficial SEA'
             };
-            
-            // Si el título existe en el mapa, úsalo, sino usa 'Panel de Control'
             const pageTitle = document.getElementById('page-title');
             if(pageTitle) pageTitle.innerText = titles[viewId] || 'Panel de Control';
 
             // 4. CERRAR SIDEBAR (En Móvil)
             if(window.innerWidth < 768) app.toggleSidebar();
 
-            // ===============================================
-            // 5. INICIALIZADORES
-            // ===============================================
-
-            // Si entramos a ADMIN
-              if(viewId === 'admin-users') { app.adminLoadUsers(); }
-            
-            // Si entramos a PLANEAMIENTOS
+            // ----------------------------------------------------
+            // 5. INICIALIZADORES (Intactos)
+            // ----------------------------------------------------
+            if(viewId === 'admin-users') app.adminLoadUsers();
             if(viewId === 'planeamientos') app.loadPlanes();
-            
-            // Si entramos a BITÁCORAS
             if(viewId === 'bitacoras') app.loadBitacoras();
-            
-            // Si entramos a MI AULA
             if(viewId === 'miaula') app.loadLecciones();
-
-            // --- NUEVOS MÓDULOS ---
-            
-            // Si entramos a HORARIOS -> Cargar Checkboxes y Combos
             if(viewId === 'horarios') app.initHorarioUI(); 
-
-            // Si entramos a ASISTENCIA -> Cargar Combos y Fechas
             if(viewId === 'asistencia') app.initAsistenciaUI();
-
-            // Si entramos a SEA -> Cargar Combos
             if(viewId === 'sea') app.initSeaUI();
         },
 
@@ -971,16 +1245,37 @@ const app = {
             filterContainer.innerHTML = '';
             filterContainer.classList.remove('animate-pulse'); // Quitamos efecto carga
 
-            // ------------------------------------------------------
-            // 1. VALIDACIONES INICIALES (Sin cambios)
+   // ------------------------------------------------------
+            // 1. VALIDACIONES INICIALES (AHORA CON ONBOARDING V-PRO)
             // ------------------------------------------------------
             if (!app.data.instituciones || app.data.instituciones.length === 0) {
-                grid.innerHTML = `<div class="col-span-full p-8 bg-orange-50 border border-orange-200 rounded-xl text-center text-orange-800">No hay instituciones creadas. Ve a Configuración y crea una Institución.</div>`;
+                
+                // A. Reemplazamos la caja naranja por un Empty State Hermoso
+                grid.innerHTML = `
+                <div class="col-span-full p-12 bg-white border border-slate-200 shadow-sm rounded-2xl text-center fade-in">
+                    <div class="w-20 h-20 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner">
+                        <i class="fas fa-rocket text-4xl"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-slate-800 mb-2">¡Tu espacio está casi listo!</h3>
+                    <p class="text-slate-500 text-sm mb-8 max-w-md mx-auto">Para comenzar a ver el resumen de tus clases y alumnos, necesitas configurar tu primera institución educativa.</p>
+                    <div class="flex justify-center gap-3">
+                        <button onclick="app.nav('config')" class="bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold shadow-md hover:bg-indigo-700 transition flex items-center gap-2">
+                            <i class="fas fa-cog"></i> Configurar ahora
+                        </button>
+                        <button onclick="app.showWelcomeTutorial()" class="bg-slate-100 text-slate-600 px-6 py-3 rounded-xl font-bold hover:bg-slate-200 transition flex items-center gap-2">
+                            <i class="fas fa-info-circle"></i> Ver Guía
+                        </button>
+                    </div>
+                </div>`;
+                
+                // B. Disparamos el Popup automáticamente SOLO 1 vez por sesión
+                if(!sessionStorage.getItem('welcomeShown')) {
+                    app.showWelcomeTutorial();
+                    sessionStorage.setItem('welcomeShown', 'true');
+                }
+                
+                app.updateConfigView();
                 return;
-            }
-            if(!app.data.secciones || app.data.secciones.length === 0) {
-                 grid.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400">No tienes secciones creadas aún.</div>`;
-                 return;
             }
 
             // ------------------------------------------------------
@@ -1206,18 +1501,17 @@ openStudents: async (idSec, nombreSec) => {
             document.getElementById('page-title').innerText = `Estudiantes: ${nombreSec}`;
             
             const tbody = document.getElementById('table-students-body');
-            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center"><i class="fas fa-spinner fa-spin text-indigo-500 text-xl"></i><br><span class="text-slate-400 text-xs">Cargando...</span></td></tr>';
 
             // Guardamos la lista en memoria para poder editar luego sin ir al server
             const list = await app.api({ action: 'getStudents', idSeccion: idSec });
-            app.state.currentStudentList = list || []; 
+            app.state.currentStudentList = list ||[]; 
 
             const headers = document.querySelector('#view-estudiantes thead tr');
             // Actualizamos encabezados dinámicamente para que coincidan
             headers.innerHTML = `
                 <th class="p-3">Cédula</th>
                 <th class="p-3">Estudiante</th>
-                <th class="p-3 text-center">Condición</th> <!-- NUEVA COLUMNA -->
                 <th class="p-3 hidden md:table-cell">Contacto</th>
                 <th class="p-3 hidden lg:table-cell">Correos (Est / Enc)</th>
                 <th class="p-3 text-right">Acciones</th>
@@ -1225,75 +1519,81 @@ openStudents: async (idSec, nombreSec) => {
 
             tbody.innerHTML = '';
 
+            // ----------------------------------------------------
+            // 1. MAGIA UX: EMPTY STATE (ESTADO VACÍO PREMIUM)
+            // ----------------------------------------------------
             if(!list || list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-400">No hay estudiantes registrados.</td></tr>';
+                tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="p-12 text-center">
+                        <div class="flex flex-col items-center justify-center fade-in">
+                            <div class="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-4 text-indigo-300 shadow-inner">
+                                <i class="fas fa-user-graduate text-4xl"></i>
+                            </div>
+                            <h4 class="text-slate-700 font-bold text-lg mb-1">Aún no hay alumnos</h4>
+                            <p class="text-slate-400 text-sm mb-5">Empieza agregando tu primer estudiante a esta sección.</p>
+                            <button onclick="app.modalEstudiante()" class="bg-indigo-600 text-white px-5 py-2.5 rounded-lg font-bold shadow-md shadow-indigo-200 hover:bg-indigo-700 transition transform hover:-translate-y-0.5">
+                                <i class="fas fa-plus mr-2"></i> Nuevo Estudiante
+                            </button>
+                        </div>
+                    </td>
+                </tr>`;
                 return;
             }
 
-list.forEach(est => {
-    // 1. ETIQUETA ADECUACIÓN
-    const badgeAdec = est.adecuacion === 'SI' 
-        ? '<span class="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-[10px] font-bold border border-orange-200 ml-1">AD</span>' 
-        : '';
-
-    // 2. ETIQUETA EDAD
-    const edadNum = app.calcAge(est.fechaNac);
-    const badgeEdad = edadNum 
-        ? `<span class="bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-teal-100 ml-2" title="Nació: ${est.fechaNac}"><i class="fas fa-birthday-cake mr-1 text-[9px]"></i>${edadNum} años</span>`
-        : '';
-
-    // 3. LÓGICA DE CONDICIÓN (Solo lectura)
-    const checkStatus = est.eximido ? 'checked' : '';
-    const labelText = est.eximido ? 'NO RECIBE' : 'RECIBE';
-    const labelColor = est.eximido ? 'text-red-500' : 'text-slate-400';
-
-    tbody.innerHTML += `
-    <tr class="hover:bg-slate-50 group border-b border-slate-100 text-xs text-slate-700 transition">
-        <td class="p-3 font-bold font-mono">${est.cedula}</td>
-        
-        <td class="p-3">
-            <div class="flex items-center flex-wrap gap-1">
-                <span class="font-bold text-slate-800 uppercase">${est.nombre}</span>
-                ${badgeEdad}
-                ${badgeAdec}
-            </div>
-            <div class="text-[10px] text-slate-400 md:hidden">${est.emailEst}</div>
-        </td>
-
-        <!-- CELDA DE CONDICIÓN (SOLO LECTURA - GRISADA) -->
-        <td class="p-3 text-center">
-            <div class="flex flex-col items-center justify-center gap-1 opacity-60 cursor-not-allowed" title="Cambie este estado desde el botón Editar">
-                <input type="checkbox" 
-                       class="w-4 h-4 rounded border-slate-300 text-slate-400 focus:ring-0 cursor-not-allowed" 
-                       ${checkStatus} 
-                       disabled> <!-- El 'disabled' hace la magia -->
+            // ----------------------------------------------------
+            // 2. MAGIA UX: ANIMACIÓN EN CASCADA (STAGGERED)
+            // ----------------------------------------------------
+            // Fíjate que agregamos "index" al forEach
+            list.forEach((est, index) => {
                 
-                <span class="text-[9px] font-bold ${labelColor}">
-                    ${labelText}
-                </span>
-            </div>
-        </td>
-        
-        <td class="p-3 hidden md:table-cell">
-            <div><i class="fas fa-mobile-alt text-slate-400 mr-1"></i>${est.telEst || '--'}</div>
-            ${est.telEnc ? `<div class="text-slate-500"><i class="fas fa-user-shield text-slate-400 mr-1"></i>${est.telEnc}</div>` : ''}
-        </td>
-        
-        <td class="p-3 hidden lg:table-cell">
-            <div class="text-indigo-600 font-medium truncate max-w-[180px]" title="${est.emailEst}">${est.emailEst}</div>
-            <div class="text-slate-500 truncate max-w-[180px]" title="${est.emailEnc}">${est.emailEnc || '<span class="italic text-gray-300">Sin correo enc.</span>'}</div>
-        </td>
-        
-        <td class="p-3 text-right">
-            <div class="flex justify-end gap-1">
-                <button onclick="app.modalEstudiante('${est.id}')" class="h-8 w-8 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition flex items-center justify-center"><i class="fas fa-pen"></i></button>
-                <button onclick="app.verNotasEstudiante('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition flex items-center justify-center"><i class="fas fa-eye"></i></button>
-                <button onclick="app.modalTraslado('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-slate-100 text-slate-500 hover:bg-slate-200 transition flex items-center justify-center"><i class="fas fa-exchange-alt"></i></button>
-                <button onclick="app.deleteStudent('${est.id}')" class="h-8 w-8 rounded bg-red-50 text-red-500 hover:bg-red-100 transition flex items-center justify-center"><i class="fas fa-trash"></i></button>
-            </div>
-        </td>
-    </tr>`;
-});
+                // Etiquetas (Adec / Edad)
+                const badgeAdec = est.adecuacion === 'SI' 
+                    ? '<span class="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-[10px] font-bold border border-orange-200 ml-1">AD</span>' 
+                    : '';
+
+                const edadNum = app.calcAge(est.fechaNac);
+                const badgeEdad = edadNum 
+                    ? `<span class="bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-teal-100 ml-2" title="Nació: ${est.fechaNac}"><i class="fas fa-birthday-cake mr-1 text-[9px]"></i>${edadNum} años</span>`
+                    : '';
+
+                // Calculamos un pequeño retraso multiplicando el índice por 0.05 segundos
+                const delay = index * 0.05;
+
+                // Agregamos la clase "fade-in-up" y el "animation-delay" a la fila <tr>
+                tbody.innerHTML += `
+                <tr class="fade-in-up hover:bg-slate-50 group border-b border-slate-100 text-xs text-slate-700 transition" style="animation-delay: ${delay}s">
+                    <td class="p-3 font-bold font-mono">${est.cedula}</td>
+                    
+                    <td class="p-3">
+                        <div class="flex items-center flex-wrap gap-1">
+                            <span class="font-bold text-slate-800 uppercase">${est.nombre}</span>
+                            ${badgeEdad}
+                            ${badgeAdec}
+                        </div>
+                        <div class="text-[10px] text-slate-400 md:hidden">${est.emailEst}</div>
+                    </td>
+                    
+                    <td class="p-3 hidden md:table-cell">
+                        <div><i class="fas fa-mobile-alt text-slate-400 mr-1"></i>${est.telEst || '--'}</div>
+                        ${est.telEnc ? `<div class="text-slate-500"><i class="fas fa-user-shield text-slate-400 mr-1"></i>${est.telEnc}</div>` : ''}
+                    </td>
+                    
+                    <td class="p-3 hidden lg:table-cell">
+                        <div class="text-indigo-600 font-medium truncate max-w-[180px]" title="${est.emailEst}">${est.emailEst}</div>
+                        <div class="text-slate-500 truncate max-w-[180px]" title="${est.emailEnc}">${est.emailEnc || '<span class="italic text-gray-300">Sin correo enc.</span>'}</div>
+                    </td>
+                    
+                    <td class="p-3 text-right">
+                        <div class="flex justify-end gap-1">
+                            <button onclick="app.modalEstudiante('${est.id}')" class="h-8 w-8 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition flex items-center justify-center"><i class="fas fa-pen"></i></button>
+                            <button onclick="app.verNotasEstudiante('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition flex items-center justify-center"><i class="fas fa-eye"></i></button>
+                            <button onclick="app.modalTraslado('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-slate-100 text-slate-500 hover:bg-slate-200 transition flex items-center justify-center"><i class="fas fa-exchange-alt"></i></button>
+                            <button onclick="app.deleteStudent('${est.id}')" class="h-8 w-8 rounded bg-red-50 text-red-500 hover:bg-red-100 transition flex items-center justify-center"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>`;
+            });
         },
 
         // ==========================================
@@ -1301,111 +1601,117 @@ list.forEach(est => {
         // ==========================================
 
         // 1. NUEVO ESTUDIANTE (MODAL)
-modalEstudiante: async (idEditar = null) => {
-    if(!app.state.currentSecId) return Swal.fire('Error', 'Sección no detectada.', 'error');
+        modalEstudiante: async (idEditar = null) => {
+            if(!app.state.currentSecId) return Swal.fire('Error', 'Sección no detectada.', 'error');
 
-    let est = null;
-    let titulo = 'Nuevo Estudiante';
-    
-    if(idEditar) {
-        est = app.state.currentStudentList.find(e => e.id === idEditar);
-        titulo = 'Editar Estudiante';
-    }
-
-    const val = {
-        ced: est ? est.cedula : '',
-        nom: est ? est.nombre : '',
-        telE: est ? est.telEst : '',
-        telP: est ? est.telEnc : '',
-        mailP: est ? est.emailEnc : '',
-        nac: est ? est.fechaNac : '',
-        adec: est ? est.adecuacion : 'NO',
-        eximido: est ? est.eximido : false // <--- Traemos el valor guardado
-    };
-
-    const { value: form } = await Swal.fire({
-        title: titulo,
-        width: '650px',
-        html: `
-            <div class="text-left space-y-3 text-sm">
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <label class="text-xs font-bold text-slate-500">Cédula</label>
-                        <input id="sw-e-ced" class="w-full p-2 border rounded bg-slate-50" value="${val.ced}">
-                    </div>
-                    <div>
-                        <label class="text-xs font-bold text-slate-500">Fecha Nacimiento</label>
-                        <input type="date" id="sw-e-nac" class="w-full p-2 border rounded" value="${val.nac}">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="text-xs font-bold text-slate-500">Nombre Completo</label>
-                    <input id="sw-e-nom" class="w-full p-2 border rounded bg-slate-50" value="${val.nom}">
-                </div>
-
-                <div class="grid grid-cols-2 gap-3 bg-slate-50 p-2 rounded border">
-                    <div>
-                        <label class="text-xs font-bold text-gray-500">Tel. Estudiante</label>
-                        <input id="sw-e-telEst" class="w-full p-2 border rounded" value="${val.telE}">
-                    </div>
-                    <div>
-                        <label class="text-xs font-bold text-gray-500">Tel. Encargado</label>
-                        <input id="sw-e-telEnc" class="w-full p-2 border rounded" value="${val.telP}">
-                    </div>
-                </div>
-
-                <!-- SECCIÓN DE CONDICIONES (Adecuación y Recibe Clase) -->
-                <div class="grid grid-cols-3 gap-3">
-                    <div class="col-span-1">
-                        <label class="text-xs font-bold text-indigo-600 block mb-1">Condición Lección</label>
-                        <select id="sw-e-eximido" class="w-full p-2 border-2 border-indigo-100 rounded font-bold text-indigo-700 bg-white">
-                            <option value="false" ${val.eximido == false ? 'selected' : ''}>RECIBE CLASE</option>
-                            <option value="true" ${val.eximido == true ? 'selected' : ''}>NO RECIBE</option>
-                        </select>
-                    </div>
-                    <div class="col-span-1">
-                        <label class="text-xs font-bold text-slate-500 block mb-1">Adecuación</label>
-                        <select id="sw-e-adec" class="w-full p-2 border rounded bg-white">
-                            <option value="NO" ${val.adec === 'NO' ? 'selected' : ''}>NO</option>
-                            <option value="SI" ${val.adec === 'SI' ? 'selected' : ''}>SÍ</option>
-                        </select>
-                    </div>
-                    <div class="col-span-1">
-                         <label class="text-xs font-bold text-slate-500 block mb-1">Correo Encargado</label>
-                         <input id="sw-e-mailEnc" type="email" class="w-full p-2 border rounded" placeholder="Opcional" value="${val.mailP}">
-                    </div>
-                </div>
-            </div>
-        `,
-        focusConfirm: false,
-        showCancelButton: true,
-        confirmButtonText: 'Guardar Datos',
-        preConfirm: () => {
-            return {
-                idEstudiante: idEditar,
-                idSeccion: app.state.currentSecId,
-                cedula: document.getElementById('sw-e-ced').value.trim(),
-                nombre: document.getElementById('sw-e-nom').value.trim(),
-                telEst: document.getElementById('sw-e-telEst').value,
-                telEnc: document.getElementById('sw-e-telEnc').value,
-                fechaNac: document.getElementById('sw-e-nac').value,
-                emailEnc: document.getElementById('sw-e-mailEnc').value,
-                adecuacion: document.getElementById('sw-e-adec').value,
-                eximido: document.getElementById('sw-e-eximido').value === "true" // Capturamos el nuevo dato
+            let est = null;
+            let titulo = 'Nuevo Estudiante';
+            
+            // Si viene ID, buscamos los datos para rellenar (Modo Edición)
+            if(idEditar) {
+                est = app.state.currentStudentList.find(e => e.id === idEditar);
+                titulo = 'Editar Estudiante';
             }
-        }
-    });
 
-    if(form) {
-        Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
-        const res = await app.api({ action: 'saveStudent', ...form });
-        if(res && res.success) {
-            Swal.fire({ icon: 'success', title: 'Guardado', timer: 1500, showConfirmButton: false });
-            app.openStudents(app.state.currentSecId, app.state.currentSecName);
-        }
-    }
-},
+            // Valores por defecto (o vacíos si es nuevo)
+            const val = {
+                ced: est ? est.cedula : '',
+                nom: est ? est.nombre : '',
+                telE: est ? est.telEst : '',
+                telP: est ? est.telEnc : '',
+                mailP: est ? est.emailEnc : '',
+                nac: est ? est.fechaNac : '',
+                adec: est ? est.adecuacion : 'NO'
+            };
+
+            const { value: form } = await Swal.fire({
+                title: titulo,
+                width: '600px',
+                html: `
+                    <div class="text-left space-y-3 text-sm">
+                        <!-- Cédula y Nacimiento -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500">Cédula</label>
+                                <input id="sw-e-ced" class="w-full p-2 border rounded bg-slate-50 focus:bg-white transition outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Ej: 112340987" value="${val.ced}">
+                                <p class="text-[10px] text-indigo-500 mt-1"><i class="fas fa-magic"></i> Generará correo MEP auto</p>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500">Fecha Nacimiento</label>
+                                <input type="date" id="sw-e-nac" class="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-indigo-200" value="${val.nac}">
+                            </div>
+                        </div>
+
+                        <!-- Nombre -->
+                        <div>
+                            <label class="text-xs font-bold text-slate-500">Nombre Completo</label>
+                            <input id="sw-e-nom" class="w-full p-2 border rounded bg-slate-50 focus:bg-white transition outline-none focus:ring-2 focus:ring-indigo-200" value="${val.nom}">
+                        </div>
+
+                        <!-- Teléfonos -->
+                        <div class="grid grid-cols-2 gap-3 bg-slate-50 p-2 rounded border border-slate-100">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500"><i class="fas fa-mobile-alt"></i> Tel. Estudiante</label>
+                                <input id="sw-e-telEst" class="w-full p-2 border rounded text-xs" placeholder="####-####" value="${val.telE}">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500"><i class="fas fa-user-shield"></i> Tel. Encargado</label>
+                                <input id="sw-e-telEnc" class="w-full p-2 border rounded text-xs" placeholder="####-####" value="${val.telP}">
+                            </div>
+                        </div>
+
+                        <!-- Correo Encargado y Adecuación -->
+                        <div class="grid grid-cols-3 gap-3 items-end">
+                            <div class="col-span-2">
+                                <label class="text-xs font-bold text-slate-500">Correo Encargado (Para reportes)</label>
+                                <input id="sw-e-mailEnc" type="email" class="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-indigo-200" placeholder="padre@gmail.com" value="${val.mailP}">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 text-center block">Adecuación</label>
+                                <select id="sw-e-adec" class="w-full p-2 border rounded bg-white font-bold text-slate-600 outline-none">
+                                    <option value="NO" ${val.adec === 'NO' ? 'selected' : ''}>NO</option>
+                                    <option value="SI" ${val.adec === 'SI' ? 'selected' : ''}>SÍ</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar Datos',
+                confirmButtonColor: '#4F46E5', // Indigo
+                preConfirm: () => {
+                    const ced = document.getElementById('sw-e-ced').value.trim();
+                    const nom = document.getElementById('sw-e-nom').value.trim();
+                    
+                    if(!ced || !nom) return Swal.showValidationMessage('Cédula y Nombre son obligatorios');
+                    
+                    return {
+                        idEstudiante: idEditar, // Si es null crea, si tiene valor edita
+                        idSeccion: app.state.currentSecId,
+                        cedula: ced,
+                        nombre: nom,
+                        telEst: document.getElementById('sw-e-telEst').value,
+                        telEnc: document.getElementById('sw-e-telEnc').value,
+                        fechaNac: document.getElementById('sw-e-nac').value,
+                        emailEnc: document.getElementById('sw-e-mailEnc').value,
+                        adecuacion: document.getElementById('sw-e-adec').value
+                    }
+                }
+            });
+
+            if(form) {
+                Swal.fire({ title: 'Procesando...', didOpen: () => Swal.showLoading() });
+                const res = await app.api({ action: 'saveStudent', ...form });
+                
+                if(res && res.success) {
+                    Swal.fire({ icon: 'success', title: 'Guardado', text: res.message, timer: 1500, showConfirmButton: false });
+                    app.openStudents(app.state.currentSecId, app.state.currentSecName); // Recargar tabla
+                } else {
+                    Swal.fire('Error', 'No se pudo guardar', 'error');
+                }
+            }
+        },
 
         // 2. IMPORTAR DESDE EXCEL (MODAL)
         modalImportar: async () => {
@@ -1486,121 +1792,155 @@ modalEstudiante: async (idEditar = null) => {
         // MÓDULO COMUNICACIÓN (ENVÍO MASIVO)
         // ==========================================
         
+       // MÓDULO COMUNICACIÓN (ENVÍO MASIVO O IMPRESIÓN MÚLTIPLE)
         modalEnvioMasivo: async () => {
-            // 1. Obtener estudiantes de la sección actual
-            // (Podemos llamar a la API o usar una caché si la tuviéramos, llamemos a la API para estar seguros)
             Swal.showLoading();
             const estudiantes = await app.api({ action: 'getStudents', idSeccion: app.state.currentSecId });
             Swal.close();
 
             if(!estudiantes || estudiantes.length === 0) return Swal.fire('Aviso', 'No hay estudiantes en esta sección.', 'info');
 
-            // 2. Construir la lista HTML
-            let listaHtml = `<div class="max-h-60 overflow-y-auto border rounded bg-white text-left text-sm">`;
-            
-            // Header con "Marcar Todos"
+            // Construir lista de checkboxes
+            let listaHtml = `<div class="max-h-60 overflow-y-auto border border-slate-200 rounded-lg bg-slate-50 text-left text-sm">`;
             listaHtml += `
-                <div class="sticky top-0 bg-gray-100 p-2 border-b flex items-center justify-between font-bold text-gray-600">
+                <div class="sticky top-0 bg-slate-200 p-2.5 border-b border-slate-300 flex items-center justify-between font-bold text-slate-700 shadow-sm z-10">
                     <span>Estudiantes</span>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" onchange="app.toggleAllChecks(this)" checked> Todos
+                    <label class="flex items-center gap-2 cursor-pointer hover:text-indigo-600 transition">
+                        <input type="checkbox" onchange="app.toggleAllChecks(this)" checked class="w-4 h-4 accent-indigo-600"> Todos
                     </label>
                 </div>
-                <div class="divide-y">`;
+                <div class="divide-y divide-slate-200">`;
 
             estudiantes.forEach(e => {
-                // Verificar si tiene correo para mostrar aviso
-                const tieneEmail = e.emailEnc && e.emailEnc.includes('@'); // emailEnc viene de getStudents (asegúrate que el backend lo envíe)
-                const aviso = tieneEmail ? `<span class="text-green-600 text-xs ml-2">(${e.emailEnc})</span>` : `<span class="text-red-500 text-xs ml-2 font-bold">(Sin correo)</span>`;
-                const disabled = !tieneEmail ? 'disabled' : 'checked'; // Deshabilitar si no tiene correo
+                const tieneEmail = e.emailEnc && e.emailEnc.includes('@');
+                const aviso = tieneEmail ? `<span class="text-emerald-600 text-[10px] ml-2 font-mono">(${e.emailEnc})</span>` : `<span class="text-rose-500 text-[10px] ml-2 font-bold">(Sin correo)</span>`;
+                const disabled = !tieneEmail ? 'data-no-email="true"' : 'checked'; 
                 
                 listaHtml += `
-                <div class="p-2 hover:bg-gray-50 flex items-center gap-3">
-                    <input type="checkbox" class="chk-send-student w-4 h-4 text-indigo-600" value="${e.id}" ${disabled}>
+                <div class="p-2.5 bg-white hover:bg-indigo-50 flex items-center gap-3 transition">
+                    <input type="checkbox" class="chk-send-student w-4 h-4 accent-indigo-600 cursor-pointer" value="${e.id}" ${disabled}>
                     <div>
-                        <span class="font-medium text-gray-800">${e.nombre}</span>
+                        <span class="font-bold text-slate-700 text-xs">${e.nombre}</span>
                         ${aviso}
                     </div>
                 </div>`;
             });
             listaHtml += `</div></div>`;
 
-            // 3. Mostrar Modal
+            // Mostrar Modal con el Switch
             const { value: form } = await Swal.fire({
-                title: 'Enviar Informe al Hogar',
-                width: '600px',
+                title: 'Informes de Rendimiento',
+                width: '650px',
                 html: `
                     <div class="space-y-4">
-                        <div class="bg-blue-50 border-l-4 border-blue-500 p-3 text-left text-xs text-blue-700">
-                            <p>Se generará el <b>PDF de Notas</b> actual y se enviará por correo electrónico a los encargados seleccionados.</p>
+                        <div class="bg-indigo-50 border-l-4 border-indigo-500 p-3 text-left text-xs text-indigo-700 font-medium">
+                            Selecciona los estudiantes. Puedes enviar los informes por correo electrónico o descargar un solo archivo PDF con todas las boletas listas para imprimir.
                         </div>
                         
-                        <div class="text-left">
-                            <label class="text-xs font-bold text-gray-500">Mensaje para los padres</label>
-                            <textarea id="sw-msg-body" class="w-full p-2 border rounded h-24 text-sm" placeholder="Estimados padres, adjunto envío el reporte de calificaciones..."></textarea>
+                        <!-- SWITCH DE ACCIÓN -->
+                        <div class="mb-4">
+                            <label class="text-xs font-bold text-slate-500 mb-2 block uppercase tracking-wider text-left">¿Qué deseas hacer?</label>
+                            <div class="flex gap-3">
+                                <label class="flex items-center justify-center gap-2 cursor-pointer bg-blue-50 hover:bg-blue-100 p-3 rounded-xl border border-blue-200 flex-1 transition transform hover:-translate-y-0.5">
+                                    <input type="radio" name="sw-action-type" value="email" checked onchange="document.getElementById('email-msg-box').classList.remove('hidden')"> 
+                                    <span class="text-sm font-bold text-blue-700"><i class="fas fa-envelope"></i> Enviar Correo</span>
+                                </label>
+                                <label class="flex items-center justify-center gap-2 cursor-pointer bg-emerald-50 hover:bg-emerald-100 p-3 rounded-xl border border-emerald-200 flex-1 transition transform hover:-translate-y-0.5">
+                                    <input type="radio" name="sw-action-type" value="download" onchange="document.getElementById('email-msg-box').classList.add('hidden')"> 
+                                    <span class="text-sm font-bold text-emerald-700"><i class="fas fa-print"></i> Solo Imprimir</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- MENSAJE (Se oculta si elige Imprimir) -->
+                        <div id="email-msg-box" class="text-left mb-2 transition-all">
+                            <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Mensaje para los padres</label>
+                            <textarea id="sw-msg-body" class="w-full p-3 border border-slate-200 bg-slate-50 rounded-xl h-20 text-sm outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Estimados padres, adjunto envío el reporte..."></textarea>
                         </div>
 
                         <div class="text-left">
-                            <label class="text-xs font-bold text-gray-500 mb-1 block">Seleccionar Destinatarios</label>
+                            <label class="text-xs font-bold text-slate-500 mb-1 block uppercase tracking-wider">Destinatarios</label>
                             ${listaHtml}
                         </div>
                     </div>
                 `,
                 showCancelButton: true,
-                confirmButtonText: 'Enviar Correos',
-                confirmButtonColor: '#10B981', // Green
-            preConfirm: () => {
+                confirmButtonText: 'Procesar Selección',
+                confirmButtonColor: '#4F46E5', 
+                preConfirm: () => {
+                    const actionType = document.querySelector('input[name="sw-action-type"]:checked').value;
                     const msg = document.getElementById('sw-msg-body').value;
-                    if(!msg) return Swal.showValidationMessage('Escribe un mensaje');
                     
-                    let ids = [];
-                    document.querySelectorAll('.chk-send-student:checked').forEach(c => ids.push(c.value));
+                    if(actionType === 'email' && !msg) return Swal.showValidationMessage('Escribe un mensaje para el correo');
                     
-                    if(ids.length === 0) return Swal.showValidationMessage('Selecciona al menos un estudiante');
+                    let ids =[];
+                    // Si es email, descartamos los que no tienen correo marcado. Si es imprimir, jalamos todos los marcados.
+                    document.querySelectorAll('.chk-send-student:checked').forEach(c => {
+                        if(actionType === 'email' && c.getAttribute('data-no-email') === 'true') {
+                            // Lo ignoramos para email porque fallaría
+                        } else {
+                            ids.push(c.value);
+                        }
+                    });
+                    
+                    if(ids.length === 0) return Swal.showValidationMessage('Selecciona al menos un estudiante válido para esta acción');
+
+                    // Extraer el nombre del profe limpio (Quitando el "Buenos días,")
+                    let nombreDocente = "Docente";
+                    const spanUser = document.getElementById('user-name').innerText;
+                    if(spanUser.includes(',')) nombreDocente = spanUser.split(',')[1].trim();
 
                     return { 
+                        tipoAccion: actionType,
                         mensaje: msg, 
                         ids: ids,
-                        // 👇 AGREGAMOS ESTOS DATOS DEL DOCENTE 👇
-                        nombreDocente: "Prof. " + (document.getElementById('user-name').innerText || "Docente"),
+                        nombreDocente: "Prof. " + nombreDocente,
                         emailDocente: app.user.email 
                     };
                 }
             });
 
             if(form) {
-                // Confirmación final
-                const confirm = await Swal.fire({
-                    title: `¿Enviar a ${form.ids.length} personas?`,
-                    text: "Esto puede tomar unos segundos. No cierres la ventana.",
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Sí, enviar'
-                });
-
-                if(confirm.isConfirmed) {
+                if (form.tipoAccion === 'email') {
+                    // LÓGICA 1: ENVIAR CORREOS
                     Swal.fire({
-                        title: 'Enviando...',
-                        html: 'Generando PDFs y enviando correos.<br><b>Por favor espera.</b>',
+                        title: 'Enviando Correos...',
+                        html: 'Generando radiografías y enviando.<br><b>Por favor espera.</b>',
                         allowOutsideClick: false,
                         didOpen: () => Swal.showLoading()
                     });
 
-                    const res = await app.api({
-                        action: 'sendBulkReport',
-                        ids: form.ids,
-                        mensaje: form.mensaje
+                    const res = await app.api({ action: 'sendBulkReport', ids: form.ids, mensaje: form.mensaje, nombreDocente: form.nombreDocente, emailDocente: form.emailDocente });
+                    if(res && res.success) Swal.fire('Proceso Finalizado', res.message, 'success');
+                    else Swal.fire('Error', res.message || 'Hubo un problema', 'error');
+
+                } else {
+                    // LÓGICA 2: DESCARGA MASIVA PARA IMPRESIÓN (UN SOLO PDF)
+                    Swal.fire({
+                        title: 'Generando Documento...',
+                        html: 'Uniendo todas las boletas en un solo PDF.<br><b>Esto tomará unos segundos.</b>',
+                        allowOutsideClick: false,
+                        didOpen: () => Swal.showLoading()
                     });
 
+                    const res = await app.api({ action: 'bulkDownloadReport', ids: form.ids, nombreDocente: form.nombreDocente });
+
                     if(res && res.success) {
-                        Swal.fire('Proceso Finalizado', res.message, 'success');
+                        Swal.close();
+                        // Descargar el archivo localmente
+                        const link = document.createElement('a');
+                        link.href = "data:application/pdf;base64," + res.base64;
+                        link.download = res.nombre;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
                     } else {
-                        Swal.fire('Error', res.message || 'Hubo un problema', 'error');
+                        Swal.fire('Error', res.message || 'No se pudo generar el PDF', 'error');
                     }
                 }
             }
         },
-
+        
         // Helper para "Marcar Todos"
         toggleAllChecks: (source) => {
             const checkboxes = document.querySelectorAll('.chk-send-student:not(:disabled)');
@@ -1611,8 +1951,7 @@ modalEstudiante: async (idEditar = null) => {
         // 5. MÓDULO MATERIAS (CRUD COMPLETO)
         // ==========================================
         
-        // 1. ABRIR VISTA (READ)
- // 1. ABRIR VISTA (READ) - ACTUALIZADA
+// 1. ABRIR VISTA (READ) - ACTUALIZADA (CASCADA Y EMPTY STATE)
         openMaterias: async (idSec, nombreSec) => {
             app.state.currentSecId = idSec;
             app.state.currentSecName = nombreSec;
@@ -1620,54 +1959,92 @@ modalEstudiante: async (idEditar = null) => {
             document.getElementById('page-title').innerText = `Asignaturas: ${nombreSec}`;
             
             const tbody = document.getElementById('table-materias-body');
-            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando asignaturas...</td></tr>';
+            
+            // Spinner moderno
+            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin text-indigo-500 text-xl"></i><br><span class="text-slate-400 text-xs">Cargando asignaturas...</span></td></tr>';
 
             const list = await app.api({ action: 'getSubjects', idSeccion: idSec });
             
             // GUARDAMOS EN MEMORIA PARA EDITAR LUEGO
-            app.state.tempMaterias = list || []; 
+            app.state.tempMaterias = list ||[]; 
 
             tbody.innerHTML = '';
+            
+            // ----------------------------------------------------
+            // 1. MAGIA UX: EMPTY STATE (ESTADO VACÍO PREMIUM)
+            // ----------------------------------------------------
             if(!list || list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-400">No hay materias asignadas.</td></tr>';
+                tbody.innerHTML = `
+                <tr>
+                    <td colspan="3" class="p-12 text-center">
+                        <div class="flex flex-col items-center justify-center fade-in">
+                            <!-- Ícono gigante de Materias (Ámbar) -->
+                            <div class="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mb-4 text-amber-300 shadow-inner">
+                                <i class="fas fa-book-open text-4xl"></i>
+                            </div>
+                            <h4 class="text-slate-700 font-bold text-lg mb-1">Sin asignaturas</h4>
+                            <p class="text-slate-400 text-sm mb-5">Configura la primera materia y sus rubros de evaluación.</p>
+                            
+                            <!-- El botón invoca a modalMateria() directamente -->
+                            <button onclick="app.modalMateria()" class="bg-amber-500 text-white px-5 py-2.5 rounded-lg font-bold shadow-md shadow-amber-200 hover:bg-amber-600 transition transform hover:-translate-y-0.5">
+                                <i class="fas fa-plus mr-2"></i> Nueva Materia
+                            </button>
+                        </div>
+                    </td>
+                </tr>`;
                 return;
             }
 
-            list.forEach(m => {
-                // Validar nota mínima visualmente
-                const minBadge = `<span class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded border border-indigo-100 ml-2">Min: ${m.notaMinima || 65}</span>`;
+            // ----------------------------------------------------
+            // 2. MAGIA UX: ANIMACIÓN EN CASCADA (STAGGERED)
+            // ----------------------------------------------------
+            list.forEach((m, index) => {
+                // Validar nota mínima visualmente con un estilo de Pill moderno
+                const minBadge = `<span class="text-[10px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100 ml-2 shadow-sm font-bold">Min: ${m.notaMinima || 65}</span>`;
+
+                // Calculamos el retraso de la animación (0s, 0.05s, 0.1s...)
+                const delay = index * 0.05;
 
                 tbody.innerHTML += `
-                <tr class="hover:bg-gray-50 group border-b border-gray-100">
+                <tr class="fade-in-up hover:bg-slate-50 group border-b border-slate-100 transition" style="animation-delay: ${delay}s">
                     <td class="p-4">
-                        <span class="font-bold text-gray-700">${m.nombre}</span>
+                        <span class="font-bold text-slate-700">${m.nombre}</span>
                         ${minBadge}
                     </td>
-                    <td class="p-4 text-center text-xs text-gray-500">
-                        <span class="bg-gray-100 px-2 py-1 rounded" title="Cotidiano">C:${m.cotidiano}%</span>
-                        <span class="bg-gray-100 px-2 py-1 rounded" title="Tareas">T:${m.tareas}%</span>
-                        <span class="bg-gray-100 px-2 py-1 rounded" title="Pruebas">P:${m.pruebas}%</span>
-                        <span class="bg-gray-100 px-2 py-1 rounded" title="Proyectos">Pr:${m.proyectos}%</span>
-                        <span class="bg-gray-100 px-2 py-1 rounded" title="Asistencia">A:${m.asistencia}%</span>
+                    <td class="p-4 text-center text-xs text-slate-500">
+                        <!-- Rediseño de los rubros para que parezcan Píldoras -->
+                        <div class="flex justify-center gap-1.5 flex-wrap">
+                            <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-bold border border-slate-200 shadow-sm" title="Cotidiano">C: ${m.cotidiano}%</span>
+                            <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-bold border border-slate-200 shadow-sm" title="Tareas">T: ${m.tareas}%</span>
+                            <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-bold border border-slate-200 shadow-sm" title="Pruebas">P: ${m.pruebas}%</span>
+                            <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-bold border border-slate-200 shadow-sm" title="Proyectos">Pr: ${m.proyectos}%</span>
+                            <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded-md font-bold border border-slate-200 shadow-sm" title="Asistencia">A: ${m.asistencia}%</span>
+                        </div>
                     </td>
-                    <td class="p-4 text-right flex justify-end gap-2">
-                        <!-- NUEVO BOTÓN EDITAR -->
-                        <button onclick="app.editMateria('${m.id}')" class="text-gray-400 hover:text-blue-600 transition" title="Editar Configuración">
-                            <i class="fas fa-pen"></i>
-                        </button>
-                        
-                        <!-- Evaluar -->
-                        <button onclick="app.openIndicadores('${m.id}', '${m.nombre}')" class="text-indigo-500 hover:text-indigo-700 font-bold text-sm flex items-center gap-1" title="Evaluar">
-                            <i class="fas fa-edit"></i> <span class="hidden md:inline">Evaluar</span>
-                        </button>
-                        
-                        <button onclick="app.verNotasMateria('${m.id}', '${m.nombre}')" class="text-emerald-500 hover:text-emerald-700 transition" title="Cuadro de Notas">
-                            <i class="fas fa-table"></i>
-                        </button>
-                        
-                        <button onclick="app.deleteMateria('${m.id}')" class="text-gray-300 hover:text-red-600 transition" title="Eliminar">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                    <td class="p-4 text-right">
+                        <div class="flex justify-end gap-2 items-center">
+                            
+                            <!-- BOTÓN EDITAR -->
+                            <button onclick="app.editMateria('${m.id}')" class="h-8 w-8 rounded bg-slate-100 text-slate-400 hover:bg-blue-50 hover:text-blue-600 hover:scale-110 transition flex items-center justify-center" title="Editar Configuración">
+                                <i class="fas fa-pen text-xs"></i>
+                            </button>
+                            
+                            <!-- BOTÓN EVALUAR (Resaltado en Azul) -->
+                            <button onclick="app.openIndicadores('${m.id}', '${m.nombre}')" class="bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-100 hover:scale-105 border border-indigo-200 shadow-sm transition flex items-center gap-2" title="Evaluar">
+                                <i class="fas fa-edit"></i> <span class="hidden md:inline">Evaluar</span>
+                            </button>
+                            
+                            <!-- CUADRO NOTAS (Verde) -->
+                            <button onclick="app.verNotasMateria('${m.id}', '${m.nombre}')" class="h-8 w-8 rounded bg-emerald-50 text-emerald-500 hover:bg-emerald-100 hover:text-emerald-600 hover:scale-110 transition flex items-center justify-center" title="Cuadro de Notas">
+                                <i class="fas fa-table text-xs"></i>
+                            </button>
+                            
+                            <!-- ELIMINAR -->
+                            <button onclick="app.deleteMateria('${m.id}')" class="h-8 w-8 rounded bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-500 hover:scale-110 transition flex items-center justify-center" title="Eliminar">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
+                            
+                        </div>
                     </td>
                 </tr>`;
             });
@@ -2082,7 +2459,7 @@ modalEstudiante: async (idEditar = null) => {
             }
         },
 
-        saveScheduleConfig: async () => {
+saveScheduleConfig: async () => {
             let diasConfig = {};
             document.querySelectorAll('.chk-day:checked').forEach(chk => {
                 const cant = document.getElementById(`inp-${chk.value}`).value;
@@ -2094,6 +2471,7 @@ modalEstudiante: async (idEditar = null) => {
             const payload = {
                 action: 'saveConfigHorario',
                 email: app.user.email,
+                idConfig: app.state.editingScheduleId || null, // <--- ENVIAMOS EL ID (O NULL)
                 idSeccion: document.getElementById('hc-sec').value,
                 idMateria: document.getElementById('hc-mat').value,
                 fechaIni: document.getElementById('hc-ini').value,
@@ -2101,11 +2479,133 @@ modalEstudiante: async (idEditar = null) => {
                 diasConfig: diasConfig
             };
             
-            Swal.fire({title:'Guardando...', didOpen:()=>Swal.showLoading()});
+            Swal.fire({title: payload.idConfig ? 'Actualizando...' : 'Guardando...', didOpen:()=>Swal.showLoading()});
+            
             const res = await app.api(payload);
+            
             if(res.success) {
-                Swal.fire('Guardado','','success');
+                Swal.fire(payload.idConfig ? 'Actualizado' : 'Guardado','','success');
                 app.loadScheduleList(payload.idSeccion);
+                
+                // LIMPIEZA Y RESET DEL ESTADO
+                app.state.editingScheduleId = null;
+                document.getElementById('hc-ini').value = '';
+                document.getElementById('hc-fin').value = '';
+                document.getElementById('hc-mat').value = '';
+                
+                // Resetear checkboxes
+                document.querySelectorAll('.chk-day').forEach(chk => {
+                    chk.checked = false;
+                    app.toggleDayInput(chk.value);
+                });
+
+                // Restaurar botón
+                const btn = document.querySelector('button[onclick="app.saveScheduleConfig()"]');
+                btn.innerText = "Guardar";
+                btn.classList.add('bg-indigo-600');
+                btn.classList.remove('bg-emerald-600');
+            }
+        },
+
+        // ----------------------------------------------------
+        // PEGAR ESTO DENTRO DE "const app = { ... }"
+        // ----------------------------------------------------
+
+        // 1. HELPER PARA MOSTRAR/OCULTAR INPUTS DE DÍAS (Requerido por el editar)
+        toggleDayInput: (day) => {
+            const chk = document.getElementById(`chk-${day}`);
+            const inp = document.getElementById(`inp-${day}`);
+            if(chk && inp) {
+                if(chk.checked) {
+                    inp.classList.remove('hidden'); 
+                } else {
+                    inp.classList.add('hidden'); 
+                    inp.value = 1; // Reset a 1 si se desmarca
+                }
+            }
+        },
+// 2. FUNCIÓN PARA CARGAR DATOS EN EL FORMULARIO (Modo Edición)
+        editScheduleConfig: (id) => {
+            console.log("Editando ID:", id); // Para ver si entra en la consola
+
+            // A. Buscar el objeto en memoria
+            const item = app.data.tempScheduleList.find(x => x.id === id);
+            if (!item) return console.error("No se encontró el horario en memoria");
+
+            // B. Guardar el ID en estado global
+            app.state.editingScheduleId = id;
+
+            // C. Rellenar Campos Básicos
+            const selMat = document.getElementById('hc-mat');
+            selMat.value = item.idMateria;
+
+            document.getElementById('hc-ini').value = item.ini; 
+            document.getElementById('hc-fin').value = item.fin;
+
+            // D. Rellenar Días (Checkboxes e Inputs)
+            // Primero limpiamos todo visualmente
+            document.querySelectorAll('.chk-day').forEach(chk => {
+                chk.checked = false;
+                app.toggleDayInput(chk.value); 
+            });
+
+            // Luego marcamos los que tocan
+            if(item.dias) {
+                for (const [dia, cant] of Object.entries(item.dias)) {
+                    const chk = document.getElementById(`chk-${dia}`);
+                    const inp = document.getElementById(`inp-${dia}`);
+                    if (chk && inp) {
+                        chk.checked = true;
+                        app.toggleDayInput(dia); // Mostrar input
+                        inp.value = cant;
+                    }
+                }
+            }
+
+            // E. Cambiar botones a "Modo Edición" (Verde y Mostrar Cancelar)
+            const btnSave = document.getElementById('btn-save-schedule');
+            const btnCancel = document.getElementById('btn-cancel-schedule');
+            
+            if(btnSave) {
+                btnSave.innerText = "Actualizar Bloque";
+                // Cambiamos el color a verde (Emerald)
+                btnSave.className = "bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-emerald-700 transition h-9";
+            }
+            if(btnCancel) {
+                // Hacemos visible el botón de cancelar
+                btnCancel.classList.remove('hidden'); 
+            }
+            
+            // F. Scroll suave hacia arriba
+            document.getElementById('view-horarios').scrollIntoView({ behavior: 'smooth' });
+        },
+
+        // CANCELAR EDICIÓN DE HORARIO Y REINICIAR FORMULARIO
+        cancelEditSchedule: () => {
+            // 1. Limpiar estado de memoria
+            app.state.editingScheduleId = null;
+
+            // 2. Limpiar inputs visuales
+            document.getElementById('hc-ini').value = '';
+            document.getElementById('hc-fin').value = '';
+            document.getElementById('hc-mat').value = '';
+
+            // 3. Resetear checkboxes de días
+            document.querySelectorAll('.chk-day').forEach(chk => {
+                chk.checked = false;
+                app.toggleDayInput(chk.value); // Esto oculta los inputs numéricos
+            });
+
+            // 4. Restaurar botones a estado original (Crear)
+            const btnSave = document.getElementById('btn-save-schedule');
+            const btnCancel = document.getElementById('btn-cancel-schedule');
+
+            if(btnSave) {
+                btnSave.innerText = "Guardar";
+                btnSave.className = "bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition h-9";
+            }
+            if(btnCancel) {
+                btnCancel.classList.add('hidden'); // Ocultar botón cancelar
             }
         },
 
@@ -2119,7 +2619,7 @@ modalEstudiante: async (idEditar = null) => {
             app.renderScheduleList(); 
         },
 
-        renderScheduleList: () => {
+renderScheduleList: () => {
             const div = document.getElementById('schedule-list');
             const filterDateVal = document.getElementById('filter-hc-date').value;
             
@@ -2158,24 +2658,66 @@ modalEstudiante: async (idEditar = null) => {
                             </div>
                         </div>
                     </div>
-                    <button onclick="app.delScheduleConfig('${c.id}', '${c.idSeccion}')" class="h-8 w-8 rounded-full hover:bg-red-50 text-gray-300 hover:text-red-500 transition">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
+                    
+                    <!-- AQUÍ ESTÁ EL CAMBIO: CONTENEDOR CON LOS DOS BOTONES -->
+                    <div class="flex items-center gap-1">
+                        <!-- Botón Editar (Lápiz Azul) -->
+                        <button onclick="app.editScheduleConfig('${c.id}')" class="h-8 w-8 rounded-full hover:bg-blue-50 text-gray-300 hover:text-blue-600 transition flex items-center justify-center" title="Editar">
+                            <i class="fas fa-pen text-xs"></i>
+                        </button>
+                        
+                        <!-- Botón Eliminar (Basura Roja) -->
+                        <button onclick="app.delScheduleConfig('${c.id}', '${c.idSeccion}')" class="h-8 w-8 rounded-full hover:bg-red-50 text-gray-300 hover:text-red-500 transition flex items-center justify-center" title="Eliminar">
+                            <i class="fas fa-trash-alt text-xs"></i>
+                        </button>
+                    </div>
+
                 </div>`;
             });
         },
 
+        // ELIMINAR BLOQUE DE HORARIO (VERSIÓN V-PRO)
         delScheduleConfig: async (id, idSec) => {
-            if(confirm('¿Eliminar bloque?')) {
-                await app.api({action:'delConfigHorario', id});
-                app.loadScheduleList(idSec);
+            // 1. Alerta de confirmación
+            const conf = await Swal.fire({
+                title: '¿Eliminar bloque de horario?',
+                text: "Esta acción no se puede deshacer.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (conf.isConfirmed) {
+                // 2. Animación de carga
+                Swal.fire({ title: 'Eliminando...', didOpen: () => Swal.showLoading() });
+                
+                try {
+                    // 3. Llamada al Backend
+                    const res = await app.api({ action: 'delConfigHorario', id: id });
+                    
+                    if (res && res.success) {
+                        Swal.fire({
+                            icon: 'success', 
+                            title: 'Eliminado', 
+                            text: 'El horario ha sido borrado.', 
+                            timer: 1500, 
+                            showConfirmButton: false
+                        });
+                        // 4. Recargar la lista visualmente
+                        app.loadScheduleList(idSec);
+                    } else {
+                        Swal.fire('Error', res.message || 'No se pudo eliminar.', 'error');
+                    }
+                } catch (error) {
+                    console.error("Error al borrar horario:", error);
+                    Swal.fire('Error', 'Hubo un problema de conexión.', 'error');
+                }
             }
         },
 
-        filterScheduleList: (clear = false) => {
-            if(clear) document.getElementById('filter-hc-date').value = '';
-            app.renderScheduleList();
-        },
 
         // ==========================================
         // NUEVO: ASISTENCIA 2.0 (MATRIZ)
@@ -2352,16 +2894,90 @@ modalEstudiante: async (idEditar = null) => {
         // ==========================================
 
         // A. ENTRAR A INDICADORES
-        openIndicadores: (idMat, nomMat) => {
+// ---------------------------------------------------------
+        // MAGIA UX: PESTAÑAS DINÁMICAS (SUMATORIA DE PORCENTAJES)
+        // ---------------------------------------------------------
+
+        openIndicadores: async (idMat, nomMat) => {
             app.state.currentMatId = idMat;
             app.state.currentMatName = nomMat;
-            app.state.currentCat = 'TRAB_COT'; // Por defecto empezamos en Cotidiano
+            app.state.currentCat = 'TRAB_COT'; 
             app.state.currentCatLabel = 'Cotidiano';
             
             app.nav('indicadores');
             document.getElementById('ind-title').innerText = `Evaluación: ${nomMat}`;
-            app.updateTabsUI();
+            
+            // 1. Mostrar cargando en las pestañas
+            document.getElementById('dynamic-tabs-container').innerHTML = '<span class="text-xs text-slate-400"><i class="fas fa-spinner fa-spin"></i> Calculando rubros...</span>';
+            
+            // 2. Traer TODOS los indicadores de esta materia de un solo golpe
+            app.state.allIndicators = await app.api({ action: 'getIndicators', idMateria: idMat, categoria: 'ALL' });
+            
+            // 3. Dibujar Pestañas y Tabla
+            app.renderDynamicTabs();
             app.loadIndicadores();
+        },
+
+        setCategory: (catCode, catLabel) => {
+            app.state.currentCat = catCode;
+            app.state.currentCatLabel = catLabel;
+            app.renderDynamicTabs(); // Redibujar colores
+            app.loadIndicadores();
+        },
+
+        renderDynamicTabs: () => {
+            // Obtener el valor original de los rubros para esta materia
+            const mat = app.state.tempMaterias.find(m => String(m.id) === String(app.state.currentMatId));
+            if(!mat) return;
+
+            const categorias =[
+                { code: 'TRAB_COT', label: 'Cotidiano', max: parseFloat(mat.cotidiano) },
+                { code: 'TAREAS', label: 'Tareas', max: parseFloat(mat.tareas) },
+                { code: 'PRUEBAS', label: 'Pruebas', max: parseFloat(mat.pruebas) },
+                { code: 'PROYECTOS', label: 'Proyectos', max: parseFloat(mat.proyectos) },
+                { code: 'ASIST', label: 'Asistencia', max: parseFloat(mat.asistencia) }
+            ];
+
+            let htmlTabs = '';
+
+            categorias.forEach(cat => {
+                // Sumar los porcentajes de los indicadores creados en esta categoría
+                let suma = 0;
+                if(app.state.allIndicators) {
+                    app.state.allIndicators.forEach(ind => {
+                        if(ind.categoria === cat.code) suma += parseFloat(ind.puntaje || 0);
+                    });
+                }
+
+                // Lógica Cotidiano (Siempre es perfecto porque se divide solo)
+                if(cat.code === 'TRAB_COT') suma = cat.max; 
+                // Lógica Asistencia (No tiene indicadores manuales, siempre es perfecto)
+                if(cat.code === 'ASIST') suma = cat.max;
+
+                // Definir colores
+                const isSelected = app.state.currentCat === cat.code;
+                const isPerfect = suma === cat.max;
+                
+                // Color del badge (Verde si cuadra, Rojo si falta o sobra)
+                const badgeColor = isPerfect ? 'text-emerald-600 bg-emerald-100' : 'text-rose-600 bg-rose-100';
+                
+                // Color del Tab
+                const tabStyle = isSelected 
+                    ? 'ring-2 ring-indigo-500 bg-indigo-50 border-transparent text-indigo-700' 
+                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50';
+
+                htmlTabs += `
+                <button onclick="app.setCategory('${cat.code}', '${cat.label}')" 
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border transition ${tabStyle}">
+                    ${cat.label}
+                    <span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold ${badgeColor}">
+                        ${suma}% / ${cat.max}%
+                    </span>
+                </button>`;
+            });
+
+            // NECESITAS ASEGURARTE DE TENER ESTE ID EN TU HTML (Paso 4)
+            document.getElementById('dynamic-tabs-container').innerHTML = htmlTabs;
         },
 
         // Cambiar de Pestaña (Cotidiano, Tareas, etc.)
@@ -2372,83 +2988,269 @@ modalEstudiante: async (idEditar = null) => {
             app.loadIndicadores();
         },
 
-        updateTabsUI: () => {
+  updateTabsUI: () => {
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                if(btn.innerText.includes(app.state.currentCatLabel)) {
-                    btn.className = 'tab-btn px-4 py-2 rounded-full text-sm font-bold bg-indigo-100 text-indigo-700 ring-2 ring-indigo-500 transition';
+                // Buscamos cuál es la categoría activa
+                const catCode = btn.getAttribute('data-cat');
+                if(catCode === app.state.currentCat) {
+                    btn.className = 'tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-indigo-600 text-white shadow-md transition';
                 } else {
-                    btn.className = 'tab-btn px-4 py-2 rounded-full text-sm font-bold bg-white text-gray-500 hover:bg-gray-50 border transition';
+                    btn.className = 'tab-btn flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-white text-slate-500 hover:bg-slate-50 border border-slate-200 transition';
                 }
             });
         },
 
         // B. CARGAR LISTA DE INDICADORES
-        loadIndicadores: async () => {
+loadIndicadores: async () => {
             const tbody = document.getElementById('table-ind-body');
-            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+            
+            // 1. Ajuste del Encabezado (Punto de la Imagen)
+            const header = document.querySelector('#view-indicadores thead tr');
+            if (header) {
+                header.innerHTML = `
+                    <th class="p-4">DESCRIPCIÓN / ACTIVIDAD</th>
+                    <th class="p-4 text-center">VALOR (%)</th>
+                    <th class="p-4 text-right">ACCIONES</th>
+                `;
+            }
 
-            const list = await app.api({ 
-                action: 'getIndicators', 
-                idMateria: app.state.currentMatId, 
-                categoria: app.state.currentCat 
-            });
+            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin text-indigo-500 text-xl"></i><br><span class="text-slate-400 text-xs">Cargando...</span></td></tr>';
+
+            const list = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: app.state.currentCat });
+            
+            // SACAR EL TOTAL DEL COTIDIANO DE LA MATERIA
+            const materiaActual = app.state.tempMaterias.find(m => String(m.id) === String(app.state.currentMatId));
+            const totalCot = materiaActual ? parseFloat(materiaActual.cotidiano) : 30;
+            const isCotidiano = app.state.currentCat === 'TRAB_COT';
+
+            // DIVISIÓN MÁGICA
+            const valorDinamico = (isCotidiano && list.length > 0) ? (totalCot / list.length) : 0;
 
             tbody.innerHTML = '';
             if(!list || list.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="p-8 text-center text-gray-400">No hay actividades en ${app.state.currentCatLabel}.<br>¡Crea la primera!</td></tr>`;
+                tbody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-400">No hay actividades. ¡Crea la primera!</td></tr>';
                 return;
             }
 
             list.forEach(i => {
+                // Si es cotidiano usa la división, sino usa el valor que el profe escribió
+                const finalPts = isCotidiano ? valorDinamico : parseFloat(i.puntaje);
+                
+                // Formateamos el badge para que siempre sea claro (si es auto muestra el icono de robot)
+                const iconoAuto = isCotidiano ? '<i class="fas fa-robot mr-1 text-[9px]"></i>' : '';
+                const badgeLabel = `${iconoAuto}${finalPts.toFixed(2)}%`;
+
                 tbody.innerHTML += `
-                <tr class="hover:bg-gray-50 group">
-                    <td class="p-4 font-bold text-gray-700">${i.descripcion}</td>
-                    <td class="p-4 text-center"><span class="bg-gray-100 px-3 py-1 rounded-full text-xs font-bold text-gray-600">${i.puntaje} pts</span></td>
+                <tr class="hover:bg-slate-50 group transition border-b border-slate-100">
+                    <td class="p-4 font-bold text-slate-700 text-sm">${i.descripcion}</td>
+                    <td class="p-4 text-center">
+                        <span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold border border-indigo-100">${badgeLabel}</span>
+                    </td>
                     <td class="p-4 text-right">
-                        <button onclick="app.openEvaluation('${i.id}', '${i.descripcion}', ${i.puntaje})" class="bg-green-100 text-green-700 px-3 py-1 rounded text-xs font-bold hover:bg-green-200 mr-2">
-                            <i class="fas fa-check-circle"></i> Calificar
-                        </button>
-                        <button onclick="app.deleteIndicador('${i.id}')" class="text-red-300 hover:text-red-600 transition"><i class="fas fa-trash"></i></button>
+                        <div class="flex items-center justify-end gap-2">
+                            <button onclick="app.openEvaluation('${i.id}', '${i.descripcion}', ${finalPts}, ${i.puntosTotales})" class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 border border-emerald-200 shadow-sm transition flex items-center gap-2">
+                                <i class="fas fa-check-circle"></i> Calificar
+                            </button>
+                            <button onclick="app.modalIndicador('${i.id}', '${i.descripcion}', '${i.puntaje}', '${i.puntosTotales}')" class="h-8 w-8 rounded-full text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition flex items-center justify-center" title="Editar">
+                                <i class="fas fa-pen text-xs"></i>
+                            </button>
+                            <button onclick="app.deleteIndicador('${i.id}')" class="h-8 w-8 rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 transition flex items-center justify-center" title="Eliminar">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>`;
             });
         },
 
-        // C. CREAR NUEVO INDICADOR
-        modalIndicador: async () => {
+// ---------------------------------------------------------
+        // EVALUACIÓN V-PRO: REGLA DE 3 PARA EXÁMENES / ESCALA PARA COTIDIANO
+        // ---------------------------------------------------------
+
+        modalIndicador: async (id = null, descActual = '', ptsActual = '', ptsTotalesActual = '100') => {
+            const isCotidiano = app.state.currentCat === 'TRAB_COT';
+            const titulo = id ? 'Editar Indicador' : `Nuevo: ${app.state.currentCatLabel}`;
+            
+            // Si NO es cotidiano, pedimos Valor (%) Y Puntos Totales (Ej: Examen de 50 pts)
+            const divValor = isCotidiano 
+                ? `<div class="hidden"><input id="sw-ind-pts" type="number" value="0"><input id="sw-ind-tot" type="number" value="100"></div>
+                   <div class="bg-indigo-50 text-indigo-700 p-3 rounded-lg text-xs font-bold border border-indigo-200"><i class="fas fa-magic text-lg"></i> % Auto-calculado.</div>`
+                : `<div class="grid grid-cols-2 gap-3">
+                       <div>
+                           <label class="text-xs font-bold text-slate-500 uppercase">Valor (%)</label>
+                           <input id="sw-ind-pts" type="number" class="w-full p-2 border rounded bg-slate-50 font-bold text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Ej: 15" value="${ptsActual}">
+                       </div>
+                       <div>
+                           <label class="text-[10px] font-bold text-rose-500 uppercase">Puntos Totales (Examen)</label>
+                           <input id="sw-ind-tot" type="number" class="w-full p-2 border rounded bg-rose-50 font-bold text-rose-600 outline-none focus:ring-2 focus:ring-rose-200" placeholder="Ej: 45" value="${ptsTotalesActual}">
+                       </div>
+                   </div>`;
+
             const { value: form } = await Swal.fire({
-                title: `Nuevo: ${app.state.currentCatLabel}`,
+                title: titulo,
                 html: `
-                    <input id="sw-ind-desc" class="swal2-input" placeholder="Descripción (Ej: Tarea #1)">
-                    <input id="sw-ind-pts" type="number" class="swal2-input" placeholder="Puntaje Máximo (Ej: 100)">
+                    <div class="text-left space-y-3">
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 uppercase">Descripción</label>
+                            <input id="sw-ind-desc" class="w-full p-2 border rounded bg-slate-50 outline-none focus:ring-2 focus:ring-indigo-200" value="${descActual}">
+                        </div>
+                        ${divValor}
+                    </div>
                 `,
                 focusConfirm: false,
                 showCancelButton: true,
+                confirmButtonText: id ? 'Actualizar' : 'Guardar',
+                confirmButtonColor: '#4F46E5',
                 preConfirm: () => {
-                    const desc = document.getElementById('sw-ind-desc').value;
-                    const pts = document.getElementById('sw-ind-pts').value;
-                    if(!desc || !pts) Swal.showValidationMessage('Completa los campos');
-                    return { descripcion: desc, puntaje: pts }
+                    return { 
+                        descripcion: document.getElementById('sw-ind-desc').value, 
+                        puntaje: document.getElementById('sw-ind-pts').value,
+                        puntosTotales: document.getElementById('sw-ind-tot').value
+                    }
                 }
             });
 
             if(form) {
+                if(!form.descripcion) return;
                 Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
-                const payload = {
-                    action: 'saveIndicator',
-                    idMateria: app.state.currentMatId,
-                    categoria: app.state.currentCat,
-                    descripcion: form.descripcion,
-                    puntaje: form.puntaje
-                };
-                const res = await app.api(payload);
-                if(res) {
-                    Swal.fire('Listo', 'Indicador creado', 'success');
-                    app.loadIndicadores();
-                }
+                await app.api({ action: 'saveIndicator', idIndicador: id, idMateria: app.state.currentMatId, categoria: app.state.currentCat, ...form });
+                // Recargamos TODO para que los TABS se actualicen
+                app.state.allIndicators = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: 'ALL' });
+                app.renderDynamicTabs();
+                app.loadIndicadores();
+                Swal.close();
             }
         },
 
+// 3. ABRIR TABLA DE EVALUACIÓN (CON ESCALA 0-3 Y PUNTOS)
+        openEvaluation: async (idInd, descInd, maxPtsPorcentaje, ptsTotalesObj) => {
+            app.state.currentIndId = idInd;
+            app.state.currentMaxPts = parseFloat(maxPtsPorcentaje); 
+            app.state.currentPtsTotales = parseFloat(ptsTotalesObj) || 100;
+            const isCotidiano = app.state.currentCat === 'TRAB_COT';
+            
+            app.nav('evaluar');
+            document.getElementById('eval-title').innerText = descInd;
+            document.getElementById('eval-subtitle').innerText = isCotidiano 
+                ? `${app.state.currentCatLabel} | Valor Auto: ${app.state.currentMaxPts.toFixed(2)}%`
+                : `${app.state.currentCatLabel} | Valor: ${app.state.currentMaxPts}% | Prueba de: ${app.state.currentPtsTotales} Pts`;
+            
+            const tbody = document.getElementById('table-eval-body');
+            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin text-indigo-500"></i></td></tr>';
+
+            // Cargar datos
+            const list = await app.api({ action: 'getEvaluationData', idSeccion: app.state.currentSecId, idIndicador: idInd });
+            tbody.innerHTML = '';
+            
+            if(!list || list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">Sin estudiantes.</td></tr>';
+                return;
+            }
+
+            // DIBUJAR FILAS
+            list.forEach((e, idx) => {
+                let badgeFecha = e.fecha ? `<span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-100 shadow-sm" id="badge-fecha-${e.id}"><i class="far fa-calendar-check"></i> ${e.fecha}</span>` : `<span class="hidden" id="badge-fecha-${e.id}"></span>`;
+                
+                let inputHtml = '';
+               let inputVal = (e.nivel !== null && e.nivel !== undefined) ? e.nivel : "";  
+
+                if (isCotidiano) {
+                    // LÓGICA COTIDIANO (ESCALA 0-3)
+                    let selectedVal = (e.nivel !== null && e.nivel !== undefined) ? Number(e.nivel) : "";
+                    
+                    inputHtml = `
+                        <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded min-w-[60px] text-center" id="pts-view-${e.id}">- pts</span>
+                        <select class="grade-input w-36 p-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-600 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm" 
+                                data-id="${e.id}" onchange="app.updatePreviewScore(this)">
+                            <option value="" ${selectedVal === "" ? "selected" : ""}>- Seleccionar -</option>
+                            <option value="3" ${selectedVal === 3 ? "selected" : ""}>3 (Logrado)</option>
+                            <option value="2" ${selectedVal === 2 ? "selected" : ""}>2 (Intermedio)</option>
+                            <option value="1" ${selectedVal === 1 ? "selected" : ""}>1 (Inicial)</option>
+                            <option value="0" ${selectedVal === 0 ? "selected" : ""}>0 (Nulo)</option>
+                        </select>`;
+                } else {
+                    // LÓGICA EXÁMENES / TAREAS (PUNTOS REALES)
+                    inputHtml = `
+                        <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded min-w-[50px] text-center" id="nota100-view-${e.id}" title="Nota 1-100">Nota: -</span>
+                        <span class="text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1 rounded min-w-[60px] text-center" id="pts-view-${e.id}" title="Porcentaje para el reporte">- %</span>
+                        <input type="number" class="grade-input w-20 p-2 border border-rose-300 rounded-lg text-center font-bold text-rose-600 focus:ring-2 focus:ring-rose-500 outline-none shadow-sm" 
+                               data-id="${e.id}" value="${inputVal}" onkeyup="app.updatePreviewScore(this)" onchange="app.updatePreviewScore(this)">
+                        `;
+                }
+
+                tbody.innerHTML += `
+                <tr class="hover:bg-slate-50 border-b border-slate-100 transition">
+                    <td class="p-4 text-slate-400 font-bold w-10 text-xs">${idx+1}</td>
+                    <td class="p-4 font-medium text-slate-700">${e.nombre}</td>
+                    <td class="p-4 text-right">
+                        <div class="flex flex-col items-end gap-1">
+                            ${badgeFecha}
+                            <div class="flex items-center gap-2">
+                                ${inputHtml}
+                            </div>
+                        </div>
+                    </td>
+                </tr>`;
+            });
+
+            // -------------------------------------------------------------
+            // DISPARADOR AUTOMÁTICO DE CÁLCULO AL ABRIR
+            // -------------------------------------------------------------
+            document.querySelectorAll('.grade-input').forEach(input => {
+                // Si el input tiene valor (porque ya tenía nota guardada), actualizamos los badges
+                if(input.value !== "" && input.value !== "undefined") {
+                    app.updatePreviewScore(input);
+                }
+            });
+        },
+
+updatePreviewScore: (inputObj) => {
+    const idEst = inputObj.getAttribute('data-id');
+    const spanPorc = document.getElementById(`pts-view-${idEst}`);
+    const spanNota100 = document.getElementById(`nota100-view-${idEst}`);
+    const isCotidiano = app.state.currentCat === 'TRAB_COT';
+    const val = inputObj.value;
+
+    if(val === "") {
+        spanPorc.innerText = "- %";
+        spanPorc.className = "text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1 rounded min-w-[60px] text-center";
+        if(spanNota100) spanNota100.innerText = "Nota: -";
+        return;
+    }
+
+    if (isCotidiano) {
+        const nivel = parseFloat(val); // Cambié parseInt por parseFloat por seguridad
+        const notaCalculada = (nivel / 3) * app.state.currentMaxPts;
+        
+        spanPorc.innerText = notaCalculada.toFixed(2) + "%";
+        spanPorc.className = `text-xs font-bold px-2 py-1 rounded min-w-[60px] text-center transition ${nivel==3?'text-emerald-700 bg-emerald-100':nivel==0?'text-red-700 bg-red-100':'text-indigo-700 bg-indigo-100'}`;
+    } else {
+        // EXÁMENES / TAREAS
+        const ptsDigitados = parseFloat(val);
+        const totalPuntos = app.state.currentPtsTotales || 100; // Aseguramos que nunca sea 0
+
+        // Validar Máximo
+        if(ptsDigitados > totalPuntos) {
+            Swal.fire({toast:true, position:'top-end', icon:'warning', title:`Máx ${totalPuntos} pts`, showConfirmButton:false, timer:2000});
+            inputObj.value = totalPuntos;
+            return app.updatePreviewScore(inputObj); 
+        }
+
+        // CÁLCULO PRECISO
+        const nota100 = (ptsDigitados / totalPuntos) * 100;
+        const porcObtenido = (ptsDigitados / totalPuntos) * app.state.currentMaxPts;
+        
+        spanPorc.innerText = porcObtenido.toFixed(2) + "%";
+        spanPorc.className = "text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-1 rounded min-w-[60px] text-center transition";
+        
+        if(spanNota100) {
+            spanNota100.innerText = "Nota: " + Math.round(nota100);
+            spanNota100.className = `text-[10px] font-bold px-2 py-1 rounded min-w-[50px] text-center border transition ${nota100 >= 65 ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-rose-600 bg-rose-50 border-rose-200'}`;
+        }
+    }
+},
+
+                // 2. BORRAR INDICADOR
         deleteIndicador: async (id) => {
             const conf = await Swal.fire({ title: '¿Borrar?', text: 'Se perderán las notas de esta actividad', icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33' });
             if(conf.isConfirmed) {
@@ -2457,78 +3259,93 @@ modalEstudiante: async (idEditar = null) => {
             }
         },
 
-        // D. CALIFICAR (LA GRID DE NOTAS)
-        openEvaluation: async (idInd, descInd, maxPts) => {
-            app.state.currentIndId = idInd;
-            app.state.currentMaxPts = maxPts;
-            
-            app.nav('evaluar');
-            document.getElementById('eval-title').innerText = descInd;
-            document.getElementById('eval-subtitle').innerText = `${app.state.currentCatLabel} | Valor: ${maxPts} pts`;
-            
-            const tbody = document.getElementById('table-eval-body');
-            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando estudiantes...</td></tr>';
+// ----------------------------------------------------
+        // MOTOR DE GUARDADO DE NOTAS (BLINDADO)
+        // ----------------------------------------------------
+saveGrades: async () => {
+    // --- 1. BLOQUEO DE BOTÓN (EVITA DOBLE CLIC) ---
+    const btnSave = event.target; // Capturamos el botón que fue clickeado
+    btnSave.disabled = true;
+    btnSave.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Guardando...';
 
-            // Traer estudiantes + notas ya existentes
-            const list = await app.api({ 
-                action: 'getEvaluationData', 
-                idSeccion: app.state.currentSecId, 
-                idIndicador: idInd 
-            });
-
-            tbody.innerHTML = '';
-            if(!list || list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-400">No hay estudiantes en esta sección.</td></tr>';
-                return;
+    const selects = document.querySelectorAll('.grade-input');
+    let lista = [];
+    const maxPts = app.state.currentMaxPts;
+    const ptsTotales = app.state.currentPtsTotales;
+    const isCotidiano = app.state.currentCat === 'TRAB_COT';
+    
+    selects.forEach(sel => {
+        if(sel.value !== "") {
+            let notaFinal = 0;
+            let nivelOBruto = parseFloat(sel.value);
+            
+            if (isCotidiano) {
+                notaFinal = (nivelOBruto / 3) * maxPts;
+            } else {
+                notaFinal = (nivelOBruto / ptsTotales) * maxPts;
             }
-
-            list.forEach((e, idx) => {
-                tbody.innerHTML += `
-                <tr class="hover:bg-gray-50 border-b border-gray-100">
-                    <td class="p-4 text-gray-400 font-bold w-10">${idx+1}</td>
-                    <td class="p-4 font-medium text-gray-700">${e.nombre}</td>
-                    <td class="p-4 text-center">
-                        <input type="number" 
-                               class="grade-input w-24 p-2 border border-gray-300 rounded text-center font-bold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" 
-                               data-id="${e.id}" 
-                               value="${e.nota}" 
-                               max="${maxPts}"
-                               placeholder="-">
-                    </td>
-                </tr>`;
-            });
-        },
-
-        saveGrades: async () => {
-            const inputs = document.querySelectorAll('.grade-input');
-            let lista = [];
             
-            inputs.forEach(inp => {
-                // Solo guardar si tiene valor (o si es 0)
-                if(inp.value !== "") {
-                    lista.push({ idEst: inp.getAttribute('data-id'), nota: inp.value });
-                }
+            lista.push({ 
+                idEst: sel.getAttribute('data-id'), 
+                nota: notaFinal.toFixed(2),
+                nivel: nivelOBruto
             });
+        }
+    });
 
-            Swal.fire({ title: 'Guardando Notas...', didOpen: () => Swal.showLoading() });
-            
-            const payload = {
-                action: 'saveGrades',
-                idIndicador: app.state.currentIndId,
-                lista: lista
-            };
+    const res = await app.api({ 
+        action: 'saveGrades', 
+        idIndicador: app.state.currentIndId, 
+        lista: lista 
+    });
+    
+    // --- 2. RESTAURACIÓN DEL BOTÓN ---
+    btnSave.disabled = false;
+    btnSave.innerHTML = '<i class="fas fa-save mr-2"></i> Guardar Notas';
 
-            const res = await app.api(payload);
-            if(res && res.success) {
-                Swal.fire({ icon: 'success', title: 'Notas Guardadas', timer: 1500, showConfirmButton: false });
-            }
-        },
+    if(res && res.success) {
+        Swal.fire({ icon: 'success', title: 'Guardado', text: 'Notas registradas correctamente.', timer: 1500, showConfirmButton: false });
+        app.openEvaluation(app.state.currentIndId, document.getElementById('eval-title').innerText, maxPts, ptsTotales);
+    } else {
+        Swal.fire('Error', 'No se pudieron guardar las notas', 'error');
+    }
+},
 
-        fillMaxScore: () => {
-            document.querySelectorAll('.grade-input').forEach(inp => {
-                if(inp.value === "") inp.value = app.state.currentMaxPts;
-            });
-        },
+// --- FUNCIÓN PARA RELLENAR CON NOTA MÁXIMA ---
+fillMaxScore: () => {
+    // 1. Determinamos cuál es el "máximo" para este contexto
+    // Si es cotidiano, la escala es siempre 3. Si es otra categoría, usamos los Puntos Totales configurados.
+    const isCotidiano = app.state.currentCat === 'TRAB_COT';
+    const valorMaximo = isCotidiano ? 3 : app.state.currentPtsTotales;
+    
+    // 2. Buscamos todos los inputs de nota en la tabla
+    const inputs = document.querySelectorAll('.grade-input');
+    
+    if(inputs.length === 0) {
+        Swal.fire('Atención', 'No hay estudiantes en esta lista.', 'warning');
+        return;
+    }
+
+    // 3. Aplicamos el valor a cada input
+    inputs.forEach(input => {
+        // Solo rellenamos si el input está vacío o si el docente quiere sobrescribir
+        input.value = valorMaximo;
+        
+        // 4. IMPORTANTE: Disparamos la lógica de cálculo visual
+        // Esto hace que el porcentaje y la nota de 1-100 aparezcan instantáneamente
+        app.updatePreviewScore(input);
+    });
+    
+    // Feedback visual para el docente
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: 'Puntaje máximo asignado: ' + valorMaximo,
+        showConfirmButton: false,
+        timer: 1500
+    });
+},
 
         // ==========================================
         // MÓDULO BITÁCORA (LÓGICA COMPLETA)
@@ -2552,7 +3369,7 @@ modalEstudiante: async (idEditar = null) => {
             app.renderBitacoraTable();
         },
 
-        // 2. RENDERIZAR TABLA (CON FILTROS)
+// 2. RENDERIZAR TABLA DE BITÁCORAS (CASCADA Y EMPTY STATE)
         renderBitacoraTable: () => {
             const tbody = document.getElementById('bitacora-table-body');
             const filterSec = document.getElementById('bit-filter-sec').value;
@@ -2567,41 +3384,70 @@ modalEstudiante: async (idEditar = null) => {
             });
 
             tbody.innerHTML = '';
+            
+            // ----------------------------------------------------
+            // 1. MAGIA UX: EMPTY STATE (ESTADO VACÍO PREMIUM)
+            // ----------------------------------------------------
             if(filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-400">Sin incidencias</td></tr>';
+                tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="p-12 text-center">
+                        <div class="flex flex-col items-center justify-center fade-in">
+                            <!-- Ícono gigante de Bitácora (Naranja) -->
+                            <div class="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mb-4 text-orange-400 shadow-inner">
+                                <i class="fas fa-book-reader text-4xl"></i>
+                            </div>
+                            <h4 class="text-slate-700 font-bold text-lg mb-1">Sin incidencias</h4>
+                            <p class="text-slate-400 text-sm mb-5">No hay registros en la bitácora para esta búsqueda.</p>
+                            
+                            <!-- Botón para crear nueva incidencia -->
+                            <button onclick="app.modalBitacora()" class="bg-amber-500 text-white px-5 py-2.5 rounded-lg font-bold shadow-md shadow-amber-200 hover:bg-amber-600 transition transform hover:-translate-y-0.5">
+                                <i class="fas fa-plus mr-2"></i> Nueva Entrada
+                            </button>
+                        </div>
+                    </td>
+                </tr>`;
                 return;
             }
 
-            filtered.forEach(b => {
-                // Estilos
+            // ----------------------------------------------------
+            // 2. MAGIA UX: ANIMACIÓN EN CASCADA (STAGGERED)
+            // ----------------------------------------------------
+            filtered.forEach((b, index) => {
+                // Estilos de los Badges
                 const typeBadge = b.tipo === 'Estudiante' 
-                    ? '<span class="bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-bold">Individual</span>'
-                    : '<span class="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold">Grupal</span>';
+                    ? '<span class="bg-blue-50 text-blue-600 border border-blue-200 px-2 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider">Individual</span>'
+                    : '<span class="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-1 rounded-md text-[10px] uppercase font-bold tracking-wider">Grupal</span>';
                 
                 const statusBadge = b.estado === 'Abierto'
-                    ? '<span class="bg-red-100 text-red-600 px-2 py-1 rounded-full text-xs font-bold">Pendiente</span>'
-                    : '<span class="bg-green-100 text-green-600 px-2 py-1 rounded-full text-xs font-bold">Cerrado</span>';
+                    ? '<span class="bg-rose-50 text-rose-600 border border-rose-200 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm flex items-center gap-1"><i class="fas fa-exclamation-circle text-[10px]"></i> Pendiente</span>'
+                    : '<span class="bg-emerald-50 text-emerald-600 border border-emerald-200 px-2.5 py-1 rounded-full text-xs font-bold shadow-sm flex items-center gap-1"><i class="fas fa-check-circle text-[10px]"></i> Cerrado</span>';
 
                 // Botón Cerrar Caso (Solo si está abierto)
                 const closeBtn = b.estado === 'Abierto' 
-                    ? `<button onclick="app.closeBitacora('${b.id}')" class="text-green-500 hover:text-green-700 mr-2" title="Cerrar Caso"><i class="fas fa-check-circle"></i></button>` 
+                    ? `<button onclick="app.closeBitacora('${b.id}')" class="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-500 hover:bg-emerald-100 hover:text-emerald-700 hover:scale-110 transition flex items-center justify-center mr-1" title="Marcar como Resuelto"><i class="fas fa-check"></i></button>` 
                     : '';
 
+                // Calculamos el retraso de la animación
+                const delay = index * 0.05;
+
                 tbody.innerHTML += `
-                <tr class="hover:bg-gray-50 group">
-                    <td class="p-4 whitespace-nowrap text-gray-600">${b.fecha}</td>
+                <tr class="fade-in-up hover:bg-slate-50 group border-b border-slate-100 transition" style="animation-delay: ${delay}s">
+                    <td class="p-4 whitespace-nowrap text-slate-600 font-mono text-xs">${b.fecha}</td>
                     <td class="p-4">${typeBadge}</td>
                     <td class="p-4">
-                        <div class="font-bold text-gray-800">${b.nombreEstudiante}</div>
-                        <div class="text-xs text-gray-500">${b.nombreSeccion} ${b.idMateria!=='GENERAL' ? '• '+b.nombreMateria : ''}</div>
+                        <div class="font-bold text-slate-800 text-sm">${b.nombreEstudiante}</div>
+                        <div class="text-xs text-slate-400 mt-0.5"><i class="fas fa-users mr-1"></i>${b.nombreSeccion} ${b.idMateria!=='GENERAL' ? '<span class="mx-1">&bull;</span>'+b.nombreMateria : ''}</div>
                     </td>
-                    <td class="p-4 text-gray-600 max-w-xs truncate" title="${b.desc}">${b.desc}</td>
+                    <td class="p-4 text-slate-500 text-sm max-w-xs truncate" title="${b.desc}">${b.desc}</td>
                     <td class="p-4 text-center">${statusBadge}</td>
-                    <td class="p-4 text-right flex justify-end">
-                        ${closeBtn}
-                        <button onclick="app.editBitacora('${b.id}')" class="text-gray-400 hover:text-blue-600 mr-2"><i class="fas fa-pen"></i></button>
-                        <button onclick="app.downloadPdf('pdfBitacora', '${b.id}')" class="text-gray-400 hover:text-red-600 mr-2"><i class="fas fa-file-pdf"></i></button>
-                        <button onclick="app.deleteBitacora('${b.id}')" class="text-gray-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
+                    <td class="p-4 text-right">
+                        <div class="flex justify-end items-center gap-1">
+                            ${closeBtn}
+                            <button onclick="app.editBitacora('${b.id}')" class="h-8 w-8 rounded-lg bg-slate-100 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition flex items-center justify-center" title="Editar"><i class="fas fa-pen text-xs"></i></button>
+                            <button onclick="app.downloadPdf('pdfBitacora', '${b.id}')" class="h-8 w-8 rounded-lg bg-rose-50 text-rose-400 hover:bg-rose-100 hover:text-rose-600 transition flex items-center justify-center" title="Descargar PDF"><i class="fas fa-file-pdf text-xs"></i></button>
+                            <button onclick="app.deleteBitacora('${b.id}')" class="h-8 w-8 rounded-lg bg-slate-100 text-slate-400 hover:bg-red-50 hover:text-red-500 transition flex items-center justify-center" title="Eliminar"><i class="fas fa-trash text-xs"></i></button>
+                        </div>
                     </td>
                 </tr>`;
             });
@@ -2998,18 +3844,46 @@ modalEstudiante: async (idEditar = null) => {
             app.modalBitacora(b);
         },
 
+       // 3. ELIMINAR BITÁCORA (VERSIÓN PREMIUM)
         deleteBitacora: async (id) => {
-            if(confirm('¿Eliminar incidencia?')) {
-                Swal.showLoading();
+            const conf = await Swal.fire({
+                title: '¿Eliminar incidencia?',
+                text: "Esta acción borrará el registro para siempre.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444', // Rojo (red-500)
+                cancelButtonColor: '#64748b',  // Gris (slate-500)
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (conf.isConfirmed) {
+                Swal.fire({ title: 'Eliminando...', didOpen: () => Swal.showLoading() });
                 await app.api({ action: 'deleteBitacora', id });
+                
+                Swal.fire({ icon: 'success', title: 'Eliminada', showConfirmButton: false, timer: 1500 });
                 app.loadBitacoras();
-                Swal.close();
             }
         },
 
+        // 4. CERRAR CASO DE BITÁCORA (VERSIÓN PREMIUM)
         closeBitacora: async (id) => {
-            if(confirm('¿Marcar como caso cerrado?')) {
+            const conf = await Swal.fire({
+                title: '¿Cerrar este caso?',
+                text: "La incidencia pasará a estado resuelto.",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#10b981', // Verde (emerald-500)
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Sí, cerrar caso',
+                cancelButtonText: 'Cancelar'
+            });
+
+            if (conf.isConfirmed) {
+                Swal.fire({ title: 'Actualizando...', didOpen: () => Swal.showLoading() });
                 await app.api({ action: 'closeBitacora', id });
+                
+                Swal.fire({ icon: 'success', title: 'Caso Cerrado', showConfirmButton: false, timer: 1500 });
                 app.loadBitacoras();
             }
         },
@@ -3566,48 +4440,69 @@ adminLoadUsers: async () => {
         // MÓDULO PLANEAMIENTO (LÓGICA FRONTAL)
         // ==========================================
 
-// 1. CARGAR LISTA (ACTUALIZADO CON BOTONES)
+// CARGAR LISTA DE PLANEAMIENTOS (CASCADA Y EMPTY STATE)
         loadPlanes: async () => {
             const div = document.getElementById('plan-list');
-            div.innerHTML = '<div class="text-center py-10"><i class="fas fa-spinner fa-spin text-indigo-600 text-2xl"></i></div>';
+            
+            // Spinner Moderno
+            div.innerHTML = '<div class="col-span-full text-center py-10"><i class="fas fa-spinner fa-spin text-indigo-500 text-xl"></i><br><span class="text-slate-400 text-xs">Cargando planes...</span></div>';
             
             const planes = await app.api({ action: 'getPlanning' });
             div.innerHTML = '';
 
             // GUARDAMOS EN MEMORIA PARA USAR AL EDITAR
-            app.data.planes = planes || [];
+            app.data.planes = planes ||[];
 
+            // ----------------------------------------------------
+            // 1. MAGIA UX: EMPTY STATE (ESTADO VACÍO PREMIUM)
+            // ----------------------------------------------------
             if(!planes || planes.length === 0) {
                 div.innerHTML = `
-                <div class="bg-white border-2 border-dashed border-gray-300 rounded-xl p-10 text-center">
-                    <h4 class="text-gray-500 font-bold mb-2">No tienes planeamientos</h4>
-                    <button onclick="app.modalPlan()" class="bg-blue-600 text-white px-4 py-2 rounded font-bold shadow hover:bg-blue-700">Crear Plan</button>
+                <div class="col-span-full bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
+                    <div class="flex flex-col items-center justify-center fade-in">
+                        <!-- Ícono gigante de Planeamiento (Azul) -->
+                        <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-4 text-blue-400 shadow-inner">
+                            <i class="fas fa-clipboard-list text-4xl"></i>
+                        </div>
+                        <h4 class="text-slate-700 font-bold text-lg mb-1">Sin planeamientos</h4>
+                        <p class="text-slate-400 text-sm mb-5">Diseña tu primer plan didáctico con estrategias e instrumentos de evaluación.</p>
+                        
+                        <button onclick="app.modalPlan()" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg font-bold shadow-md shadow-blue-200 hover:bg-blue-700 transition transform hover:-translate-y-0.5">
+                            <i class="fas fa-plus mr-2"></i> Nuevo Planeamiento
+                        </button>
+                    </div>
                 </div>`;
                 return;
             }
 
-            planes.forEach(p => {
+            // ----------------------------------------------------
+            // 2. MAGIA UX: ANIMACIÓN EN CASCADA (STAGGERED)
+            // ----------------------------------------------------
+            planes.forEach((p, index) => {
+                // Calculamos el retraso de la animación
+                const delay = index * 0.05;
+
                 div.innerHTML += `
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center hover:shadow-md transition gap-4">
+                <div class="fade-in-up bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center transition-all hover:shadow-md hover:-translate-y-1 gap-4" style="animation-delay: ${delay}s">
                     <div class="flex-1">
                         <div class="flex items-center gap-3 mb-1">
-                            <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-xs font-bold border border-indigo-100">${p.periodo}</span>
-                            <h4 class="font-bold text-gray-800 text-lg">${p.nombreMateria}</h4>
+                            <span class="bg-indigo-50 text-indigo-700 px-2 py-1 rounded text-[10px] uppercase tracking-wider font-bold border border-indigo-100">${p.periodo}</span>
+                            <h4 class="font-bold text-slate-800 text-lg">${p.nombreMateria}</h4>
                         </div>
-                        <p class="text-sm text-gray-500 mb-2"><i class="fas fa-users mr-1"></i> ${p.nombreSeccion} &bull; <i class="fas fa-calendar mr-1"></i> Inicio: ${p.fechaIni}</p>
-                        <p class="text-xs text-gray-400 italic truncate max-w-md">${p.aprendizaje}</p>
+                        <p class="text-sm text-slate-500 mb-2"><i class="fas fa-users mr-1"></i> ${p.nombreSeccion} <span class="text-slate-300 mx-1">&bull;</span> <i class="fas fa-calendar-alt mr-1"></i> Inicio: ${p.fechaIni}</p>
+                        <p class="text-xs text-slate-400 italic truncate max-w-2xl" title="${p.aprendizaje}">${p.aprendizaje}</p>
                     </div>
                     
-                    <!-- BOTONES DE ACCIÓN -->
+                    <!-- BOTONES DE ACCIÓN (Modernizados) -->
                     <div class="flex items-center gap-2">
-                        <button onclick="app.editPlan('${p.id}')" class="h-9 w-9 rounded-lg bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600 transition flex items-center justify-center" title="Editar">
-                            <i class="fas fa-pen"></i>
+                        <button onclick="app.editPlan('${p.id}')" class="h-9 w-9 rounded-lg bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition flex items-center justify-center" title="Editar">
+                            <i class="fas fa-pen text-sm"></i>
                         </button>
-                        <button onclick="app.downloadPdf('pdfPlanning', '${p.id}')" class="h-9 px-3 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-700 border border-red-100 font-bold text-xs transition flex items-center gap-2" title="PDF">
+                        <button onclick="app.downloadPdf('pdfPlanning', '${p.id}')" class="h-9 px-3 rounded-lg bg-rose-50 text-rose-500 hover:bg-rose-100 hover:text-rose-600 border border-rose-100 font-bold text-xs transition flex items-center gap-2 shadow-sm" title="Descargar PDF">
                             <i class="fas fa-file-pdf"></i> PDF
                         </button>
-                        <button onclick="app.deletePlan('${p.id}')" class="h-9 w-9 rounded-lg bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600 transition flex items-center justify-center" title="Eliminar">
-                            <i class="fas fa-trash"></i>
+                        <button onclick="app.deletePlan('${p.id}')" class="h-9 w-9 rounded-lg bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 transition flex items-center justify-center" title="Eliminar">
+                            <i class="fas fa-trash text-sm"></i>
                         </button>
                     </div>
                 </div>`;
@@ -3815,6 +4710,26 @@ adminLoadUsers: async () => {
                 }
             }
         },
+
+        // Agrega esto dentro del objeto 'app'
+loadAuditoriaData: async () => {
+    const indId = document.getElementById('aud-ind-id').value;
+    if(!indId) return Swal.fire('Error', 'Necesito el ID del indicador', 'warning');
+    
+    const tbody = document.getElementById('aud-table-body');
+    tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center">Cargando...</td></tr>';
+    
+    const data = await app.api({ action: 'obtenerReporteAuditoriaNotas', idIndicador: indId });
+    tbody.innerHTML = '';
+    
+    data.forEach(r => {
+        tbody.innerHTML += `<tr>
+            <td class="p-3">${r.idNota}</td>
+            <td class="p-3 font-bold text-red-600">${r.nota}</td>
+            <td class="p-3"><button onclick="alert('Manual: ${r.idNota}')" class="text-blue-600 underline text-xs">Ver en BD</button></td>
+        </tr>`;
+    });
+},
 
         // 3. EDITAR PLAN (CORREGIDO)
         editPlan: async (id) => {
@@ -4046,12 +4961,8 @@ adminLoadUsers: async () => {
                 </div>
 
                 <!-- TABS DE CATEGORÍAS -->
-                <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
-                    <button onclick="app.setCategory('TRAB_COT', 'Cotidiano')" class="tab-btn px-4 py-2 rounded-full text-sm font-bold bg-indigo-100 text-indigo-700 ring-2 ring-indigo-500">Cotidiano</button>
-                    <button onclick="app.setCategory('TAREAS', 'Tareas')" class="tab-btn px-4 py-2 rounded-full text-sm font-bold bg-white text-gray-500 hover:bg-gray-50 border">Tareas</button>
-                    <button onclick="app.setCategory('PRUEBAS', 'Pruebas')" class="tab-btn px-4 py-2 rounded-full text-sm font-bold bg-white text-gray-500 hover:bg-gray-50 border">Pruebas</button>
-                    <button onclick="app.setCategory('PROYECTOS', 'Proyectos')" class="tab-btn px-4 py-2 rounded-full text-sm font-bold bg-white text-gray-500 hover:bg-gray-50 border">Proyectos</button>
-                    <button onclick="app.setCategory('ASIST', 'Asistencia')" class="tab-btn px-4 py-2 rounded-full text-sm font-bold bg-white text-gray-500 hover:bg-gray-50 border">Asistencia</button>
+            <div id="dynamic-tabs-container" class="flex gap-2 mb-6 overflow-x-auto pb-2">
+                    <!-- JS DIBUJA LOS TABS AQUÍ -->
                 </div>
 
                 <!-- TABLA DE INDICADORES -->
@@ -4099,23 +5010,150 @@ adminLoadUsers: async () => {
                     </table>
                 </div>
             </div>`;
+
+            // ----------------------------------------------------
+            // NUEVA VISTA: AYUDA Y SOPORTE (CON BANNER PREMIUM)
+            // ----------------------------------------------------
+            container.innerHTML += `
+            <div id="view-ayuda" class="view hidden fade-in">
+                <div class="mb-6">
+                    <h3 class="text-2xl font-bold text-slate-800"><i class="fas fa-life-ring text-indigo-500 mr-2"></i>Centro de Ayuda</h3>
+                    <p class="text-sm text-slate-500">Recursos, tutoriales y contacto de soporte técnico.</p>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- BANNER CLICKEABLE (MARKETING Y SOPORTE) -->
+                <!-- ========================================== -->
+                <a href="https://wa.me/50671023115?text=Hola%20Ing.%20Nelson,%20me%20gustar%C3%ADa%20hacer%20una%20consulta%20sobre%20RegistraME%20V-Pro" 
+                   target="_blank" 
+                   class="block w-full mb-6 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group border border-slate-200 relative">
+                    
+                    <!-- Imagen de fondo (puedes cambiar esta URL por la tuya si tienes una) -->
+                    <img src="https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2000&auto=format&fit=crop" 
+                         alt="Soporte RegistraME" 
+                         class="w-full h-32 md:h-48 object-cover group-hover:scale-105 transition-transform duration-700">
+                    
+                    <!-- Capa oscura degradada para que el texto resalte -->
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/40 to-transparent flex flex-col justify-end p-6 md:p-8">
+                        <h4 class="text-white font-extrabold text-xl md:text-2xl flex items-center gap-2 mb-1">
+                            <i class="fab fa-whatsapp text-emerald-400"></i> ¿Necesitas atención personalizada?
+                        </h4>
+                        <p class="text-slate-200 text-xs md:text-sm font-medium">Haz clic aquí para chatear directamente con el Ing. Nelson Rodríguez, creador del sistema.</p>
+                    </div>
+                </a>
+                <!-- ========================================== -->
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    <!-- Tarjeta Izquierda: Pasos Básicos -->
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                        <h4 class="font-bold text-slate-800 text-lg mb-6 flex items-center gap-2">
+                            <div class="p-2 bg-blue-50 text-blue-500 rounded-lg"><i class="fas fa-flag-checkered"></i></div>
+                            Guía Rápida de Inicio
+                        </h4>
+                        
+                        <ul class="space-y-6">
+                            <li class="flex gap-4">
+                                <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center shrink-0">1</div>
+                                <div>
+                                    <h5 class="font-bold text-slate-700 text-sm">Crea una Institución y Sección</h5>
+                                    <p class="text-xs text-slate-500 mt-1">En el menú <b class="text-indigo-500">Configuración</b>. Esto es vital para agrupar a tus estudiantes.</p>
+                                </div>
+                            </li>
+                            <li class="flex gap-4">
+                                <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center shrink-0">2</div>
+                                <div>
+                                    <h5 class="font-bold text-slate-700 text-sm">Ingresa a tus Estudiantes</h5>
+                                    <p class="text-xs text-slate-500 mt-1">Ve al Dashboard, entra a tu sección y usa el botón de importar masivamente o créalos uno por uno.</p>
+                                </div>
+                            </li>
+                            <li class="flex gap-4">
+                                <div class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center shrink-0">3</div>
+                                <div>
+                                    <h5 class="font-bold text-slate-700 text-sm">Configura tus Materias y Rubros</h5>
+                                    <p class="text-xs text-slate-500 mt-1">Asigna las materias, define el valor del Cotidiano, Pruebas y comienza a calificar en escala 0-3.</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Tarjeta Derecha: Enlaces Externos -->
+                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 flex flex-col">
+                        <h4 class="font-bold text-slate-800 text-lg mb-6 flex items-center gap-2">
+                            <div class="p-2 bg-emerald-50 text-emerald-500 rounded-lg"><i class="fas fa-headset"></i></div>
+                            Recursos Oficiales
+                        </h4>
+                        
+                        <div class="space-y-4 flex-1">
+                            <!-- Botón Youtube -->
+                            <a href="https://www.youtube.com/watch?v=TU_VIDEO_AQUI" target="_blank" class="block bg-red-50 hover:bg-red-100 border border-red-100 p-4 rounded-xl transition group">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-red-500 group-hover:scale-110 transition">
+                                        <i class="fab fa-youtube text-2xl"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="font-bold text-red-700">Videotutoriales en YouTube</h5>
+                                        <p class="text-xs text-red-600/80 mt-0.5">Aprende paso a paso cómo usar el sistema.</p>
+                                    </div>
+                                </div>
+                            </a>
+
+                            <!-- Botón WhatsApp -->
+                            <a href="https://wa.me/50671023115" target="_blank" class="block bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 p-4 rounded-xl transition group">
+                                <div class="flex items-center gap-4">
+                                    <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-emerald-500 group-hover:scale-110 transition">
+                                        <i class="fab fa-whatsapp text-2xl"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="font-bold text-emerald-700">Soporte Técnico Directo</h5>
+                                        <p class="text-xs text-emerald-600/80 mt-0.5">Chatea con el Ing. Nelson Rodriguez.</p>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        
+                        <div class="mt-6 pt-6 border-t border-slate-100 text-center">
+                            <p class="text-xs text-slate-400">RegistraME V-Pro &copy; 2026</p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>`;
+
+            container.innerHTML += `
+            <div id="view-auditoria" class="view hidden fade-in">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold text-slate-800"><i class="fas fa-search text-indigo-500 mr-2"></i>Auditoría de Rescate</h3>
+                    <button onclick="app.nav('dashboard')" class="text-slate-500 text-sm font-bold"><i class="fas fa-times"></i> Cerrar</button>
+                </div>
+                
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <div class="flex gap-3 mb-6 items-end">
+                        <div class="flex-1">
+                            <label class="text-xs font-bold text-slate-500">Indicador a Revisar</label>
+                            <input id="aud-ind-id" class="w-full p-2 border rounded-lg text-sm" placeholder="Pega aquí el ID del Indicador (ej: IND-...)">
+                        </div>
+                        <button onclick="app.loadAuditoriaData()" class="bg-indigo-600 text-white px-6 py-2 rounded-lg font-bold hover:bg-indigo-700 transition">
+                            Cargar Datos Crudos
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-x-auto border rounded-lg">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-gray-100 font-bold text-gray-600">
+                                <tr><th class="p-3">Estudiante ID</th><th class="p-3">Nota Bruta (BD)</th><th class="p-3">Acción</th></tr>
+                            </thead>
+                            <tbody id="aud-table-body" class="divide-y"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>`;
+            
         },
     };
-           // Escuchar cuando vuelve el internet
-    window.addEventListener('online', () => {
-        app.updateSyncUI();
-        app.syncData();
-    });
-
-    // Escuchar cuando se va el internet
-    window.addEventListener('offline', () => {
-        app.updateSyncUI();
-    });
-
-    // INICIAR LA APLICACIÓN AL CARGAR LA PÁGINA
-    document.addEventListener("DOMContentLoaded", () => {
-        app.init(); // <--- Aquí estaba el error, ahora llama a app.init()
-    });
+    
+// INICIAR APLICACIÓN
+    document.addEventListener("DOMContentLoaded", app.init);
 
     </script>
 
