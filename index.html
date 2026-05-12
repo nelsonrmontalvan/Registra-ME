@@ -269,23 +269,30 @@
         <div class="ambient-light light-2"></div>
 
         <!-- HEADER SUPERIOR -->
-        <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 shrink-0">
-            <div class="flex items-center gap-4">
-                <button onclick="app.toggleSidebar()" class="md:hidden text-gray-500 hover:text-gray-700">
-                    <i class="fas fa-bars text-xl"></i>
-                </button>
-                <h2 id="page-title" class="text-xl font-bold text-gray-800">Dashboard</h2>
-            </div>
-            <div class="flex items-center gap-4">
-                <div class="hidden md:flex flex-col text-right mr-2">
-                    <span id="user-name" class="text-sm font-bold text-gray-700">Cargando...</span>
-                    <span id="user-role" class="text-xs text-gray-500 uppercase">Docente</span>
-                </div>
-                <div class="h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold border border-indigo-200 shadow-sm">
-                    <i class="fas fa-user"></i>
-                </div>
-            </div>
-        </header>
+<header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 shrink-0">
+    <div class="flex items-center gap-4">
+        <button onclick="app.toggleSidebar()" class="md:hidden text-gray-500 hover:text-gray-700">
+            <i class="fas fa-bars text-xl"></i>
+        </button>
+        <h2 id="page-title" class="text-xl font-bold text-gray-800">Dashboard</h2>
+    </div>
+
+    <!-- AQUÍ VA EL INDICADOR DE SINCRONIZACIÓN -->
+    <div class="flex items-center gap-4">
+        <div id="sync-status" class="flex items-center gap-2 px-3 py-1 rounded-full bg-gray-100 text-gray-500 text-[10px] font-bold transition-all">
+            <i class="fas fa-cloud"></i>
+            <span id="sync-text">SINCRO OK</span>
+        </div>
+
+        <div class="hidden md:flex flex-col text-right mr-2">
+            <span id="user-name" class="text-sm font-bold text-gray-700">Cargando...</span>
+            <span id="user-role" class="text-xs text-gray-500 uppercase">Docente</span>
+        </div>
+        <div class="h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold border border-indigo-200 shadow-sm">
+            <i class="fas fa-user"></i>
+        </div>
+    </div>
+</header>
 
        <!-- CONTENEDOR DE VISTAS (SCROLLEABLE) -->
         <div id="views-container" class="flex-1 overflow-y-auto p-6 relative">
@@ -315,15 +322,23 @@
                         <i class="fas fa-arrow-left"></i> Volver
                     </button>
                     <div class="flex gap-2">
-                        <!-- BOTÓN NUEVO -->
-                        <button onclick="app.modalEnvioMasivo()" class="bg-amber-100 text-amber-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-amber-200 transition border border-amber-200 shadow-sm">
+
+                        <button onclick="app.downloadPdf('pdfStudentList', app.state.currentSecId)"
+                            class="bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-200 transition border border-gray-200 shadow-sm">
+                            <i class="fas fa-print mr-2"></i> Imprimir Lista
+                        </button>
+               
+                        <button onclick="app.modalEnvioMasivo()"
+                            class="bg-amber-100 text-amber-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-amber-200 transition border border-amber-200 shadow-sm">
                             <i class="fas fa-paper-plane mr-2"></i> Informe al Hogar
                         </button>
-                        
-                        <button onclick="app.modalImportar()" class="bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-200 transition">
+                    
+                        <button onclick="app.modalImportar()"
+                            class="bg-green-100 text-green-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-200 transition">
                             <i class="fas fa-file-excel mr-2"></i> Importar
                         </button>
-                        <button onclick="app.modalEstudiante()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition shadow">
+                        <button onclick="app.modalEstudiante()"
+                            class="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 transition shadow">
                             <i class="fas fa-plus mr-2"></i> Nuevo Estudiante
                         </button>
                     </div>
@@ -551,73 +566,142 @@
     <!-- JAVASCRIPT LOGIC (PARTE 2 SE INYECTA AQUÍ) -->
     <script>
         // ==========================================
-    // CONFIGURACIÓN Y ESTADO GLOBAL
-    // ==========================================
+    
     // ¡¡PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT!! 👇
-    const API_URL = "https://script.google.com/macros/s/AKfycbz2xcFcMlWOra0Mok3t9nLN0LPLzJFwePpLYPur1LFk6RNZVlgvefjn3pA11pcl35ZX3w/exec"; 
+    const API_URL = "https://script.google.com/macros/s/AKfycbxXmay1LSITglw3JKEP9j-k0e_bUZDz_KQP4roCF8BVWumZ3TCI-H1OOnEZ4w0eUDMZBw/exec"; 
 
-    const app = {
+const app = {
         user: null,      // Datos del usuario logueado
         data: {},        // Cache de datos (Secciones, Instituciones)
         state: {},       // Estado temporal (Sección activa, Materia activa)
-        
+
         // ==========================================
-        // 1. NÚCLEO DE COMUNICACIÓN (FETCH)
+        // 1. NÚCLEO DE COMUNICACIÓN (FETCH + OFFLINE)
         // ==========================================
         api: async (payload) => {
+            // A. Lógica para trabajar sin internet (Asistencia y Notas)
+            if (!navigator.onLine && (payload.action === 'saveMark' || payload.action === 'saveGrades')) {
+                app.saveToOutbox(payload);
+                return { success: true, offline: true }; 
+            }
+
             try {
-                // Si hay usuario, inyectamos el email en cada petición automáticamente
                 if(app.user?.email) payload.email = app.user.email;
-                
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     body: JSON.stringify(payload)
                 });
                 const res = await response.json();
                 
-                // Manejo de errores global
-                if(res.status === 'error') throw new Error(res.msg || res.error);
+                // Guardamos en caché si es carga de datos para poder verlos offline después
+                if (res && !res.error && (payload.action === 'getInitialData' || payload.action === 'getStudents')) {
+                    localStorage.setItem('cache_' + payload.action + (payload.idSeccion || ''), JSON.stringify(res));
+                }
+
                 return res;
             } catch (error) {
-                console.error("API Error:", error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error de Conexión',
-                    text: error.message || 'No se pudo contactar con el servidor.'
-                });
-                return null;
+                // B. Si el fetch falla por pérdida de señal repentina
+                if (payload.action === 'saveMark' || payload.action === 'saveGrades') {
+                    app.saveToOutbox(payload);
+                    return { success: true, offline: true };
+                }
+                throw error;
             }
+        },
+
+        // 2. LA "CAJA DE SALIDA" (OUTBOX)
+        saveToOutbox: (payload) => {
+            let outbox = JSON.parse(localStorage.getItem('registrame_outbox') || '[]');
+            outbox.push({ ...payload, timestamp: Date.now(), idSync: Math.random().toString(36).substr(2, 9) });
+            localStorage.setItem('registrame_outbox', JSON.stringify(outbox));
+            app.updateSyncUI();
+            
+            const Toast = Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3000 });
+            Toast.fire({ icon: 'info', title: 'Modo Offline: Guardado localmente' });
+        },
+
+        // 3. ACTUALIZAR EL ÍCONO DE ESTADO (NUBE)
+        updateSyncUI: () => {
+            const outbox = JSON.parse(localStorage.getItem('registrame_outbox') || '[]');
+            const statusDiv = document.getElementById('sync-status');
+            const statusText = document.getElementById('sync-text');
+
+            if (!statusDiv) return; // Evitar errores si no existe el elemento
+
+            if (outbox.length > 0) {
+                statusDiv.className = "flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-[10px] font-bold animate-pulse";
+                statusText.innerText = `${outbox.length} PENDIENTES`;
+            } else {
+                if (navigator.onLine) {
+                    statusDiv.className = "flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-700 text-[10px] font-bold";
+                    statusText.innerText = "SINCRO OK";
+                } else {
+                    statusDiv.className = "flex items-center gap-2 px-3 py-1 rounded-full bg-gray-200 text-gray-500 text-[10px] font-bold";
+                    statusText.innerText = "OFFLINE";
+                }
+            }
+        },
+
+        // 4. EL MOTOR DE SINCRONIZACIÓN
+        syncData: async () => {
+            if (!navigator.onLine) return;
+            
+            let outbox = JSON.parse(localStorage.getItem('registrame_outbox') || '[]');
+            if (outbox.length === 0) return;
+
+            console.log("Sincronizando datos pendientes...");
+            
+            for (let i = 0; i < outbox.length; i++) {
+                const item = outbox[i];
+                try {
+                    await fetch(API_URL, { method: 'POST', body: JSON.stringify(item) });
+                } catch (e) {
+                    console.error("Error sincronizando:", e);
+                    return; 
+                }
+            }
+
+            localStorage.setItem('registrame_outbox', '[]');
+            app.updateSyncUI();
+            Swal.fire({
+                icon: 'success',
+                title: '¡Sincronizado!',
+                text: 'Tus cambios offline ya están en la nube.',
+                timer: 2000,
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false
+            });
         },
 
         // ==========================================
         // 2. AUTENTICACIÓN Y NAVEGACIÓN
         // ==========================================
-   init: () => {
-            // 1. PRIMERO: Construimos el HTML (Inyectar vistas)
-            // ¡Esta línea debe ir arriba de todo!
+        init: () => {
             app.injectDynamicViews(); 
+            app.updateSyncUI();
 
-            // 2. SEGUNDO: Ahora sí, verificamos sesión y cargamos datos
             const savedUser = localStorage.getItem('registrame_user');
             if(savedUser) {
                 app.user = JSON.parse(savedUser);
                 app.enterApp();
             }
+
+            // Intentar sincronización inicial
+            setTimeout(app.syncData, 3000);
         },
 
-         // HELPER: CALCULAR EDAD
-    calcAge: (fechaNac) => {
-        if (!fechaNac) return null; 
-        const nacimiento = new Date(fechaNac.replace(/-/g, '\/'));
-        const hoy = new Date();
-        let edad = hoy.getFullYear() - nacimiento.getFullYear();
-        const m = hoy.getMonth() - nacimiento.getMonth();
-        if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) {
-            edad--;
-        }
-        return (isNaN(edad) || edad < 0) ? null : edad;
-    },
-
+        calcAge: (fechaNac) => {
+            if (!fechaNac) return null; 
+            const nacimiento = new Date(fechaNac.replace(/-/g, '\/'));
+            const hoy = new Date();
+            let edad = hoy.getFullYear() - nacimiento.getFullYear();
+            const m = hoy.getMonth() - nacimiento.getMonth();
+            if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) {
+                edad--;
+            }
+            return (isNaN(edad) || edad < 0) ? null : edad;
+        },
 
         login: async (e) => {
             e.preventDefault();
@@ -640,30 +724,20 @@
             }
         },
 
-enterApp: async () => {
+        enterApp: async () => {
             document.getElementById('screen-login').classList.add('hidden');
             document.getElementById('sidebar').classList.remove('hidden');
             document.getElementById('sidebar').classList.add('flex');
             document.getElementById('main-content').classList.remove('hidden');
             
-            // Configurar UI Visual
             document.getElementById('user-name').innerText = app.user.email;
             document.getElementById('user-role').innerText = app.user.role;
 
-            // --- LÓGICA DE MENÚS CORREGIDA ---
-
-            // 1. El menú DOCENTE se muestra SIEMPRE (Porque el Admin también da clases)
             document.getElementById('menu-docente').classList.remove('hidden');
 
-            // 2. El menú ADMIN solo se muestra si tienes el rol
-        if(app.user.role === 'ADMIN') {
+            if(app.user.role === 'ADMIN') {
                 document.getElementById('menu-admin').classList.remove('hidden');
-                
-                // AQUÍ EL CAMBIO:
-                // En vez de mandarte a 'admin-users', cargamos tu dashboard de profe.
-                // Como ya tienes el menú admin visible, puedes ir a "Usuarios" cuando quieras.
                 app.loadDashboardData(); 
-
             } else {
                 document.getElementById('menu-admin').classList.add('hidden');
                 app.loadDashboardData(); 
@@ -674,6 +748,34 @@ enterApp: async () => {
             localStorage.removeItem('registrame_user');
             location.reload();
         },
+
+          // --- FUNCIÓN PARA EL CHECKBOX DE EXIMIDOS ---
+        toggleExempt: async (idEst, isChecked) => {
+            // 1. CAMBIO VISUAL INSTANTÁNEO
+            const label = document.getElementById(`label-ex-${idEst}`);
+            if (label) {
+                label.innerText = isChecked ? 'NO RECIBE' : 'RECIBE';
+                label.className = `text-[9px] font-bold ${isChecked ? 'text-red-500' : 'text-gray-400'}`;
+            }
+
+            // 2. ENVÍO DE DATOS AL SERVIDOR
+            const res = await app.api({ 
+                action: 'toggleExempt', 
+                id: idEst, 
+                status: isChecked 
+            });
+            
+            if(res && res.success) {
+                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+                Toast.fire({ icon: 'success', title: isChecked ? 'Estudiante Eximido' : 'Estudiante Reactivado' });
+            } else {
+                if (label) {
+                    label.innerText = !isChecked ? 'NO RECIBE' : 'RECIBE';
+                    label.className = `text-[9px] font-bold ${!isChecked ? 'text-red-500' : 'text-gray-400'}`;
+                }
+                Swal.fire('Error', 'No se pudo guardar el cambio en la nube.', 'error');
+            }
+        }, 
 
         toggleSidebar: () => {
             const sb = document.getElementById('sidebar');
@@ -1115,6 +1217,7 @@ openStudents: async (idSec, nombreSec) => {
             headers.innerHTML = `
                 <th class="p-3">Cédula</th>
                 <th class="p-3">Estudiante</th>
+                <th class="p-3 text-center">Condición</th> <!-- NUEVA COLUMNA -->
                 <th class="p-3 hidden md:table-cell">Contacto</th>
                 <th class="p-3 hidden lg:table-cell">Correos (Est / Enc)</th>
                 <th class="p-3 text-right">Acciones</th>
@@ -1127,53 +1230,70 @@ openStudents: async (idSec, nombreSec) => {
                 return;
             }
 
-                 list.forEach(est => {
+list.forEach(est => {
+    // 1. ETIQUETA ADECUACIÓN
+    const badgeAdec = est.adecuacion === 'SI' 
+        ? '<span class="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-[10px] font-bold border border-orange-200 ml-1">AD</span>' 
+        : '';
+
+    // 2. ETIQUETA EDAD
+    const edadNum = app.calcAge(est.fechaNac);
+    const badgeEdad = edadNum 
+        ? `<span class="bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-teal-100 ml-2" title="Nació: ${est.fechaNac}"><i class="fas fa-birthday-cake mr-1 text-[9px]"></i>${edadNum} años</span>`
+        : '';
+
+    // 3. LÓGICA DE CONDICIÓN (Solo lectura)
+    const checkStatus = est.eximido ? 'checked' : '';
+    const labelText = est.eximido ? 'NO RECIBE' : 'RECIBE';
+    const labelColor = est.eximido ? 'text-red-500' : 'text-slate-400';
+
+    tbody.innerHTML += `
+    <tr class="hover:bg-slate-50 group border-b border-slate-100 text-xs text-slate-700 transition">
+        <td class="p-3 font-bold font-mono">${est.cedula}</td>
+        
+        <td class="p-3">
+            <div class="flex items-center flex-wrap gap-1">
+                <span class="font-bold text-slate-800 uppercase">${est.nombre}</span>
+                ${badgeEdad}
+                ${badgeAdec}
+            </div>
+            <div class="text-[10px] text-slate-400 md:hidden">${est.emailEst}</div>
+        </td>
+
+        <!-- CELDA DE CONDICIÓN (SOLO LECTURA - GRISADA) -->
+        <td class="p-3 text-center">
+            <div class="flex flex-col items-center justify-center gap-1 opacity-60 cursor-not-allowed" title="Cambie este estado desde el botón Editar">
+                <input type="checkbox" 
+                       class="w-4 h-4 rounded border-slate-300 text-slate-400 focus:ring-0 cursor-not-allowed" 
+                       ${checkStatus} 
+                       disabled> <!-- El 'disabled' hace la magia -->
                 
-                // 1. ETIQUETA ADECUACIÓN (Ya la tenías)
-                const badgeAdec = est.adecuacion === 'SI' 
-                    ? '<span class="bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded text-[10px] font-bold border border-orange-200 ml-1">AD</span>' 
-                    : '';
-
-                // 2. NUEVO: ETIQUETA EDAD (Calculada al vuelo)
-                const edadNum = app.calcAge(est.fechaNac);
-                const badgeEdad = edadNum 
-                    ? `<span class="bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full text-[10px] font-bold border border-teal-100 ml-2" title="Nació: ${est.fechaNac}"><i class="fas fa-birthday-cake mr-1 text-[9px]"></i>${edadNum} años</span>`
-                    : '';
-
-                tbody.innerHTML += `
-                <tr class="hover:bg-slate-50 group border-b border-slate-100 text-xs text-slate-700 transition">
-                    <td class="p-3 font-bold font-mono">${est.cedula}</td>
-                    
-                    <td class="p-3">
-                        <div class="flex items-center flex-wrap gap-1">
-                            <span class="font-bold text-slate-800 uppercase">${est.nombre}</span>
-                            ${badgeEdad} <!-- Aquí insertamos la edad -->
-                            ${badgeAdec}
-                        </div>
-                        <div class="text-[10px] text-slate-400 md:hidden">${est.emailEst}</div>
-                    </td>
-                    
-                    <td class="p-3 hidden md:table-cell">
-                        <div><i class="fas fa-mobile-alt text-slate-400 mr-1"></i>${est.telEst || '--'}</div>
-                        ${est.telEnc ? `<div class="text-slate-500"><i class="fas fa-user-shield text-slate-400 mr-1"></i>${est.telEnc}</div>` : ''}
-                    </td>
-                    
-                    <td class="p-3 hidden lg:table-cell">
-                        <div class="text-indigo-600 font-medium truncate max-w-[180px]" title="${est.emailEst}">${est.emailEst}</div>
-                        <div class="text-slate-500 truncate max-w-[180px]" title="${est.emailEnc}">${est.emailEnc || '<span class="italic text-gray-300">Sin correo enc.</span>'}</div>
-                    </td>
-                    
-                    <td class="p-3 text-right">
-                        <!-- Botones de acciones (igual que antes)... -->
-                        <div class="flex justify-end gap-1">
-                            <button onclick="app.modalEstudiante('${est.id}')" class="h-8 w-8 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition flex items-center justify-center"><i class="fas fa-pen"></i></button>
-                            <button onclick="app.verNotasEstudiante('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition flex items-center justify-center"><i class="fas fa-eye"></i></button>
-                            <button onclick="app.modalTraslado('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-slate-100 text-slate-500 hover:bg-slate-200 transition flex items-center justify-center"><i class="fas fa-exchange-alt"></i></button>
-                            <button onclick="app.deleteStudent('${est.id}')" class="h-8 w-8 rounded bg-red-50 text-red-500 hover:bg-red-100 transition flex items-center justify-center"><i class="fas fa-trash"></i></button>
-                        </div>
-                    </td>
-                </tr>`;
-            });
+                <span class="text-[9px] font-bold ${labelColor}">
+                    ${labelText}
+                </span>
+            </div>
+        </td>
+        
+        <td class="p-3 hidden md:table-cell">
+            <div><i class="fas fa-mobile-alt text-slate-400 mr-1"></i>${est.telEst || '--'}</div>
+            ${est.telEnc ? `<div class="text-slate-500"><i class="fas fa-user-shield text-slate-400 mr-1"></i>${est.telEnc}</div>` : ''}
+        </td>
+        
+        <td class="p-3 hidden lg:table-cell">
+            <div class="text-indigo-600 font-medium truncate max-w-[180px]" title="${est.emailEst}">${est.emailEst}</div>
+            <div class="text-slate-500 truncate max-w-[180px]" title="${est.emailEnc}">${est.emailEnc || '<span class="italic text-gray-300">Sin correo enc.</span>'}</div>
+        </td>
+        
+        <td class="p-3 text-right">
+            <div class="flex justify-end gap-1">
+                <button onclick="app.modalEstudiante('${est.id}')" class="h-8 w-8 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition flex items-center justify-center"><i class="fas fa-pen"></i></button>
+                <button onclick="app.verNotasEstudiante('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition flex items-center justify-center"><i class="fas fa-eye"></i></button>
+                <button onclick="app.modalTraslado('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-slate-100 text-slate-500 hover:bg-slate-200 transition flex items-center justify-center"><i class="fas fa-exchange-alt"></i></button>
+                <button onclick="app.deleteStudent('${est.id}')" class="h-8 w-8 rounded bg-red-50 text-red-500 hover:bg-red-100 transition flex items-center justify-center"><i class="fas fa-trash"></i></button>
+            </div>
+        </td>
+    </tr>`;
+});
         },
 
         // ==========================================
@@ -1181,117 +1301,111 @@ openStudents: async (idSec, nombreSec) => {
         // ==========================================
 
         // 1. NUEVO ESTUDIANTE (MODAL)
-        modalEstudiante: async (idEditar = null) => {
-            if(!app.state.currentSecId) return Swal.fire('Error', 'Sección no detectada.', 'error');
+modalEstudiante: async (idEditar = null) => {
+    if(!app.state.currentSecId) return Swal.fire('Error', 'Sección no detectada.', 'error');
 
-            let est = null;
-            let titulo = 'Nuevo Estudiante';
-            
-            // Si viene ID, buscamos los datos para rellenar (Modo Edición)
-            if(idEditar) {
-                est = app.state.currentStudentList.find(e => e.id === idEditar);
-                titulo = 'Editar Estudiante';
-            }
+    let est = null;
+    let titulo = 'Nuevo Estudiante';
+    
+    if(idEditar) {
+        est = app.state.currentStudentList.find(e => e.id === idEditar);
+        titulo = 'Editar Estudiante';
+    }
 
-            // Valores por defecto (o vacíos si es nuevo)
-            const val = {
-                ced: est ? est.cedula : '',
-                nom: est ? est.nombre : '',
-                telE: est ? est.telEst : '',
-                telP: est ? est.telEnc : '',
-                mailP: est ? est.emailEnc : '',
-                nac: est ? est.fechaNac : '',
-                adec: est ? est.adecuacion : 'NO'
-            };
+    const val = {
+        ced: est ? est.cedula : '',
+        nom: est ? est.nombre : '',
+        telE: est ? est.telEst : '',
+        telP: est ? est.telEnc : '',
+        mailP: est ? est.emailEnc : '',
+        nac: est ? est.fechaNac : '',
+        adec: est ? est.adecuacion : 'NO',
+        eximido: est ? est.eximido : false // <--- Traemos el valor guardado
+    };
 
-            const { value: form } = await Swal.fire({
-                title: titulo,
-                width: '600px',
-                html: `
-                    <div class="text-left space-y-3 text-sm">
-                        <!-- Cédula y Nacimiento -->
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="text-xs font-bold text-slate-500">Cédula</label>
-                                <input id="sw-e-ced" class="w-full p-2 border rounded bg-slate-50 focus:bg-white transition outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Ej: 112340987" value="${val.ced}">
-                                <p class="text-[10px] text-indigo-500 mt-1"><i class="fas fa-magic"></i> Generará correo MEP auto</p>
-                            </div>
-                            <div>
-                                <label class="text-xs font-bold text-slate-500">Fecha Nacimiento</label>
-                                <input type="date" id="sw-e-nac" class="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-indigo-200" value="${val.nac}">
-                            </div>
-                        </div>
-
-                        <!-- Nombre -->
-                        <div>
-                            <label class="text-xs font-bold text-slate-500">Nombre Completo</label>
-                            <input id="sw-e-nom" class="w-full p-2 border rounded bg-slate-50 focus:bg-white transition outline-none focus:ring-2 focus:ring-indigo-200" value="${val.nom}">
-                        </div>
-
-                        <!-- Teléfonos -->
-                        <div class="grid grid-cols-2 gap-3 bg-slate-50 p-2 rounded border border-slate-100">
-                            <div>
-                                <label class="text-xs font-bold text-slate-500"><i class="fas fa-mobile-alt"></i> Tel. Estudiante</label>
-                                <input id="sw-e-telEst" class="w-full p-2 border rounded text-xs" placeholder="####-####" value="${val.telE}">
-                            </div>
-                            <div>
-                                <label class="text-xs font-bold text-slate-500"><i class="fas fa-user-shield"></i> Tel. Encargado</label>
-                                <input id="sw-e-telEnc" class="w-full p-2 border rounded text-xs" placeholder="####-####" value="${val.telP}">
-                            </div>
-                        </div>
-
-                        <!-- Correo Encargado y Adecuación -->
-                        <div class="grid grid-cols-3 gap-3 items-end">
-                            <div class="col-span-2">
-                                <label class="text-xs font-bold text-slate-500">Correo Encargado (Para reportes)</label>
-                                <input id="sw-e-mailEnc" type="email" class="w-full p-2 border rounded outline-none focus:ring-2 focus:ring-indigo-200" placeholder="padre@gmail.com" value="${val.mailP}">
-                            </div>
-                            <div>
-                                <label class="text-xs font-bold text-slate-500 text-center block">Adecuación</label>
-                                <select id="sw-e-adec" class="w-full p-2 border rounded bg-white font-bold text-slate-600 outline-none">
-                                    <option value="NO" ${val.adec === 'NO' ? 'selected' : ''}>NO</option>
-                                    <option value="SI" ${val.adec === 'SI' ? 'selected' : ''}>SÍ</option>
-                                </select>
-                            </div>
-                        </div>
+    const { value: form } = await Swal.fire({
+        title: titulo,
+        width: '650px',
+        html: `
+            <div class="text-left space-y-3 text-sm">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500">Cédula</label>
+                        <input id="sw-e-ced" class="w-full p-2 border rounded bg-slate-50" value="${val.ced}">
                     </div>
-                `,
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonText: 'Guardar Datos',
-                confirmButtonColor: '#4F46E5', // Indigo
-                preConfirm: () => {
-                    const ced = document.getElementById('sw-e-ced').value.trim();
-                    const nom = document.getElementById('sw-e-nom').value.trim();
-                    
-                    if(!ced || !nom) return Swal.showValidationMessage('Cédula y Nombre son obligatorios');
-                    
-                    return {
-                        idEstudiante: idEditar, // Si es null crea, si tiene valor edita
-                        idSeccion: app.state.currentSecId,
-                        cedula: ced,
-                        nombre: nom,
-                        telEst: document.getElementById('sw-e-telEst').value,
-                        telEnc: document.getElementById('sw-e-telEnc').value,
-                        fechaNac: document.getElementById('sw-e-nac').value,
-                        emailEnc: document.getElementById('sw-e-mailEnc').value,
-                        adecuacion: document.getElementById('sw-e-adec').value
-                    }
-                }
-            });
+                    <div>
+                        <label class="text-xs font-bold text-slate-500">Fecha Nacimiento</label>
+                        <input type="date" id="sw-e-nac" class="w-full p-2 border rounded" value="${val.nac}">
+                    </div>
+                </div>
 
-            if(form) {
-                Swal.fire({ title: 'Procesando...', didOpen: () => Swal.showLoading() });
-                const res = await app.api({ action: 'saveStudent', ...form });
-                
-                if(res && res.success) {
-                    Swal.fire({ icon: 'success', title: 'Guardado', text: res.message, timer: 1500, showConfirmButton: false });
-                    app.openStudents(app.state.currentSecId, app.state.currentSecName); // Recargar tabla
-                } else {
-                    Swal.fire('Error', 'No se pudo guardar', 'error');
-                }
+                <div>
+                    <label class="text-xs font-bold text-slate-500">Nombre Completo</label>
+                    <input id="sw-e-nom" class="w-full p-2 border rounded bg-slate-50" value="${val.nom}">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 bg-slate-50 p-2 rounded border">
+                    <div>
+                        <label class="text-xs font-bold text-gray-500">Tel. Estudiante</label>
+                        <input id="sw-e-telEst" class="w-full p-2 border rounded" value="${val.telE}">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-500">Tel. Encargado</label>
+                        <input id="sw-e-telEnc" class="w-full p-2 border rounded" value="${val.telP}">
+                    </div>
+                </div>
+
+                <!-- SECCIÓN DE CONDICIONES (Adecuación y Recibe Clase) -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="col-span-1">
+                        <label class="text-xs font-bold text-indigo-600 block mb-1">Condición Lección</label>
+                        <select id="sw-e-eximido" class="w-full p-2 border-2 border-indigo-100 rounded font-bold text-indigo-700 bg-white">
+                            <option value="false" ${val.eximido == false ? 'selected' : ''}>RECIBE CLASE</option>
+                            <option value="true" ${val.eximido == true ? 'selected' : ''}>NO RECIBE</option>
+                        </select>
+                    </div>
+                    <div class="col-span-1">
+                        <label class="text-xs font-bold text-slate-500 block mb-1">Adecuación</label>
+                        <select id="sw-e-adec" class="w-full p-2 border rounded bg-white">
+                            <option value="NO" ${val.adec === 'NO' ? 'selected' : ''}>NO</option>
+                            <option value="SI" ${val.adec === 'SI' ? 'selected' : ''}>SÍ</option>
+                        </select>
+                    </div>
+                    <div class="col-span-1">
+                         <label class="text-xs font-bold text-slate-500 block mb-1">Correo Encargado</label>
+                         <input id="sw-e-mailEnc" type="email" class="w-full p-2 border rounded" placeholder="Opcional" value="${val.mailP}">
+                    </div>
+                </div>
+            </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Guardar Datos',
+        preConfirm: () => {
+            return {
+                idEstudiante: idEditar,
+                idSeccion: app.state.currentSecId,
+                cedula: document.getElementById('sw-e-ced').value.trim(),
+                nombre: document.getElementById('sw-e-nom').value.trim(),
+                telEst: document.getElementById('sw-e-telEst').value,
+                telEnc: document.getElementById('sw-e-telEnc').value,
+                fechaNac: document.getElementById('sw-e-nac').value,
+                emailEnc: document.getElementById('sw-e-mailEnc').value,
+                adecuacion: document.getElementById('sw-e-adec').value,
+                eximido: document.getElementById('sw-e-eximido').value === "true" // Capturamos el nuevo dato
             }
-        },
+        }
+    });
+
+    if(form) {
+        Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+        const res = await app.api({ action: 'saveStudent', ...form });
+        if(res && res.success) {
+            Swal.fire({ icon: 'success', title: 'Guardado', timer: 1500, showConfirmButton: false });
+            app.openStudents(app.state.currentSecId, app.state.currentSecName);
+        }
+    }
+},
 
         // 2. IMPORTAR DESDE EXCEL (MODAL)
         modalImportar: async () => {
@@ -3987,9 +4101,21 @@ adminLoadUsers: async () => {
             </div>`;
         },
     };
-    // INICIAR APLICACIÓN
-    document.addEventListener("DOMContentLoaded", app.init);
+           // Escuchar cuando vuelve el internet
+    window.addEventListener('online', () => {
+        app.updateSyncUI();
+        app.syncData();
+    });
 
+    // Escuchar cuando se va el internet
+    window.addEventListener('offline', () => {
+        app.updateSyncUI();
+    });
+
+    // INICIAR LA APLICACIÓN AL CARGAR LA PÁGINA
+    document.addEventListener("DOMContentLoaded", () => {
+        app.init(); // <--- Aquí estaba el error, ahora llama a app.init()
+    });
 
     </script>
 
