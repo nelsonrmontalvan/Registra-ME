@@ -3032,35 +3032,41 @@ loadIndicadores: async () => {
                 return;
             }
 
-            list.forEach(i => {
-                // Si es cotidiano usa la división, sino usa el valor que el profe escribió
-                const finalPts = isCotidiano ? valorDinamico : parseFloat(i.puntaje);
-                
-                // Formateamos el badge para que siempre sea claro (si es auto muestra el icono de robot)
-                const iconoAuto = isCotidiano ? '<i class="fas fa-robot mr-1 text-[9px]"></i>' : '';
-                const badgeLabel = `${iconoAuto}${finalPts.toFixed(2)}%`;
+list.forEach(i => {
+    const finalPts = isCotidiano ? valorDinamico : parseFloat(i.puntaje);
+    const iconoAuto = isCotidiano ? '<i class="fas fa-robot mr-1 text-[9px]"></i>' : '';
+    const badgeLabel = `${iconoAuto}${finalPts.toFixed(2)}%`;
 
-                tbody.innerHTML += `
-                <tr class="hover:bg-slate-50 group transition border-b border-slate-100">
-                    <td class="p-4 font-bold text-slate-700 text-sm">${i.descripcion}</td>
-                    <td class="p-4 text-center">
-                        <span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold border border-indigo-100">${badgeLabel}</span>
-                    </td>
-                    <td class="p-4 text-right">
-                        <div class="flex items-center justify-end gap-2">
-                            <button onclick="app.openEvaluation('${i.id}', '${i.descripcion}', ${finalPts}, ${i.puntosTotales})" class="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-emerald-100 border border-emerald-200 shadow-sm transition flex items-center gap-2">
-                                <i class="fas fa-check-circle"></i> Calificar
-                            </button>
-                            <button onclick="app.modalIndicador('${i.id}', '${i.descripcion}', '${i.puntaje}', '${i.puntosTotales}')" class="h-8 w-8 rounded-full text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition flex items-center justify-center" title="Editar">
-                                <i class="fas fa-pen text-xs"></i>
-                            </button>
-                            <button onclick="app.deleteIndicador('${i.id}')" class="h-8 w-8 rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 transition flex items-center justify-center" title="Eliminar">
-                                <i class="fas fa-trash text-xs"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>`;
-            });
+    // LÓGICA DE COLOR PARA EL BOTÓN
+    const btnClass = i.tieneNotas 
+        ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100" 
+        : "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100";
+    
+    const btnText = i.tieneNotas ? "Calificado" : "Calificar";
+    const btnIcon = i.tieneNotas ? "fa-check-circle" : "fa-edit";
+
+    tbody.innerHTML += `
+    <tr class="fade-in-up hover:bg-slate-50 group transition border-b border-slate-100">
+        <td class="p-4 font-bold text-slate-700 text-sm">${i.descripcion}</td>
+        <td class="p-4 text-center">
+            <span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold border border-indigo-100">${badgeLabel}</span>
+        </td>
+        <td class="p-4 text-right">
+            <div class="flex items-center justify-end gap-2">
+                <button onclick="app.openEvaluation('${i.id}', '${i.descripcion}', ${finalPts}, ${i.puntosTotales})" 
+                        class="${btnClass} px-3 py-1.5 rounded-lg text-xs font-bold border shadow-sm transition flex items-center gap-2">
+                    <i class="fas ${btnIcon}"></i> ${btnText}
+                </button>
+                <button onclick="app.modalIndicador('${i.id}', '${i.descripcion}', '${i.puntaje}', '${i.puntosTotales}')" class="h-8 w-8 rounded-full text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition flex items-center justify-center" title="Editar">
+                    <i class="fas fa-pen text-xs"></i>
+                </button>
+                <button onclick="app.deleteIndicador('${i.id}')" class="h-8 w-8 rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 transition flex items-center justify-center" title="Eliminar">
+                    <i class="fas fa-trash text-xs"></i>
+                </button>
+            </div>
+        </td>
+    </tr>`;
+    });
         },
 
 // ---------------------------------------------------------
