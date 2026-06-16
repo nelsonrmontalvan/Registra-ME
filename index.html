@@ -25,159 +25,257 @@
     <!-- Chart.js para gráficas futuras -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    
+
 <style>
-    
-    /* 1. FUENTE PROFESIONAL (Inter) */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    
+    /* 1. FUENTE Y VARIABLES MAESTRAS (EL ADN DEL PROYECTO) */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
     :root {
-        --primary: #6a62f5; 
-        --background: #F8FAFC; /* Fondo un poco más gris/azulado profesional */
+        /* Paleta de Colores (Contraste de alta visibilidad) */
+        --primary: #2563eb;          /* Azul vibrante Vibiz */
+        --primary-dark: #1e40af;
+        --bg-app: #f1f5f9;           /* Fondo gris azulado muy suave */
+        
+        /* Textos (Mega Contraste) */
+        --text-heading: #0f172a;     /* Casi negro para títulos */
+        --text-main: #334155;        /* Gris oscuro para cuerpo */
+        --text-muted: #64748b;       /* Gris medio para secundarios */
+        
+        /* Efectos Glassmorphism */
+        --glass-bg: rgba(255, 255, 255, 0.65);
+        --glass-border: rgba(255, 255, 255, 0.8);
+        --card-bg: #ffffff;          /* Fondo sólido para tarjetas internas (Legibilidad) */
+        
+        /* Sistema de diseño */
+        --radius-lg: 24px;
+        --radius-md: 14px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+        --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     }
 
+    /* 2. RESET Y ESTILOS BASE */
     body {
         font-family: 'Inter', sans-serif;
-        background-color: var(--background);
-        color: #334155;
-        -webkit-font-smoothing: antialiased; /* Texto más nítido */
+        background: 
+            radial-gradient(circle at 10% 20%, rgba(37, 99, 235, 0.08) 0%, transparent 40%),
+            radial-gradient(circle at 90% 80%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+            var(--bg-app);
+        color: var(--text-main);
+        -webkit-font-smoothing: antialiased;
+        letter-spacing: -0.01em;
+        margin: 0;
     }
 
-    /* --- 1. THEMA PREMIUM PARA SWEETALERT2 --- */
-    div:where(.swal2-container) div:where(.swal2-popup) {
-        border-radius: 1.5rem !important; /* Bordes súper redondos */
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important; /* Sombra profunda Apple */
-        border: 1px solid #f1f5f9 !important;
-    }
-    div:where(.swal2-container) button:where(.swal2-styled) {
-        border-radius: 0.75rem !important;
-        font-weight: 700 !important;
-        transition: all 0.2s !important;
-    }
-    div:where(.swal2-container) button:where(.swal2-styled):active {
-        transform: scale(0.95) !important; /* Efecto click nativo */
+    h1, h2, h3, h4 { 
+        color: var(--text-heading); 
+        font-weight: 700; 
+        letter-spacing: -0.025em;
+        margin: 0;
     }
 
-    /* --- 2. ANIMACIÓN CASCADA PARA TABLAS --- */
-    .fade-in-up {
-        animation: fadeInUp 0.4s ease-out forwards;
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    @keyframes fadeInUp {
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* ANIMACIÓN CINEMÁTICA (Ken Burns Effect) */
-    @keyframes slowZoom {
-        0% { transform: scale(1); }
-        100% { transform: scale(1.15); }
-    }
-    .bg-movie {
-        /* CAMBIA ESTA URL POR LA QUE ELIJAS DE ABAJO */
-        background-image: url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=2070&auto=format&fit=crop'); 
-        background-size: cover;
-        background-position: center;
-        animation: slowZoom 20s infinite alternate ease-in-out;
+    /* 3. UTILIDADES DE CRISTAL (UNIFICADAS) */
+    .glass-panel {
+        background: var(--glass-bg) !important;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid var(--glass-border) !important;
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
     }
 
-    /* 2. SCROLLBAR ELEGANTE */
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
-    ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
-
-    /* 3. CLASE PARA TARJETAS SENIOR (Solo visual) */
-    .card-pro {
-        background: rgb(225, 219, 219);
-        border: 1px solid #E2E8F0;
-        border-radius: 16px; 
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        transition: all 0.3s ease;
-        overflow: hidden; /* Para que el degradado no se salga */
-    }
-    .card-pro:hover {
-        transform: translateY(-4px); /* Se levanta al pasar mouse */
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-        border-color: #969fc1;
+    .vibiz-card {
+        background: var(--card-bg);
+        border: 1px solid #e2e8f0;
+        border-radius: var(--radius-md);
+        padding: 1.25rem;
+        transition: all 0.2s ease;
     }
 
-    /* LUCES AMBIENTALES (DENTRO DEL APP) */
-    .ambient-light {
-        position: fixed;
-        z-index: 0; /* Detrás de todo */
-        border-radius: 50%;
-        filter: blur(100px); /* El desenfoque mágico */
-        opacity: 0.5; /* Suave, no invasivo */
-        pointer-events: none; /* Que no estorbe al click */
+    /* 4. CAMPOS DE ENTRADA (MÁXIMA LEGIBILIDAD) */
+    input, select, textarea {
+        background: #ffffff !important;
+        border: 1.5px solid #e2e8f0 !important;
+        border-radius: 12px !important;
+        padding: 0.75rem 1rem !important;
+        font-size: 0.95rem !important;
+        color: var(--text-heading) !important; /* Texto oscuro al escribir */
+        font-weight: 500 !important;
+        transition: all 0.2s;
     }
-    .light-1 { top: -100px; right: -100px; width: 500px; height: 500px; background: #b9c5ed; } /* Indigo muy suave */
-    .light-2 { bottom: -100px; left: -100px; width: 400px; height: 400px; background: #475464; } /* Azul muy suave */
 
-    /* 4. ANIMACIONES */
-    .fade-in { animation: fadeIn 0.4s ease-out forwards; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    input:focus { 
+        border-color: var(--primary) !important; 
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1) !important;
+        outline: none; 
+    }
 
+    /* 5. SIDEBAR Y LOGO (EL CORAZÓN DE LA MARCA) */
+    #sidebar {
+        background: rgba(255, 255, 255, 0.4) !important;
+        backdrop-filter: blur(15px);
+        border-right: 1px solid var(--glass-border);
+    }
 
-    /* ======================================================================= */
-    /* --- 5. OPTIMIZACIÓN RESPONSIVA (MÓVILES Y TABLETS) - AGREGADO NUEVO --- */
-    /* ======================================================================= */
+    #sidebar h1 {
+        color: var(--text-heading) !important;
+        font-weight: 800 !important;
+        font-size: 1.25rem;
+    }
+
+    #sidebar .fa-graduation-cap {
+        color: var(--primary) !important;
+        filter: drop-shadow(0 2px 4px rgba(37, 99, 235, 0.2));
+    }
+
+    #sidebar .bg-blue-50 {
+        background-color: rgba(37, 99, 235, 0.1) !important;
+        border: 1px solid rgba(37, 99, 235, 0.15) !important;
+    }
+
+    .menu-item {
+        color: var(--text-main) !important;
+        font-weight: 600;
+        margin: 4px 12px;
+        border-radius: 10px;
+        transition: all 0.2s;
+    }
+
+    .menu-item:hover { 
+        background: rgba(255, 255, 255, 0.6) !important; 
+        color: var(--primary) !important; 
+    }
+
+    .menu-item.active-link { 
+        background: #ffffff !important; 
+        color: var(--primary) !important; 
+        box-shadow: var(--shadow-sm);
+        border-right: 4px solid var(--primary);
+    }
+
+/* --- RESET TOTAL PARA ELIMINAR FRANJA BLANCA Y SCROLL --- */
+html, body {
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important; /* Mata la barra de scroll de raíz */
+}
+
+/* 6. PANTALLA DE LOGIN (VERSIÓN FIX TOTAL DE PANTALLA) */
+
+#screen-login {
+    position: fixed !important; /* Lo clava a la pantalla */
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     
-    /* Reglas para Tablets y pantallas medianas (Menos de 1024px) */
-    @media (max-width: 1024px) {
-        /* Evita que las tablas se aplasten. Permite deslizar con el dedo (Swipe) */
-        #views-container .overflow-hidden {
-            overflow-x: auto !important;
-            -webkit-overflow-scrolling: touch; 
-        }
-        /* Mantiene un ancho mínimo para que las columnas no se monten unas sobre otras */
-        #views-container table {
-            min-width: 800px !important; 
-        }
+    /* El fondo ahora cubre el 100% sin dejar huecos */
+    background: radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 40%),
+                radial-gradient(circle at bottom right, rgba(99, 102, 241, 0.12), transparent 40%),
+                #f8fafc !important;
+    
+    z-index: 9999 !important;
+    overflow: hidden !important; /* Doble seguridad contra el scroll */
+}
+
+#screen-login .bg-white {
+    display: flex !important;
+    flex-direction: column !important; 
+    align-items: stretch !important;
+    
+    /* Tarjeta compacta para que quepa en cualquier resolución */
+    max-width: 360px !important; 
+    width: 90% !important;
+    height: auto !important; 
+    max-height: 95vh !important; /* Evita que la tarjeta sea más alta que la pantalla */
+    
+    padding: 1.5rem 1.8rem !important; 
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid #ffffff !important;
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1) !important;
+    border-radius: 24px !important;
+}
+
+/* --- ELEMENTOS INTERNOS (SUPER COMPACTOS) --- */
+
+#screen-login .text-center.mb-8 {
+    margin-bottom: 0.8rem !important; 
+}
+
+#screen-login .w-16.h-16 {
+    width: 3rem !important; 
+    height: 3rem !important;
+    margin-bottom: 0.5rem !important;
+}
+
+#screen-login h1 {
+    font-size: 1.4rem !important;
+}
+
+#screen-login form.space-y-5 {
+    gap: 0.6rem !important; /* Espacio mínimo necesario */
+}
+
+/* Inputs de perfil bajo */
+#screen-login input {
+    height: 2.7rem !important; 
+    padding-left: 3rem !important;
+    font-size: 0.9rem !important;
+}
+
+/* Reducir espacio del divisor y footer */
+#screen-login .mt-6 {
+    margin-top: 0.8rem !important;
+}
+
+#screen-login .mt-8.pt-6 {
+    margin-top: 0.8rem !important;
+    padding-top: 0.6rem !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+#screen-login .mt-8 p {
+    font-size: 0.65rem !important;
+    line-height: 1.2 !important;
+}
+
+/* Botón flotante de ayuda un poco más pequeño */
+#screen-login .bg-emerald-50 {
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+}
+
+    /* 7. ELEMENTOS EXTRA */
+    .badge-pro {
+        background-color: var(--primary-dark) !important;
+        color: white !important;
+        font-weight: 800;
+        box-shadow: 0 4px 10px rgba(30, 64, 175, 0.25);
     }
 
-    /* Reglas para Celulares (Menos de 640px) */
-    @media (max-width: 640px) {
-        /* 1. Convierte los formularios de 2 o 3 columnas a 1 sola columna hacia abajo */
-        .swal2-html-container .grid-cols-2, 
-        .swal2-html-container .grid-cols-3,
-        #view-config .grid-cols-2,
-        #view-config .grid-cols-3 {
-            grid-template-columns: 1fr !important;
-            gap: 1rem !important;
-        }
-        
-        /* 2. Ajusta el tamaño de los modales para que no se salgan del celular */
-        div:where(.swal2-container) div:where(.swal2-popup) {
-            width: 95% !important;
-            padding: 1.5rem 1rem !important;
-        }
-        
-        /* 3. Apila los botones de "Guardar" y "Cancelar" (Para no equivocarse con el dedo grueso) */
-        .swal2-actions {
-            width: 100%;
-            flex-direction: column-reverse; /* El botón cancelar queda abajo */
-            gap: 0.5rem;
-        }
-        .swal2-actions button {
-            width: 100%;
-            margin: 0 !important;
-            padding: 0.8rem !important;
-        }
-        
-        /* 4. Evita que los textos largos escondidos rompan el diseño en el celular */
-        .truncate {
-            white-space: normal !important;
-            word-break: break-word !important;
-        }
+    /* Footer y Textos Pequeños */
+    .text-muted, footer p, #screen-login p {
+        color: var(--text-main) !important;
+        font-weight: 500;
     }
+
+    /* Scrollbar Profesional */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 </style>
+
 </head>
 
 <body class="h-screen flex overflow-hidden">
 
-    <!-- ========================================== -->
-    <!-- 1. PANTALLA DE LOGIN (UNIFICADA) -->
-    <!-- ========================================== -->
 <!-- ========================================== -->
     <!-- 1. PANTALLA DE LOGIN (REDSEÑO SENIOR) -->
     <!-- ========================================== -->
@@ -214,7 +312,7 @@
                         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <i class="fas fa-envelope text-slate-400"></i>
                         </div>
-                        <input type="email" id="login-email" class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder-slate-400" placeholder="usuario@escuela.com" required>
+                        <input type="email" id="login-email" class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder-slate-400" placeholder="usuario@mep.go.cr" required>
                     </div>
                 </div>
                 
@@ -701,7 +799,7 @@
 
     // 👇👇👇  ¡¡PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT!! 👇👇👇
     
-    const API_URL = "https://script.google.com/macros/s/AKfycbxXmay1LSITglw3JKEP9j-k0e_bUZDz_KQP4roCF8BVWumZ3TCI-H1OOnEZ4w0eUDMZBw/exec"; 
+    const API_URL = "https://script.google.com/macros/s/AKfycbyyppVW6AxeUoLO0LxaHas2YmJCQyDvb5EG1iM62w46tJrROtoumjyY4xwrJC0vTRz9/exec"; 
                     
                     
     const app = {
@@ -975,26 +1073,27 @@ init: () => {
     },
 
 
-        login: async (e) => {
-            e.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const pass = document.getElementById('login-pass').value;
-            const btn = document.getElementById('btn-login');
-            
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
-            btn.disabled = true;
+login: async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-pass').value;
+    const btn = document.getElementById('btn-login');
+    
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+    btn.disabled = true;
 
-            const res = await app.api({ action: 'login', email, password: pass });
-            
-            if (res && res.status === 'success') {
-                app.user = { email: email, role: res.role };
-                localStorage.setItem('registrame_user', JSON.stringify(app.user));
-                app.enterApp();
-            } else {
-                btn.innerHTML = 'INGRESAR';
-                btn.disabled = false;
-            }
-        },
+    const res = await app.api({ action: 'login', email, password: pass });
+    
+    if (res && res.status === 'success') {
+        app.user = { email: email, role: res.role };
+        localStorage.setItem('registrame_user', JSON.stringify(app.user));
+        app.enterApp();
+    } else {
+        // ✅ SIEMPRE rehabilitar el botón
+        btn.innerHTML = '<span>Acceder</span> <i class="fas fa-arrow-right text-xs"></i>';
+        btn.disabled = false;
+    }
+},  
 
 enterApp: async () => {
             document.getElementById('screen-login').classList.add('hidden');
