@@ -425,6 +425,11 @@
                         <i class="fas fa-arrow-left"></i> Volver
                     </button>
                     <div class="flex gap-2">
+                        <!-- LISTA PDF -->
+                        <button onclick="app.descargarListaEstudiantes()" class="bg-slate-100 text-slate-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-200 transition border border-slate-200 shadow-sm" title="Descargar lista en PDF">
+                            <i class="fas fa-print mr-2"></i> Lista PDF
+                        </button>
+
                         <!-- BOTÓN NUEVO -->
                         <button onclick="app.modalEnvioMasivo()" class="bg-amber-100 text-amber-700 px-4 py-2 rounded-lg text-sm font-bold hover:bg-amber-200 transition border border-amber-200 shadow-sm">
                             <i class="fas fa-paper-plane mr-2"></i> Informe al Hogar
@@ -701,7 +706,7 @@
 
     // 👇👇👇  ¡¡PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT!! 👇👇👇
     
-    const API_URL = "https://script.google.com/macros/s/AKfycbxXmay1LSITglw3JKEP9j-k0e_bUZDz_KQP4roCF8BVWumZ3TCI-H1OOnEZ4w0eUDMZBw/exec"; 
+    const API_URL = "https://script.google.com/macros/s/AKfycbwUNJHkLztSq23HXlssOHSmd695eMn6uvL5rXrU1IYPqaah3gaiKQweg3Ic0t8BM6BHkQ/exec"; 
                     
                     
     const app = {
@@ -1494,6 +1499,26 @@ enterApp: async () => {
         // ==========================================
         // 4. MÓDULO ESTUDIANTES
         // ==========================================
+
+descargarListaEstudiantes: async () => {
+            const idSec = app.state.currentSecId;
+            if (!idSec) return Swal.fire('Aviso', 'Selecciona una sección primero.', 'warning');
+
+            Swal.fire({ title: 'Generando PDF...', text: 'Espera un momento.', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            const res = await app.api({ action: 'pdfStudentList', id: idSec });
+
+            Swal.close();
+            if (res && res.success) {
+                const link = document.createElement('a');
+                link.href = 'data:application/pdf;base64,' + res.base64;
+                link.download = res.nombre || 'Lista_Estudiantes.pdf';
+                link.click();
+            } else {
+                Swal.fire('Error', res?.message || 'No se pudo generar el PDF.', 'error');
+            }
+        },
+
 openStudents: async (idSec, nombreSec) => {
             app.state.currentSecId = idSec;
             app.state.currentSecName = nombreSec;
@@ -2863,30 +2888,34 @@ renderScheduleList: () => {
         },
 
         // Click en celda para cambiar estado
-        cycleAttendance: (cell, idEst, idMat, fecha) => {
+        _attendanceSaving: false,
+        cycleAttendance: async (cell, idEst, idMat, fecha) => {
+            // Bloqueamos clics simultáneos para evitar race conditions
+            if(app._attendanceSaving) return;
+            app._attendanceSaving = true;
+
             const states = ['', 'P', 'AI', 'T', 'E', 'J'];
-            let current = cell.innerText;
+            let current = cell.innerText.trim();
             let nextIndex = (states.indexOf(current) + 1) % states.length;
             let next = states[nextIndex];
-            
+
             // UI Update inmediata (Optimista)
             cell.innerText = next;
-            cell.className = cell.className.replace(/bg-\w+-100/g, ''); // Limpiar color
+            cell.className = cell.className.replace(/bg-\w+-100/g, '');
             if(next==='P') cell.classList.add('bg-green-100');
             if(next==='AI') cell.classList.add('bg-red-100');
             if(next==='T') cell.classList.add('bg-yellow-100');
             if(next==='E') cell.classList.add('bg-orange-100');
             if(next==='J') cell.classList.add('bg-blue-100');
 
-            // Guardar Silencioso
-            app.api({
+            // Guardar esperando confirmación antes de permitir otro clic
+            await app.api({
                 action: 'saveMark',
                 email: app.user.email,
                 idEst: idEst, idMateria: idMat, fecha: fecha, estado: next
             });
-            
-            // Nota: Para recalcular el porcentaje en vivo habría que recargar o tener lógica JS compleja en cliente.
-            // Por ahora, el usuario puede dar click en "Consultar" para refrescar los cálculos totales.
+
+            app._attendanceSaving = false;
         },
 
         // ==========================================
@@ -2931,11 +2960,11 @@ renderScheduleList: () => {
             if(!mat) return;
 
             const categorias =[
-                { code: 'TRAB_COT', label: 'Cotidiano', max: parseFloat(mat.cotidiano) },
-                { code: 'TAREAS', label: 'Tareas', max: parseFloat(mat.tareas) },
-                { code: 'PRUEBAS', label: 'Pruebas', max: parseFloat(mat.pruebas) },
-                { code: 'PROYECTOS', label: 'Proyectos', max: parseFloat(mat.proyectos) },
-                { code: 'ASIST', label: 'Asistencia', max: parseFloat(mat.asistencia) }
+                { code: 'TRAB_COT', label: 'Cotidiano', max: parseFloat(mat.cotidiano), activeStyle: 'ring-2 ring-indigo-500 bg-indigo-50 border-transparent text-indigo-700' },
+                { code: 'TAREAS', label: 'Tareas', max: parseFloat(mat.tareas), activeStyle: 'ring-2 ring-emerald-500 bg-emerald-50 border-transparent text-emerald-700' },
+                { code: 'PRUEBAS', label: 'Pruebas', max: parseFloat(mat.pruebas), activeStyle: 'ring-2 ring-rose-500 bg-rose-50 border-transparent text-rose-700' },
+                { code: 'PROYECTOS', label: 'Proyectos', max: parseFloat(mat.proyectos), activeStyle: 'ring-2 ring-amber-500 bg-amber-50 border-transparent text-amber-700' },
+                { code: 'ASIST', label: 'Asistencia', max: parseFloat(mat.asistencia), activeStyle: 'ring-2 ring-sky-500 bg-sky-50 border-transparent text-sky-700' }
             ];
 
             let htmlTabs = '';
@@ -2962,8 +2991,8 @@ renderScheduleList: () => {
                 const badgeColor = isPerfect ? 'text-emerald-600 bg-emerald-100' : 'text-rose-600 bg-rose-100';
                 
                 // Color del Tab
-                const tabStyle = isSelected 
-                    ? 'ring-2 ring-indigo-500 bg-indigo-50 border-transparent text-indigo-700' 
+                const tabStyle = isSelected
+                    ? cat.activeStyle
                     : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50';
 
                 htmlTabs += `
@@ -2984,7 +3013,7 @@ renderScheduleList: () => {
         setCategory: (catCode, catLabel) => {
             app.state.currentCat = catCode;
             app.state.currentCatLabel = catLabel;
-            app.updateTabsUI();
+            app.renderDynamicTabs();
             app.loadIndicadores();
         },
 
