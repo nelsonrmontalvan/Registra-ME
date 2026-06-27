@@ -5,7 +5,7 @@
     <!-- TEST GIT 123 -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RegistraME - V3</title>
+    <title>RegistraME - V-PRO</title>
     <!-- FAVICON (EL ÍCONO DE LA PESTAÑA) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎓</text></svg>">
     <link rel="shortcut icon" href="https://cdn-icons-png.flaticon.com/512/2997/2997300.png">
@@ -1611,10 +1611,11 @@ openStudents: async (idSec, nombreSec) => {
                     
                     <td class="p-3 text-right">
                         <div class="flex justify-end gap-1">
-                            <button onclick="app.modalEstudiante('${est.id}')" class="h-8 w-8 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition flex items-center justify-center"><i class="fas fa-pen"></i></button>
-                            <button onclick="app.verNotasEstudiante('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition flex items-center justify-center"><i class="fas fa-eye"></i></button>
-                            <button onclick="app.modalTraslado('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-slate-100 text-slate-500 hover:bg-slate-200 transition flex items-center justify-center"><i class="fas fa-exchange-alt"></i></button>
-                            <button onclick="app.deleteStudent('${est.id}')" class="h-8 w-8 rounded bg-red-50 text-red-500 hover:bg-red-100 transition flex items-center justify-center"><i class="fas fa-trash"></i></button>
+                            <button onclick="app.modalEstudiante('${est.id}')" class="h-8 w-8 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition flex items-center justify-center" title="Editar"><i class="fas fa-pen"></i></button>
+                            <button onclick="app.verNotasEstudiante('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition flex items-center justify-center" title="Ver notas"><i class="fas fa-eye"></i></button>
+                            <button onclick="app.verAsistenciaEstudiante('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-amber-50 text-amber-600 hover:bg-amber-100 transition flex items-center justify-center" title="Ver asistencia"><i class="fas fa-calendar-check"></i></button>
+                            <button onclick="app.modalTraslado('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-slate-100 text-slate-500 hover:bg-slate-200 transition flex items-center justify-center" title="Trasladar"><i class="fas fa-exchange-alt"></i></button>
+                            <button onclick="app.deleteStudent('${est.id}')" class="h-8 w-8 rounded bg-red-50 text-red-500 hover:bg-red-100 transition flex items-center justify-center" title="Eliminar"><i class="fas fa-trash"></i></button>
                         </div>
                     </td>
                 </tr>`;
@@ -4420,7 +4421,91 @@ adminLoadUsers: async () => {
             });
         },
 
-        // 2. VER NOTAS DE MATERIA (MODAL TABLA)
+        // 2. VER ASISTENCIA DEL ESTUDIANTE (MODAL CON SELECTOR DE MATERIA)
+        verAsistenciaEstudiante: async (idEst, nombreEst) => {
+            // Cargar materias de la sección actual
+            Swal.fire({ title: 'Cargando...', didOpen: () => Swal.showLoading() });
+            const materias = await app.api({ action: 'getSubjects', idSeccion: app.state.currentSecId });
+            Swal.close();
+
+            if(!materias || materias.length === 0)
+                return Swal.fire('Sin materias', 'No hay materias registradas en esta sección.', 'info');
+
+            const mostrarAsistencia = async (idMateria) => {
+                Swal.showLoading();
+                const res = await app.api({ action: 'getStudentAttendance', idEstudiante: idEst, idMateria: idMateria });
+                Swal.hideLoading();
+                if(!res || res.error) return;
+
+                const c = res.conteo;
+                const nombreMat = materias.find(m => String(m.id) === String(idMateria))?.nombre || '';
+                const porcColor = res.porcentaje >= 90 ? 'text-emerald-600' : res.porcentaje >= 75 ? 'text-amber-600' : 'text-red-600';
+
+                const selectorHtml = materias.length > 1
+                    ? `<select id="sel-mat-asist" onchange="(async()=>{
+                            const idM = document.getElementById('sel-mat-asist').value;
+                            document.getElementById('asist-body').innerHTML='<p class=\\"text-center text-slate-400 text-xs py-4\\"><i class=\\"fas fa-spinner fa-spin mr-1\\"></i>Cargando...</p>';
+                            const r = await app.api({action:'getStudentAttendance',idEstudiante:'${idEst}',idMateria:idM});
+                            if(!r||r.error)return;
+                            const c2=r.conteo;
+                            const p2=r.porcentaje;
+                            const pc2=p2>=90?'text-emerald-600':p2>=75?'text-amber-600':'text-red-600';
+                            document.getElementById('asist-body').innerHTML=renderAsistBody(c2,p2,pc2);
+                        })()" class="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 mb-4 focus:outline-none focus:ring-2 focus:ring-amber-300">
+                        ${materias.map(m=>`<option value="${m.id}" ${String(m.id)===String(idMateria)?'selected':''}>${m.nombre}</option>`).join('')}
+                      </select>`
+                    : `<p class="text-xs text-slate-500 mb-3"><i class="fas fa-book mr-1 text-amber-500"></i>${nombreMat}</p>`;
+
+                Swal.update({
+                    html: `
+                    <div class="text-left">
+                        <h4 class="font-bold text-slate-800 text-base mb-0.5">${nombreEst}</h4>
+                        <p class="text-xs text-slate-400 mb-3">Resumen de Asistencia</p>
+                        ${selectorHtml}
+                        <div id="asist-body">${renderAsistBody(c, res.porcentaje, porcColor)}</div>
+                    </div>`
+                });
+            };
+
+            // Función helper para renderizar el cuerpo (reutilizable desde el selector)
+            window.renderAsistBody = (c, porc, porcColor) => `
+                <div class="grid grid-cols-5 gap-2 mb-4">
+                    <div class="flex flex-col items-center bg-emerald-50 border border-emerald-100 rounded-xl p-3">
+                        <span class="text-2xl font-extrabold text-emerald-600">${c.P||0}</span>
+                        <span class="text-[10px] font-bold text-emerald-500 mt-1">Presentes</span>
+                    </div>
+                    <div class="flex flex-col items-center bg-red-50 border border-red-100 rounded-xl p-3">
+                        <span class="text-2xl font-extrabold text-red-600">${c.AI||0}</span>
+                        <span class="text-[10px] font-bold text-red-500 mt-1">Aus. Injust.</span>
+                    </div>
+                    <div class="flex flex-col items-center bg-amber-50 border border-amber-100 rounded-xl p-3">
+                        <span class="text-2xl font-extrabold text-amber-600">${c.T||0}</span>
+                        <span class="text-[10px] font-bold text-amber-500 mt-1">Tardías</span>
+                    </div>
+                    <div class="flex flex-col items-center bg-blue-50 border border-blue-100 rounded-xl p-3">
+                        <span class="text-2xl font-extrabold text-blue-600">${c.AJ||0}</span>
+                        <span class="text-[10px] font-bold text-blue-500 mt-1">Aus. Just.</span>
+                    </div>
+                    <div class="flex flex-col items-center bg-purple-50 border border-purple-100 rounded-xl p-3">
+                        <span class="text-2xl font-extrabold text-purple-600">${c.E||0}</span>
+                        <span class="text-[10px] font-bold text-purple-500 mt-1">Escapadas</span>
+                    </div>
+                </div>
+                <div class="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+                    <span class="text-xs text-slate-500 font-medium">% Asistencia</span>
+                    <span class="text-2xl font-extrabold ${porcColor}">${porc}%</span>
+                </div>`;
+
+            await Swal.fire({
+                width: '500px',
+                showCloseButton: true,
+                showConfirmButton: false,
+                html: '<div class="py-4 text-center"><i class="fas fa-spinner fa-spin text-amber-500 text-xl"></i></div>',
+                didOpen: () => mostrarAsistencia(materias[0].id)
+            });
+        },
+
+        // 3. VER NOTAS DE MATERIA (MODAL TABLA)
         verNotasMateria: async (idMat, nomMat) => {
             Swal.fire({ title: 'Generando Cuadro...', didOpen: () => Swal.showLoading() });
             const res = await app.api({ action: 'getSubjectReport', id: idMat });

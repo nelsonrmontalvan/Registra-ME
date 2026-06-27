@@ -91,6 +91,9 @@ function doPost(e) {
     if(action === "getSubjectReport") return response(obtenerCuadroMateria(data.id));
     if(action === "obtenerReporteAuditoriaNotas") return response(obtenerReporteAuditoriaNotas(data.idIndicador));
 
+    // --- ASISTENCIA ESTUDIANTE ---
+    if(action === "getStudentAttendance") return response(obtenerAsistenciaEstudiante(data.idEstudiante, data.idMateria));
+
     // --- NUEVAS ACCIONES ---
     if(action === "toggleExempt") return response(toggleExemptStatus(data.id, data.status));
     if(action === "pdfStudentList") return response(generarPdfListaEstudiantes(data.id));
@@ -1245,6 +1248,33 @@ function calcularNotaCotidiano(nivel, puntajeIndicador) {
 }
 
 // ==========================================
+// ASISTENCIA POR ESTUDIANTE Y MATERIA
+// ==========================================
+function obtenerAsistenciaEstudiante(idEstudiante, idMateria) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheetAsis = ss.getSheetByName("ASISTENCIA_DATA");
+    if(!sheetAsis) return { success: true, conteo: { P:0, AI:0, T:0, AJ:0, E:0 }, total: 0 };
+
+    const data = sheetAsis.getDataRange().getValues();
+    let conteo = { P:0, AI:0, T:0, AJ:0, E:0 };
+
+    for(let i=1; i<data.length; i++) {
+      if(String(data[i][2]).trim() === String(idEstudiante).trim() &&
+         String(data[i][3]).trim() === String(idMateria).trim()) {
+        let estado = String(data[i][4]).trim().toUpperCase();
+        if(conteo[estado] !== undefined) conteo[estado]++;
+      }
+    }
+
+    let total = conteo.P + conteo.AI + conteo.T + conteo.AJ + conteo.E;
+    let porcentaje = total > 0 ? Math.round((conteo.P / total) * 100) : 100;
+
+    return { success: true, conteo: conteo, total: total, porcentaje: porcentaje };
+  } catch(e) { return { error: e.toString() }; }
+}
+
+// ==========================================
 // REPORTES AVANZADOS (BOLETA Y CUADRO)
 // ==========================================
 
@@ -1277,15 +1307,14 @@ function obtenerBoletaEstudiante(idEstudiante) {
   materias.forEach(mat => {
     let acumulado = { 'TRAB_COT':0, 'TAREAS':0, 'PRUEBAS':0, 'PROYECTOS':0, 'ASIST':0 };
 
-    // Mapa puntaje por indicador para recalcular cotidiano correctamente
-    let mapIndPuntaje = {};
     let indMateria = dataInd.filter(row => String(row[1]) == String(mat.id));
     let tieneIndAsistencia = false;
+    indMateria.forEach(ind => { if(ind[2] === 'ASIST') tieneIndAsistencia = true; });
 
-    indMateria.forEach(ind => {
-       if(ind[2] === 'ASIST') tieneIndAsistencia = true;
-       mapIndPuntaje[String(ind[0])] = Number(ind[4]) || 0;
-    });
+    // Puntaje dinámico para cotidiano: totalCot / cantidad de indicadores TRAB_COT
+    let totalCot = Number(mat.p.cot) || 0;
+    let indsCot = indMateria.filter(ind => ind[2] === 'TRAB_COT');
+    let puntajeCotDinamico = indsCot.length > 0 ? totalCot / indsCot.length : 0;
 
     indMateria.forEach(ind => {
        let idInd = String(ind[0]);
@@ -1295,9 +1324,8 @@ function obtenerBoletaEstudiante(idEstudiante) {
          if(String(dataNotas[n][1]) == idInd && String(dataNotas[n][2]).trim() == est.id) {
             let nota;
             if(cat === 'TRAB_COT') {
-              // FIX: recalcular con nivel actual y puntaje vigente del indicador
               let nivel = dataNotas[n][5];
-              let notaRecalc = calcularNotaCotidiano(nivel, mapIndPuntaje[idInd]);
+              let notaRecalc = calcularNotaCotidiano(nivel, puntajeCotDinamico);
               nota = notaRecalc !== null ? notaRecalc : Number(dataNotas[n][3]);
             } else {
               nota = Number(dataNotas[n][3]);
@@ -1343,7 +1371,7 @@ function obtenerCuadroMateria(idMateria) {
     let materia = null;
     for(let i=1; i<dataMat.length; i++) {
       if(String(dataMat[i][0]) == String(idMateria)) {
-        materia = { id: dataMat[i][0], idSec: dataMat[i][1], nombre: dataMat[i][2], valorAsist: dataMat[i][7] }; break;
+        materia = { id: dataMat[i][0], idSec: dataMat[i][1], nombre: dataMat[i][2], cotidiano: dataMat[i][3], valorAsist: dataMat[i][7] }; break;
       }
     }
     if(!materia) return { error: "Materia no encontrada" };
@@ -1359,17 +1387,20 @@ function obtenerCuadroMateria(idMateria) {
     const dataNotas = ss.getSheetByName("NOTAS").getDataRange().getValues();
 
     let mapIndCat = {};
-    let mapIndPuntaje = {}; // FIX: mapa de puntaje actual de cada indicador
     let tieneIndAsistencia = false;
+    let cantCotIndicadores = 0;
 
     for(let i=1; i<dataInd.length; i++) {
        if(String(dataInd[i][1]) == String(idMateria)) {
            let idInd = String(dataInd[i][0]);
            mapIndCat[idInd] = dataInd[i][2];
-           mapIndPuntaje[idInd] = Number(dataInd[i][4]) || 0; // col E = puntaje vigente
            if(dataInd[i][2] === 'ASIST') tieneIndAsistencia = true;
+           if(dataInd[i][2] === 'TRAB_COT') cantCotIndicadores++;
        }
     }
+
+    // Puntaje dinámico cotidiano: totalCot / cantidad de indicadores TRAB_COT
+    let puntajeCotDinamico = cantCotIndicadores > 0 ? (Number(materia.cotidiano) || 0) / cantCotIndicadores : 0;
 
     let mapAsist = {};
     let valorAsistTotal = Number(materia.valorAsist) || 0;
@@ -1385,9 +1416,8 @@ function obtenerCuadroMateria(idMateria) {
              let cat = mapIndCat[idInd];
              let nota;
              if(cat === 'TRAB_COT') {
-               // FIX: recalcular con nivel actual y puntaje vigente del indicador
                let nivel = dataNotas[n][5];
-               let notaRecalc = calcularNotaCotidiano(nivel, mapIndPuntaje[idInd]);
+               let notaRecalc = calcularNotaCotidiano(nivel, puntajeCotDinamico);
                nota = notaRecalc !== null ? notaRecalc : Number(dataNotas[n][3]);
              } else {
                nota = Number(dataNotas[n][3]);
