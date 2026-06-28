@@ -502,26 +502,38 @@ function obtenerIndicadores(idMateria, categoria) {
   const ss = SpreadsheetApp.openById(SHEET_ID);
   const data = ss.getSheetByName("INDICADORES").getDataRange().getValues();
   const dataNotas = ss.getSheetByName("NOTAS").getDataRange().getValues();
-  let lista =[];
+  const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+  const dataEst = ss.getSheetByName("ESTUDIANTES").getDataRange().getValues();
 
+  // Obtener sección de la materia para contar estudiantes
+  let idSec = null;
+  for(let i=1; i<dataMat.length; i++) {
+    if(String(dataMat[i][0]) == String(idMateria)) { idSec = String(dataMat[i][1]); break; }
+  }
+  let totalEst = 0;
+  if(idSec) {
+    for(let i=1; i<dataEst.length; i++) {
+      if(String(dataEst[i][1]) == idSec) totalEst++;
+    }
+  }
+
+  let lista = [];
   for(let i=1; i<data.length; i++){
     if(String(data[i][1]) == String(idMateria) && (categoria === 'ALL' || String(data[i][2]) == String(categoria))) {
-
-      let tieneNotas = false;
+      let idInd = String(data[i][0]);
+      let notasCount = 0;
       for(let n=1; n<dataNotas.length; n++) {
-        if(String(dataNotas[n][1]) == String(data[i][0])) {
-          tieneNotas = true;
-          break;
-        }
+        if(String(dataNotas[n][1]) == idInd) notasCount++;
       }
-
       lista.push({
         id: data[i][0],
         categoria: data[i][2],
         descripcion: data[i][3],
         puntaje: data[i][4],
         puntosTotales: data[i][6] || 100,
-        tieneNotas: tieneNotas
+        tieneNotas: notasCount > 0,
+        notasCount: notasCount,
+        totalEst: totalEst
       });
     }
   }

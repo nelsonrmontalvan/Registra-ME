@@ -2971,37 +2971,56 @@ renderScheduleList: () => {
             let htmlTabs = '';
 
             categorias.forEach(cat => {
-                // Sumar los porcentajes de los indicadores creados en esta categoría
                 let suma = 0;
+                let tieneParcial = false;
+                let tieneCompleto = false;
+                let tieneIndicadores = false;
+
                 if(app.state.allIndicators) {
                     app.state.allIndicators.forEach(ind => {
-                        if(ind.categoria === cat.code) suma += parseFloat(ind.puntaje || 0);
+                        if(ind.categoria === cat.code) {
+                            suma += parseFloat(ind.puntaje || 0);
+                            tieneIndicadores = true;
+                            const nc = ind.notasCount || 0;
+                            const te = ind.totalEst || 0;
+                            if(te > 0 && nc >= te) tieneCompleto = true;
+                            else if(nc > 0) tieneParcial = true;
+                            else tieneParcial = true; // sin calificar también es "incompleto"
+                        }
                     });
                 }
 
-                // Lógica Cotidiano (Siempre es perfecto porque se divide solo)
-                if(cat.code === 'TRAB_COT') suma = cat.max; 
-                // Lógica Asistencia (No tiene indicadores manuales, siempre es perfecto)
+                if(cat.code === 'TRAB_COT') suma = cat.max;
                 if(cat.code === 'ASIST') suma = cat.max;
 
-                // Definir colores
                 const isSelected = app.state.currentCat === cat.code;
                 const isPerfect = suma === cat.max;
-                
-                // Color del badge (Verde si cuadra, Rojo si falta o sobra)
-                const badgeColor = isPerfect ? 'text-emerald-600 bg-emerald-100' : 'text-rose-600 bg-rose-100';
-                
-                // Color del Tab
+
+                // Badge: verde si perfecto y todos completos, ámbar si parcial, rojo si falta %
+                let badgeColor;
+                if(!isPerfect) {
+                    badgeColor = 'text-rose-600 bg-rose-100';
+                } else if(cat.code === 'TRAB_COT' || cat.code === 'ASIST') {
+                    badgeColor = 'text-emerald-600 bg-emerald-100';
+                } else if(tieneIndicadores && tieneParcial) {
+                    badgeColor = 'text-amber-600 bg-amber-100';
+                } else {
+                    badgeColor = 'text-emerald-600 bg-emerald-100';
+                }
+
                 const tabStyle = isSelected
                     ? cat.activeStyle
                     : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50';
 
+                const warningIcon = (isPerfect && tieneParcial && cat.code !== 'TRAB_COT' && cat.code !== 'ASIST')
+                    ? '<i class="fas fa-exclamation-triangle text-[9px] mr-0.5"></i>' : '';
+
                 htmlTabs += `
-                <button onclick="app.setCategory('${cat.code}', '${cat.label}')" 
+                <button onclick="app.setCategory('${cat.code}', '${cat.label}')"
                         class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border transition ${tabStyle}">
                     ${cat.label}
                     <span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold ${badgeColor}">
-                        ${suma}% / ${cat.max}%
+                        ${warningIcon}${suma}% / ${cat.max}%
                     </span>
                 </button>`;
             });
@@ -3067,13 +3086,25 @@ list.forEach(i => {
     const iconoAuto = isCotidiano ? '<i class="fas fa-robot mr-1 text-[9px]"></i>' : '';
     const badgeLabel = `${iconoAuto}${finalPts.toFixed(2)}%`;
 
-    // LÓGICA DE COLOR PARA EL BOTÓN
-    const btnClass = i.tieneNotas 
-        ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100" 
-        : "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100";
-    
-    const btnText = i.tieneNotas ? "Calificado" : "Calificar";
-    const btnIcon = i.tieneNotas ? "fa-check-circle" : "fa-edit";
+    // LÓGICA DE COLOR PARA EL BOTÓN (3 estados)
+    const _nc = i.notasCount || 0;
+    const _te = i.totalEst || 0;
+    const _completo = _te > 0 && _nc >= _te;
+    const _parcial  = _nc > 0 && !_completo;
+
+    const btnClass = _completo
+        ? "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100"
+        : _parcial
+            ? "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100"
+            : "bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100";
+
+    const btnText = _completo ? "Calificado" : _parcial ? `Parcial ${_nc}/${_te}` : "Calificar";
+    const btnIcon = _completo ? "fa-check-circle" : _parcial ? "fa-clock" : "fa-edit";
+    const btnTitle = _completo
+        ? "Todos calificados"
+        : _parcial
+            ? `${_nc} de ${_te} estudiantes calificados`
+            : "Sin calificar";
 
     tbody.innerHTML += `
     <tr class="fade-in-up hover:bg-slate-50 group transition border-b border-slate-100">
@@ -3083,8 +3114,9 @@ list.forEach(i => {
         </td>
         <td class="p-4 text-right">
             <div class="flex items-center justify-end gap-2">
-                <button onclick="app.openEvaluation('${i.id}', '${i.descripcion}', ${finalPts}, ${i.puntosTotales})" 
-                        class="${btnClass} px-3 py-1.5 rounded-lg text-xs font-bold border shadow-sm transition flex items-center gap-2">
+                <button onclick="app.openEvaluation('${i.id}', '${i.descripcion}', ${finalPts}, ${i.puntosTotales})"
+                        class="${btnClass} px-3 py-1.5 rounded-lg text-xs font-bold border shadow-sm transition flex items-center gap-2"
+                        title="${btnTitle}">
                     <i class="fas ${btnIcon}"></i> ${btnText}
                 </button>
                 <button onclick="app.modalIndicador('${i.id}', '${i.descripcion}', '${i.puntaje}', '${i.puntosTotales}')" class="h-8 w-8 rounded-full text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition flex items-center justify-center" title="Editar">
