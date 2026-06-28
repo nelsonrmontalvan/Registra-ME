@@ -1338,9 +1338,10 @@ function obtenerBoletaEstudiante(idEstudiante) {
             if(cat === 'TRAB_COT') {
               let nivel = dataNotas[n][5];
               let notaRecalc = calcularNotaCotidiano(nivel, puntajeCotDinamico);
-              nota = notaRecalc !== null ? notaRecalc : Number(dataNotas[n][3]);
+              nota = notaRecalc !== null ? notaRecalc : parseFloat(dataNotas[n][3]) || 0;
             } else {
-              nota = Number(dataNotas[n][3]);
+              let raw = parseFloat(dataNotas[n][3]);
+              nota = isFinite(raw) ? raw : 0;
             }
             if(acumulado[cat] !== undefined) acumulado[cat] += nota;
             break;
@@ -1422,19 +1423,22 @@ function obtenerCuadroMateria(idMateria) {
 
     estudiantes.forEach(e => {
        e.notas = { 'TRAB_COT':0, 'TAREAS':0, 'PRUEBAS':0, 'PROYECTOS':0, 'ASIST':0 };
+       let indYaContados = {};
        for(let n=1; n<dataNotas.length; n++) {
           let idInd = String(dataNotas[n][1]);
-          if(String(dataNotas[n][2]).trim() == String(e.id) && mapIndCat[idInd]) {
+          if(String(dataNotas[n][2]).trim() == String(e.id) && mapIndCat[idInd] && !indYaContados[idInd]) {
              let cat = mapIndCat[idInd];
              let nota;
              if(cat === 'TRAB_COT') {
                let nivel = dataNotas[n][5];
                let notaRecalc = calcularNotaCotidiano(nivel, puntajeCotDinamico);
-               nota = notaRecalc !== null ? notaRecalc : Number(dataNotas[n][3]);
+               nota = notaRecalc !== null ? notaRecalc : parseFloat(dataNotas[n][3]) || 0;
              } else {
-               nota = Number(dataNotas[n][3]);
+               let raw = parseFloat(dataNotas[n][3]);
+               nota = isFinite(raw) ? raw : 0;
              }
              e.notas[cat] += nota;
+             indYaContados[idInd] = true;
           }
        }
 
