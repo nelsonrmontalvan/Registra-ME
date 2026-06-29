@@ -105,6 +105,9 @@ function doPost(e) {
     if(action === "bulkDownloadReport") return response(generarPdfMasivoBoletas(data));
     if(action === "sendBulkReport") return response(enviarReporteHogarMasivo(data));
 
+    // --- KPIs POR SECCIÓN ---
+    if(action === "getSectionKPIs") return response(getSectionKPIs(data.idSeccion));
+
     return response({status: "error", msg: "Acción desconocida: " + action});
 
   } catch (e) {
@@ -2227,4 +2230,89 @@ function generarPdfListaEstudiantes(idSeccion) {
   const blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
   blob.setName(`Lista_${nombreSeccion}.pdf`);
   return { success: true, base64: Utilities.base64Encode(blob.getBytes()), nombre: blob.getName() };
+}
+
+// ==========================================
+// KPIs POR SECCIÓN (DASHBOARD)
+// ==========================================
+function getSectionKPIs(idSeccion) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const idSec = String(idSeccion).trim();
+
+    // 1. Estudiantes de la sección
+    const dataEst = ss.getSheetByName("ESTUDIANTES").getDataRange().getValues();
+    const estIds = new Set();
+    for(let i=1; i<dataEst.length; i++) {
+      if(String(dataEst[i][1]).trim() === idSec) estIds.add(String(dataEst[i][0]).trim());
+    }
+    const totalEst = estIds.size;
+
+    // 2. Materias de la sección
+    const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+    const materias = [];
+    for(let i=1; i<dataMat.length; i++) {
+      if(String(dataMat[i][1]).trim() === idSec) {
+        materias.push({ id: String(dataMat[i][0]).trim(), notaMinima: parseFloat(dataMat[i][8]) || 65 });
+      }
+    }
+    const matIds = new Set(materias.map(m => m.id));
+
+    // 3. Indicadores de esas materias
+    const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
+    const indIds = new Set();
+    for(let i=1; i<dataInd.length; i++) {
+      if(matIds.has(String(dataInd[i][1]).trim())) indIds.add(String(dataInd[i][0]).trim());
+    }
+
+    // 4. Notas — indicadores sin calificar y acumulado por estudiante
+    const dataNotas = ss.getSheetByName("NOTAS").getDataRange().getValues();
+    const indConNota = new Set();
+    const acumEst = {};
+    let sumaTotal = 0, countNotas = 0;
+
+    for(let i=1; i<dataNotas.length; i++) {
+      const idInd = String(dataNotas[i][1]).trim();
+      const idEst = String(dataNotas[i][2]).trim();
+      const porc  = parseFloat(dataNotas[i][3]);
+      if(indIds.has(idInd) && estIds.has(idEst) && !isNaN(porc)) {
+        indConNota.add(idInd);
+        acumEst[idEst] = (acumEst[idEst] || 0) + porc;
+        sumaTotal += porc;
+        countNotas++;
+      }
+    }
+
+    const indSinCalificar = indIds.size - indConNota.size;
+    const promedioSeccion = countNotas > 0 ? parseFloat((sumaTotal / countNotas).toFixed(1)) : 0;
+    let estBajoMinimo = 0;
+    Object.values(acumEst).forEach(total => { if(total < 65) estBajoMinimo++; });
+
+    // 5. Ausencias injustificadas
+    const dataAsist = ss.getSheetByName("ASISTENCIA_DATA").getDataRange().getValues();
+    const estConAI = new Set();
+    for(let i=1; i<dataAsist.length; i++) {
+      const idEst = String(dataAsist[i][2]).trim();
+      if(estIds.has(idEst) && String(dataAsist[i][4]).trim() === 'AI') estConAI.add(idEst);
+    }
+
+    // 6. Bitácoras con recordatorio pendiente
+    const dataBit = ss.getSheetByName("BITACORAS").getDataRange().getValues();
+    let bitPendientes = 0;
+    for(let i=1; i<dataBit.length; i++) {
+      if(String(dataBit[i][1]).trim() === idSec && dataBit[i][9] === true) bitPendientes++;
+    }
+
+    return {
+      success: true,
+      totalEst,
+      indSinCalificar,
+      estConAI: estConAI.size,
+      bitPendientes,
+      estBajoMinimo,
+      promedioSeccion
+    };
+  } catch(e) {
+    return { error: e.toString() };
+  }
 }
