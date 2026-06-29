@@ -622,11 +622,32 @@ function guardarCalificaciones(data) {
   const fechaActual = formatearFechaInput(new Date());
   const indId = String(data.idIndicador).trim();
 
+  // Leer indicador desde Sheets para calcular % con datos autoritativos
+  const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
+  let puntajeInd = 0, puntosTotalesInd = 100, esCotidianoInd = false;
+  for (let k = 1; k < dataInd.length; k++) {
+    if (String(dataInd[k][0]).trim() === indId) {
+      esCotidianoInd = String(dataInd[k][2]).trim() === "TRAB_COT";
+      puntajeInd     = parseFloat(dataInd[k][4]) || 0;
+      puntosTotalesInd = parseFloat(dataInd[k][6]) || 100;
+      break;
+    }
+  }
+
   const dataNotas = sheet.getDataRange().getValues();
 
   data.lista.forEach(i => {
     let fila = -1;
     let estId = String(i.idEst).trim();
+    const nivelBruto = parseFloat(i.nivel);
+
+    // Calcular % en backend para evitar dependencia del estado del frontend
+    let porcObtenido;
+    if (esCotidianoInd) {
+      porcObtenido = parseFloat(((nivelBruto / 3) * puntajeInd).toFixed(2));
+    } else {
+      porcObtenido = parseFloat(((nivelBruto / puntosTotalesInd) * puntajeInd).toFixed(2));
+    }
 
     for(let r = 1; r < dataNotas.length; r++) {
       if(String(dataNotas[r][1]).trim() === indId && String(dataNotas[r][2]).trim() === estId) {
@@ -636,17 +657,17 @@ function guardarCalificaciones(data) {
     }
 
     if(fila > -1) {
-      sheet.getRange(fila, 4).setValue(i.nota);
+      sheet.getRange(fila, 4).setValue(porcObtenido);
       sheet.getRange(fila, 5).setValue(fechaActual);
-      sheet.getRange(fila, 6).setValue(i.nivel);
+      sheet.getRange(fila, 6).setValue(nivelBruto);
     } else {
       sheet.appendRow([
         "NOTE-" + Date.now() + Math.floor(Math.random() * 1000),
         indId,
         estId,
-        i.nota,
+        porcObtenido,
         fechaActual,
-        i.nivel
+        nivelBruto
       ]);
 
       dataNotas.push(["", indId, estId, "", "", ""]);
