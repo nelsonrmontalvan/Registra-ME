@@ -1492,6 +1492,7 @@ enterApp: async () => {
             app.renderDashboard(app.state.currentDashFilter || 'TODAS');
         },
 
+        // ── KPIs con detalle clickeable ──────────────────────────────
         openSectionKPIs: async (idSeccion, nombre) => {
             const modal = document.getElementById('modal-kpis');
             const body  = document.getElementById('kpi-body');
@@ -1506,25 +1507,85 @@ enterApp: async () => {
             }
 
             const kpis = [
-                { icon: 'fa-users',            color: '#6366f1', bg: '#eef2ff', label: 'Total Estudiantes',          value: res.totalEst,          suffix: '',    alert: false },
-                { icon: 'fa-exclamation-triangle', color: '#ef4444', bg: '#fef2f2', label: 'Bajo mínimo (< 65)',     value: res.estBajoMinimo,     suffix: ' est', alert: res.estBajoMinimo > 0 },
-                { icon: 'fa-clipboard-list',   color: '#f59e0b', bg: '#fffbeb', label: 'Indicadores sin calificar',  value: res.indSinCalificar,   suffix: '',    alert: res.indSinCalificar > 0 },
-                { icon: 'fa-user-times',       color: '#f43f5e', bg: '#fff1f2', label: 'Con ausencias injust. (AI)', value: res.estConAI,          suffix: ' est', alert: res.estConAI > 0 },
-                { icon: 'fa-bell',             color: '#8b5cf6', bg: '#f5f3ff', label: 'Bitácoras pendientes',       value: res.bitPendientes,     suffix: '',    alert: res.bitPendientes > 0 },
-                { icon: 'fa-chart-line',       color: '#10b981', bg: '#ecfdf5', label: 'Promedio general sección',   value: res.promedioSeccion,   suffix: '%',   alert: false },
+                { icon: 'fa-users',               color: '#6366f1', bg: '#eef2ff', label: 'Total Estudiantes',          value: res.totalEst,        suffix: '',     alert: false,                   detalles: null },
+                { icon: 'fa-exclamation-triangle', color: '#ef4444', bg: '#fef2f2', label: 'Bajo mínimo (< 65)',         value: res.estBajoMinimo,   suffix: ' est', alert: res.estBajoMinimo > 0,   detalles: res.detallesBajoMinimo },
+                { icon: 'fa-clipboard-list',       color: '#f59e0b', bg: '#fffbeb', label: 'Indicadores sin calificar',  value: res.indSinCalificar, suffix: '',     alert: res.indSinCalificar > 0, detalles: res.detallesIndSinCalificar },
+                { icon: 'fa-user-times',           color: '#f43f5e', bg: '#fff1f2', label: 'Con ausencias injust. (AI)', value: res.estConAI,        suffix: ' est', alert: res.estConAI > 0,        detalles: res.detallesEstConAI },
+                { icon: 'fa-bell',                 color: '#8b5cf6', bg: '#f5f3ff', label: 'Bitácoras pendientes',       value: res.bitPendientes,   suffix: '',     alert: res.bitPendientes > 0,   detalles: res.detallesBitPendientes },
+                { icon: 'fa-chart-line',           color: '#10b981', bg: '#ecfdf5', label: 'Promedio general sección',   value: res.promedioSeccion, suffix: '%',    alert: false,                   detalles: null },
             ];
 
-            body.innerHTML = kpis.map(k => `
-                <div class="flex items-center gap-4 p-4 rounded-xl border ${k.alert ? 'border-red-100 bg-red-50' : 'border-slate-100 bg-slate-50'} transition">
-                    <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style="background:${k.bg}">
-                        <i class="fas ${k.icon} text-lg" style="color:${k.color}"></i>
+            const renderResumen = () => {
+                body.innerHTML = kpis.map((k, idx) => {
+                    const clickable = k.detalles && k.detalles.length > 0;
+                    return `
+                    <div class="rounded-xl border p-4 transition ${clickable ? 'cursor-pointer hover:shadow-md' : ''} ${k.alert ? 'border-red-100 bg-red-50' : 'border-slate-100 bg-slate-50'}"
+                         ${clickable ? `data-kpi-idx="${idx}"` : ''}>
+                        <div class="flex items-center gap-4">
+                            <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style="background:${k.bg}">
+                                <i class="fas ${k.icon} text-lg" style="color:${k.color}"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-xs text-slate-500 font-medium">${k.label}</p>
+                                <p class="text-2xl font-black" style="color:${k.alert ? '#ef4444' : k.color}">${k.value}${k.suffix}</p>
+                            </div>
+                            ${k.alert ? `<span class="text-xs font-bold text-red-400 bg-red-100 px-2 py-1 rounded-full">Atención</span>` : ''}
+                            ${clickable ? `<i class="fas fa-chevron-right text-slate-300 text-xs"></i>` : ''}
+                        </div>
+                    </div>`;
+                }).join('');
+
+                body.querySelectorAll('[data-kpi-idx]').forEach(el => {
+                    el.addEventListener('click', () => renderDetalle(parseInt(el.dataset.kpiIdx)));
+                });
+            };
+
+            const renderDetalle = (idx) => {
+                const k = kpis[idx];
+                let filas = '';
+                if (idx === 1) {
+                    filas = k.detalles.map(d => `
+                        <div class="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0">
+                            <span class="text-sm text-slate-700 font-medium">${d.nombre}</span>
+                            <span class="text-sm font-black" style="color:#ef4444">${d.total}%</span>
+                        </div>`).join('');
+                } else if (idx === 2) {
+                    filas = k.detalles.map(d => `
+                        <div class="flex items-start justify-between py-2.5 border-b border-slate-100 last:border-0 gap-3">
+                            <span class="text-sm text-slate-700 flex-1">${d.desc}</span>
+                            <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-full shrink-0">${d.materia}</span>
+                        </div>`).join('');
+                } else if (idx === 3) {
+                    filas = k.detalles.map(d => `
+                        <div class="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0">
+                            <span class="text-sm text-slate-700 font-medium">${d.nombre}</span>
+                            <span class="text-sm font-black" style="color:#f43f5e">${d.cant} AI</span>
+                        </div>`).join('');
+                } else if (idx === 4) {
+                    filas = k.detalles.map(d => `
+                        <div class="flex items-start justify-between py-2.5 border-b border-slate-100 last:border-0 gap-3">
+                            <span class="text-sm text-slate-700 flex-1">${d.desc}</span>
+                            <span class="text-[10px] text-slate-400 shrink-0">${d.fecha}</span>
+                        </div>`).join('');
+                }
+
+                body.innerHTML = `
+                    <button id="kpi-back" class="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:text-indigo-800 mb-3 transition">
+                        <i class="fas fa-arrow-left"></i> Volver al resumen
+                    </button>
+                    <div class="flex items-center gap-3 mb-4 p-3 rounded-xl" style="background:${k.bg}">
+                        <i class="fas ${k.icon} text-xl" style="color:${k.color}"></i>
+                        <div>
+                            <p class="text-xs text-slate-500">${k.label}</p>
+                            <p class="text-xl font-black" style="color:${k.color}">${k.value}${k.suffix}</p>
+                        </div>
                     </div>
-                    <div class="flex-1">
-                        <p class="text-xs text-slate-500 font-medium">${k.label}</p>
-                        <p class="text-2xl font-black" style="color:${k.alert ? '#ef4444' : k.color}">${k.value}${k.suffix}</p>
-                    </div>
-                    ${k.alert ? '<span class="text-xs font-bold text-red-400 bg-red-100 px-2 py-1 rounded-full">Atención</span>' : ''}
-                </div>`).join('');
+                    <div>${filas}</div>`;
+
+                document.getElementById('kpi-back').addEventListener('click', renderResumen);
+            };
+
+            renderResumen();
         },
 
         getSecOrder: () => {
@@ -5534,7 +5595,7 @@ loadAuditoriaData: async () => {
         </div>
         <div id="kpi-body" class="p-5 grid grid-cols-1 gap-3 max-h-[70vh] overflow-y-auto"></div>
         <div class="px-6 py-3 border-t border-slate-100 bg-slate-50 text-center">
-            <p class="text-[10px] text-slate-400">Los datos se calculan en tiempo real desde Google Sheets</p>
+            <p class="text-[10px] text-slate-400">Los datos se calculan en tiempo real la Base de Datos</p>
         </div>
     </div>
 </div>

@@ -2240,35 +2240,39 @@ function getSectionKPIs(idSeccion) {
     const ss = SpreadsheetApp.openById(SHEET_ID);
     const idSec = String(idSeccion).trim();
 
-    // 1. Estudiantes de la sección
+    // 1. Estudiantes de la sección → mapa id→nombre
     const dataEst = ss.getSheetByName("ESTUDIANTES").getDataRange().getValues();
-    const estIds = new Set();
+    const estMap = {}; // id → nombre
     for(let i=1; i<dataEst.length; i++) {
-      if(String(dataEst[i][1]).trim() === idSec) estIds.add(String(dataEst[i][0]).trim());
+      if(String(dataEst[i][1]).trim() === idSec)
+        estMap[String(dataEst[i][0]).trim()] = String(dataEst[i][3]).trim();
     }
+    const estIds = new Set(Object.keys(estMap));
     const totalEst = estIds.size;
 
-    // 2. Materias de la sección
+    // 2. Materias de la sección → mapa id→nombre
     const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
-    const materias = [];
+    const matMap = {}; // id → nombre
     for(let i=1; i<dataMat.length; i++) {
-      if(String(dataMat[i][1]).trim() === idSec) {
-        materias.push({ id: String(dataMat[i][0]).trim(), notaMinima: parseFloat(dataMat[i][8]) || 65 });
-      }
+      if(String(dataMat[i][1]).trim() === idSec)
+        matMap[String(dataMat[i][0]).trim()] = String(dataMat[i][2]).trim();
     }
-    const matIds = new Set(materias.map(m => m.id));
+    const matIds = new Set(Object.keys(matMap));
 
-    // 3. Indicadores de esas materias
+    // 3. Indicadores → mapa id→{desc, idMateria}
     const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
-    const indIds = new Set();
+    const indMap = {}; // id → {desc, idMateria}
     for(let i=1; i<dataInd.length; i++) {
-      if(matIds.has(String(dataInd[i][1]).trim())) indIds.add(String(dataInd[i][0]).trim());
+      const idMat = String(dataInd[i][1]).trim();
+      if(matIds.has(idMat))
+        indMap[String(dataInd[i][0]).trim()] = { desc: String(dataInd[i][3]).trim(), idMateria: idMat };
     }
+    const indIds = new Set(Object.keys(indMap));
 
-    // 4. Notas — indicadores sin calificar y acumulado por estudiante
+    // 4. Notas
     const dataNotas = ss.getSheetByName("NOTAS").getDataRange().getValues();
     const indConNota = new Set();
-    const acumEst = {};
+    const acumEst = {}; // idEst → total %
     let sumaTotal = 0, countNotas = 0;
 
     for(let i=1; i<dataNotas.length; i++) {
@@ -2283,34 +2287,64 @@ function getSectionKPIs(idSeccion) {
       }
     }
 
-    const indSinCalificar = indIds.size - indConNota.size;
-    const promedioSeccion = countNotas > 0 ? parseFloat((sumaTotal / countNotas).toFixed(1)) : 0;
-    let estBajoMinimo = 0;
-    Object.values(acumEst).forEach(total => { if(total < 65) estBajoMinimo++; });
+    // Detalle: indicadores sin calificar
+    const detallesIndSinCalificar = [];
+    indIds.forEach(id => {
+      if(!indConNota.has(id)) {
+        const ind = indMap[id];
+        detallesIndSinCalificar.push({ desc: ind.desc, materia: matMap[ind.idMateria] || '' });
+      }
+    });
 
-    // 5. Ausencias injustificadas
+    // Detalle: estudiantes bajo mínimo
+    const detallesBajoMinimo = [];
+    let estBajoMinimo = 0;
+    Object.entries(acumEst).forEach(([idEst, total]) => {
+      if(total < 65) {
+        estBajoMinimo++;
+        detallesBajoMinimo.push({ nombre: estMap[idEst] || idEst, total: parseFloat(total.toFixed(1)) });
+      }
+    });
+    detallesBajoMinimo.sort((a,b) => a.total - b.total);
+
+    const promedioSeccion = countNotas > 0 ? parseFloat((sumaTotal / countNotas).toFixed(1)) : 0;
+
+    // 5. Ausencias injustificadas → conteo por estudiante
     const dataAsist = ss.getSheetByName("ASISTENCIA_DATA").getDataRange().getValues();
-    const estConAI = new Set();
+    const aiCount = {}; // idEst → cant AI
     for(let i=1; i<dataAsist.length; i++) {
       const idEst = String(dataAsist[i][2]).trim();
-      if(estIds.has(idEst) && String(dataAsist[i][4]).trim() === 'AI') estConAI.add(idEst);
+      if(estIds.has(idEst) && String(dataAsist[i][4]).trim() === 'AI')
+        aiCount[idEst] = (aiCount[idEst] || 0) + 1;
     }
+    const detallesEstConAI = Object.entries(aiCount)
+      .map(([id, cant]) => ({ nombre: estMap[id] || id, cant }))
+      .sort((a,b) => b.cant - a.cant);
 
-    // 6. Bitácoras con recordatorio pendiente
+    // 6. Bitácoras pendientes
     const dataBit = ss.getSheetByName("BITACORAS").getDataRange().getValues();
-    let bitPendientes = 0;
+    const detallesBitPendientes = [];
     for(let i=1; i<dataBit.length; i++) {
-      if(String(dataBit[i][1]).trim() === idSec && dataBit[i][9] === true) bitPendientes++;
+      if(String(dataBit[i][1]).trim() === idSec && dataBit[i][9] === true) {
+        detallesBitPendientes.push({
+          desc: String(dataBit[i][6]).trim(),
+          fecha: dataBit[i][5] ? formatearFecha(dataBit[i][5]) : ''
+        });
+      }
     }
 
     return {
       success: true,
       totalEst,
-      indSinCalificar,
-      estConAI: estConAI.size,
-      bitPendientes,
+      indSinCalificar: detallesIndSinCalificar.length,
+      estConAI: detallesEstConAI.length,
+      bitPendientes: detallesBitPendientes.length,
       estBajoMinimo,
-      promedioSeccion
+      promedioSeccion,
+      detallesBajoMinimo,
+      detallesIndSinCalificar,
+      detallesEstConAI,
+      detallesBitPendientes
     };
   } catch(e) {
     return { error: e.toString() };
