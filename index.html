@@ -4,7 +4,7 @@
 <head>
     <!-- TEST GIT 123 -->
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>RegistraME - V-PRO</title>
     <!-- FAVICON (EL ÍCONO DE LA PESTAÑA) -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎓</text></svg>">
@@ -61,7 +61,33 @@
         font-family: 'Inter', sans-serif;
         background-color: var(--background);
         color: #191919;
-        -webkit-font-smoothing: antialiased; /* Texto más nítido */
+        -webkit-font-smoothing: antialiased;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+    }
+
+    /* Safe area para iPhone con notch/Dynamic Island */
+    #main-content {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    aside#sidebar {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    /* Touch targets mínimos 44px */
+    .menu-item {
+        min-height: 44px;
+    }
+
+    /* Inputs más cómodos en mobile */
+    @media (max-width: 767px) {
+        select, input[type="date"], input[type="text"], input[type="email"], input[type="password"] {
+            font-size: 16px; /* Evita auto-zoom en iOS */
+            min-height: 44px;
+        }
+        button {
+            min-height: 44px;
+        }
     }
 
     /* --- 1. THEMA PREMIUM PARA SWEETALERT2 --- */
@@ -401,26 +427,26 @@
         <div class="ambient-light light-2"></div>
 
         <!-- HEADER SUPERIOR -->
-        <header class="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 shrink-0">
-            <div class="flex items-center gap-4">
-                <button onclick="app.toggleSidebar()" class="md:hidden text-gray-500 hover:text-gray-700">
-                    <i class="fas fa-bars text-xl"></i>
+        <header class="bg-white border-b border-gray-200 h-14 md:h-16 flex items-center justify-between px-3 md:px-6 shrink-0">
+            <div class="flex items-center gap-2 md:gap-4 min-w-0">
+                <button onclick="app.toggleSidebar()" class="md:hidden flex items-center justify-center w-10 h-10 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition shrink-0">
+                    <i class="fas fa-bars text-lg"></i>
                 </button>
-                <h2 id="page-title" class="text-xl font-bold text-gray-800">Dashboard</h2>
+                <h2 id="page-title" class="text-base md:text-xl font-bold text-gray-800 truncate">Dashboard</h2>
             </div>
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 md:gap-4 shrink-0">
                 <div class="hidden md:flex flex-col text-right mr-2">
                     <span id="user-name" class="text-sm font-bold text-gray-700">Cargando...</span>
                     <span id="user-role" class="text-xs text-gray-500 uppercase">Docente</span>
                 </div>
-                <div class="h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold border border-indigo-200 shadow-sm">
-                    <i class="fas fa-user"></i>
+                <div class="h-9 w-9 md:h-10 md:w-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold border border-indigo-200 shadow-sm shrink-0">
+                    <i class="fas fa-user text-sm md:text-base"></i>
                 </div>
             </div>
         </header>
 
        <!-- CONTENEDOR DE VISTAS (SCROLLEABLE) -->
-        <div id="views-container" class="flex-1 overflow-y-auto p-6 relative">
+        <div id="views-container" class="flex-1 overflow-y-auto p-3 md:p-6 relative">
             
             <!-- VISTA: DASHBOARD (SECCIONES) -->
             <div id="view-dashboard" class="view fade-in">
@@ -594,27 +620,29 @@
 
 <!-- VISTA: MATRIZ DE ASISTENCIA -->
 <div id="view-asistencia" class="view hidden fade-in flex flex-col h-full">
-    
+
     <!-- 1. HEADER DE FILTROS -->
-    <div class="bg-white p-4 rounded-xl shadow mb-4 flex flex-wrap gap-4 items-end">
-        <div>
-            <label class="text-xs font-bold text-gray-500">Sección</label>
-            <select id="as-sec" class="p-2 border rounded w-40" onchange="app.loadMatAsistencia()"></select>
+    <div class="bg-white p-3 md:p-4 rounded-xl shadow mb-3 md:mb-4">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3 mb-3">
+            <div class="flex flex-col gap-1">
+                <label class="text-xs font-bold text-gray-500">Sección</label>
+                <select id="as-sec" class="p-2 border rounded text-sm w-full" onchange="app.loadMatAsistencia()"></select>
+            </div>
+            <div class="flex flex-col gap-1">
+                <label class="text-xs font-bold text-gray-500">Materia</label>
+                <select id="as-mat" class="p-2 border rounded text-sm w-full"></select>
+            </div>
+            <div class="flex flex-col gap-1">
+                <label class="text-xs font-bold text-gray-500">Desde</label>
+                <input type="date" id="as-ini" class="p-2 border rounded text-sm w-full">
+            </div>
+            <div class="flex flex-col gap-1">
+                <label class="text-xs font-bold text-gray-500">Hasta</label>
+                <input type="date" id="as-fin" class="p-2 border rounded text-sm w-full">
+            </div>
         </div>
-        <div>
-            <label class="text-xs font-bold text-gray-500">Materia</label>
-            <select id="as-mat" class="p-2 border rounded w-40"></select>
-        </div>
-        <div>
-            <label class="text-xs font-bold text-gray-500">Desde</label>
-            <input type="date" id="as-ini" class="p-2 border rounded w-32">
-        </div>
-        <div>
-            <label class="text-xs font-bold text-gray-500">Hasta</label>
-            <input type="date" id="as-fin" class="p-2 border rounded w-32">
-        </div>
-        <button onclick="app.loadAttendanceMatrix()" class="bg-green-600 text-white px-4 py-2 rounded font-bold hover:bg-green-700 shadow">
-            <i class="fas fa-search mr-2"></i> Consultar
+        <button onclick="app.loadAttendanceMatrix()" class="w-full sm:w-auto bg-green-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-green-700 shadow transition flex items-center justify-center gap-2">
+            <i class="fas fa-search"></i> Consultar
         </button>
     </div>
 
@@ -1091,6 +1119,15 @@ enterApp: async () => {
             }
         },
 
+        closeSidebarMobile: () => {
+            if(window.innerWidth < 768) {
+                const sb = document.getElementById('sidebar');
+                const ov = document.getElementById('sidebar-overlay');
+                sb.classList.add('-translate-x-full');
+                ov.classList.add('hidden');
+            }
+        },
+
         
 
         // ==========================================
@@ -1103,6 +1140,9 @@ enterApp: async () => {
             // 2. Mostrar la vista seleccionada
             const target = document.getElementById('view-' + viewId);
             if(target) target.classList.remove('hidden');
+
+            // Cerrar sidebar en mobile al navegar
+            app.closeSidebarMobile();
 
             // ----------------------------------------------------
             // AJUSTE: LIMPIEZA AUTOMÁTICA (Intacto)
