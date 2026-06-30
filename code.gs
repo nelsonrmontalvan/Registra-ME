@@ -841,6 +841,46 @@ function guardarMarcaAsistencia(payload) {
   }
 }
 
+function guardarMarcaAsistenciaBatch(payload) {
+  // payload.marcas = [{idEst, idMateria, fecha, estado}, ...]
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    let sheet = ss.getSheetByName("ASISTENCIA_DATA");
+    if(!sheet) {
+      sheet = ss.insertSheet("ASISTENCIA_DATA");
+      sheet.appendRow(["ID", "FECHA", "ID_EST", "ID_MAT", "ESTADO", "USER"]);
+    }
+    const data = sheet.getDataRange().getValues();
+    const marcas = payload.marcas || [];
+
+    marcas.forEach(m => {
+      const fechaInput = formatearFechaInput(m.fecha);
+      let filasEncontradas = [];
+      for(let i = 1; i < data.length; i++){
+        if(String(data[i][2]) == String(m.idEst) &&
+           String(data[i][3]) == String(m.idMateria) &&
+           formatearFechaInput(data[i][1]) == fechaInput) {
+          filasEncontradas.push(i + 1);
+        }
+      }
+      if(filasEncontradas.length > 0) {
+        sheet.getRange(filasEncontradas[0], 5).setValue(m.estado);
+      } else {
+        const newRow = ["AS-" + Date.now() + Math.random(), m.fecha, m.idEst, m.idMateria, m.estado, payload.email];
+        sheet.appendRow(newRow);
+        data.push(newRow); // Actualizar copia local para próximas iteraciones
+      }
+    });
+
+    return { success: true, saved: marcas.length };
+  } finally {
+    SpreadsheetApp.flush();
+    lock.releaseLock();
+  }
+}
+
 function limpiarDuplicadosAsistencia() {
   const ss = SpreadsheetApp.openById(SHEET_ID);
   const sheet = ss.getSheetByName("ASISTENCIA_DATA");

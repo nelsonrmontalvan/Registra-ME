@@ -941,27 +941,38 @@
         // ==========================================
         // 1. NÚCLEO DE COMUNICACIÓN (FETCH)
         // ==========================================
-        api: async (payload) => {
+        api: async (payload, { silent = false, _retry = false } = {}) => {
             try {
-                // Si hay usuario, inyectamos el email en cada petición automáticamente
                 if(app.user?.email) payload.email = app.user.email;
-                
+
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     body: JSON.stringify(payload)
                 });
-                const res = await response.json();
-                
-                // Manejo de errores global
+                const text = await response.text();
+                let res;
+                try {
+                    res = JSON.parse(text);
+                } catch(_) {
+                    // GAS devolvió HTML (rate-limit o redirect raro) — reintentamos una vez
+                    if(!_retry) {
+                        await new Promise(r => setTimeout(r, 1500));
+                        return app.api(payload, { silent, _retry: true });
+                    }
+                    throw new Error('Respuesta inesperada del servidor. Intenta de nuevo.');
+                }
+
                 if(res.status === 'error') throw new Error(res.msg || res.error);
                 return res;
             } catch (error) {
                 console.error("API Error:", error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error de Conexión',
-                    text: error.message || 'No se pudo contactar con el servidor.'
-                });
+                if(!silent) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error de Conexión',
+                        text: error.message || 'No se pudo contactar con el servidor.'
+                    });
+                }
                 return null;
             }
         },
@@ -3131,7 +3142,12 @@ renderScheduleList: () => {
                         <th class="p-2 border w-10 text-center text-orange-500">E</th>
                         <th class="p-2 border w-10 text-center text-blue-500">J</th>
                         <!-- FECHAS -->
-                        ${dateCols.map(d => `<th class="p-2 border min-w-[50px] text-center bg-white cursor-pointer hover:bg-gray-50" title="${d.lessons} Lecciones">${d.label}</th>`).join('')}
+                        ${dateCols.map(d => `<th class="p-2 border min-w-[50px] text-center bg-white cursor-pointer hover:bg-green-100 transition select-none" title="Click para marcar todos Presentes\n${d.lessons} Lecciones" onclick="app.markAllPresent('${d.dateStr}', '${idMat}', this)">
+                            <div class="flex flex-col items-center gap-0.5">
+                                <span>${d.label}</span>
+                                <i class="fas fa-check-circle text-gray-300 text-xs mark-all-icon"></i>
+                            </div>
+                        </th>`).join('')}
                     </tr>
                 </thead>
                 <tbody class="divide-y">`;
@@ -3155,6 +3171,7 @@ renderScheduleList: () => {
                     let bg = val==='P'?'bg-green-100': val==='AI'?'bg-red-100': val==='T'?'bg-yellow-100': val==='E'?'bg-orange-100': val==='J'?'bg-blue-100':'';
 
                     return `<td class="border p-1 text-center ${bg} cursor-pointer hover:bg-gray-200 transition font-bold text-xs"
+                                data-fecha="${d.dateStr}" data-est="${est.id}"
                                 onclick="app.cycleAttendance(this, '${est.id}', '${idMat}', '${d.dateStr}')">${val}</td>`;
                 }).join('');
 
@@ -3184,12 +3201,7 @@ renderScheduleList: () => {
         },
 
         // Click en celda para cambiar estado
-        _attendanceSaving: false,
-        cycleAttendance: async (cell, idEst, idMat, fecha) => {
-            // Bloqueamos clics simultáneos para evitar race conditions
-            if(app._attendanceSaving) return;
-            app._attendanceSaving = true;
-
+        cycleAttendance: (cell, idEst, idMat, fecha) => {
             const states = ['', 'P', 'AI', 'T', 'E', 'J'];
             let current = cell.innerText.trim();
             let nextIndex = (states.indexOf(current) + 1) % states.length;
@@ -3204,14 +3216,38 @@ renderScheduleList: () => {
             if(next==='E') cell.classList.add('bg-orange-100');
             if(next==='J') cell.classList.add('bg-blue-100');
 
-            // Guardar esperando confirmación antes de permitir otro clic
-            await app.api({
+            // Guardar en background sin bloquear más clicks
+            app.api({
                 action: 'saveMark',
                 email: app.user.email,
                 idEst: idEst, idMateria: idMat, fecha: fecha, estado: next
+            }, { silent: true });
+        },
+
+        markAllPresent: (fecha, idMat, thEl) => {
+            const cells = document.querySelectorAll(`td[data-fecha="${fecha}"]`);
+            if(!cells.length) return;
+
+            // Si todos ya son P → limpiar; si no → marcar todos P
+            const allP = [...cells].every(c => c.innerText.trim() === 'P');
+            const next = allP ? '' : 'P';
+
+            const marcas = [];
+            cells.forEach(cell => {
+                cell.innerText = next;
+                cell.className = cell.className.replace(/bg-\w+-100/g, '');
+                if(next === 'P') cell.classList.add('bg-green-100');
+                marcas.push({ idEst: cell.dataset.est, idMateria: idMat, fecha, estado: next });
             });
 
-            app._attendanceSaving = false;
+            // Una sola llamada batch — evita race conditions con LockService
+            app.api({ action: 'saveMarkBatch', email: app.user.email, marcas }, { silent: true });
+
+            // Actualizar ícono del encabezado
+            const icon = thEl.querySelector('.mark-all-icon');
+            if(icon) {
+                icon.className = `fas fa-check-circle text-xs mark-all-icon ${next === 'P' ? 'text-green-500' : 'text-gray-300'}`;
+            }
         },
 
         // ==========================================

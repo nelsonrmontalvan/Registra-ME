@@ -1,30 +1,30 @@
 {
   "HTML-001": {
-    "occurrences": 132,
+    "occurrences": 398,
     "confidence": 1,
     "mastered_explicitly": false,
     "first_seen": "2026-06-29T19:22:40.763Z",
-    "last_seen": "2026-06-29T19:22:40.865Z"
+    "last_seen": "2026-06-30T13:57:05.200Z"
   },
   "SEC-004": {
-    "occurrences": 100,
+    "occurrences": 300,
     "confidence": 1,
     "mastered_explicitly": false,
     "first_seen": "2026-06-29T19:22:40.778Z",
-    "last_seen": "2026-06-29T19:22:40.856Z"
+    "last_seen": "2026-06-30T13:57:05.190Z"
   },
   "REACT-003": {
-    "occurrences": 10,
+    "occurrences": 30,
     "confidence": 1,
     "mastered_explicitly": false,
     "first_seen": "2026-06-29T19:22:40.791Z",
-    "last_seen": "2026-06-29T19:22:40.849Z"
+    "last_seen": "2026-06-30T13:57:05.182Z"
   },
   "PERF-002": {
-    "occurrences": 8,
+    "occurrences": 24,
     "confidence": 1,
     "mastered_explicitly": false,
     "first_seen": "2026-06-29T19:22:40.800Z",
-    "last_seen": "2026-06-29T19:22:40.856Z"
+    "last_seen": "2026-06-30T13:57:05.190Z"
   }
 }
