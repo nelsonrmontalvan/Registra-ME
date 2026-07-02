@@ -1396,21 +1396,22 @@ function obtenerBoletaEstudiante(idEstudiante) {
        let idInd = String(ind[0]);
        let cat = ind[2];
 
+       let notaEncontrada = null;
        for(let n=1; n<dataNotas.length; n++) {
          if(String(dataNotas[n][1]) == idInd && String(dataNotas[n][2]).trim() == est.id) {
             let nota;
             if(cat === 'TRAB_COT') {
               let nivel = dataNotas[n][5];
               let notaRecalc = calcularNotaCotidiano(nivel, puntajeCotDinamico);
-              nota = notaRecalc !== null ? notaRecalc : parseFloat(dataNotas[n][3]) || 0;
+              nota = notaRecalc !== null ? notaRecalc : 0;
             } else {
               let raw = parseFloat(dataNotas[n][3]);
               nota = isFinite(raw) ? raw : 0;
             }
-            if(acumulado[cat] !== undefined) acumulado[cat] += nota;
-            break;
+            notaEncontrada = nota; // se queda con la última fila (la más reciente), igual que la pantalla de calificar
          }
        }
+       if(notaEncontrada !== null && acumulado[cat] !== undefined) acumulado[cat] += notaEncontrada;
     });
 
     if (!tieneIndAsistencia) {
@@ -1487,24 +1488,24 @@ function obtenerCuadroMateria(idMateria) {
 
     estudiantes.forEach(e => {
        e.notas = { 'TRAB_COT':0, 'TAREAS':0, 'PRUEBAS':0, 'PROYECTOS':0, 'ASIST':0 };
-       let indYaContados = {};
+       let notaPorIndicador = {}; // última fila encontrada por indicador (misma regla que la pantalla de calificar)
        for(let n=1; n<dataNotas.length; n++) {
           let idInd = String(dataNotas[n][1]);
-          if(String(dataNotas[n][2]).trim() == String(e.id) && mapIndCat[idInd] && !indYaContados[idInd]) {
+          if(String(dataNotas[n][2]).trim() == String(e.id) && mapIndCat[idInd]) {
              let cat = mapIndCat[idInd];
              let nota;
              if(cat === 'TRAB_COT') {
                let nivel = dataNotas[n][5];
                let notaRecalc = calcularNotaCotidiano(nivel, puntajeCotDinamico);
-               nota = notaRecalc !== null ? notaRecalc : parseFloat(dataNotas[n][3]) || 0;
+               nota = notaRecalc !== null ? notaRecalc : 0;
              } else {
                let raw = parseFloat(dataNotas[n][3]);
                nota = isFinite(raw) ? raw : 0;
              }
-             e.notas[cat] += nota;
-             indYaContados[idInd] = true;
+             notaPorIndicador[idInd] = { cat: cat, nota: nota };
           }
        }
+       Object.values(notaPorIndicador).forEach(v => { e.notas[v.cat] += v.nota; });
 
        if (!tieneIndAsistencia) {
            e.notas.ASIST = mapAsist[e.id] !== undefined ? mapAsist[e.id] : valorAsistTotal;
@@ -1809,6 +1810,7 @@ function obtenerDatosReporteSEA(idMateria) {
     let reporte =[];
     estudiantes.forEach(est => {
        let notas = { 'TRAB_COT':0, 'TAREAS':0, 'PRUEBAS':0, 'PROYECTOS':0, 'ASIST':0 };
+       let notaPorIndicador = {}; // última fila encontrada por indicador (misma regla que la pantalla de calificar)
 
        for(let n=1; n<dataNotas.length; n++) {
           let idInd = String(dataNotas[n][1]);
@@ -1820,13 +1822,15 @@ function obtenerDatosReporteSEA(idMateria) {
               // FIX: recalcular con nivel actual y puntaje vigente del indicador
               let nivel = dataNotas[n][5];
               let notaRecalc = calcularNotaCotidiano(nivel, mapIndPuntaje[idInd]);
-              nota = notaRecalc !== null ? notaRecalc : Number(dataNotas[n][3]);
+              nota = notaRecalc !== null ? notaRecalc : 0;
             } else {
-              nota = Number(dataNotas[n][3]);
+              let raw = Number(dataNotas[n][3]);
+              nota = isFinite(raw) ? raw : 0;
             }
-            notas[cat] += nota;
+            notaPorIndicador[idInd] = { cat: cat, nota: nota };
           }
        }
+       Object.values(notaPorIndicador).forEach(v => { notas[v.cat] += v.nota; });
 
        if (!tieneIndAsistencia) {
            notas.ASIST = mapAsist[est.id] !== undefined ? mapAsist[est.id] : valAsistTotal;
@@ -2389,4 +2393,37 @@ function getSectionKPIs(idSeccion) {
   } catch(e) {
     return { error: e.toString() };
   }
+}
+
+// ==========================================
+// MANTENIMIENTO ÚNICO: DEDUPLICAR NOTAS
+// Corregir manualmente desde el editor de Apps Script (Run -> limpiarDuplicadosNotas)
+// Elimina filas duplicadas (mismo INDICADOR + ESTUDIANTE) dejando SOLO la más reciente,
+// consistente con el criterio que ahora usan obtenerDatosEvaluacion / obtenerCuadroMateria / obtenerDatosReporteSEA.
+// Hacer una copia del Sheets antes de correrlo.
+// ==========================================
+function limpiarDuplicadosNotas() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName("NOTAS");
+  const data = sheet.getDataRange().getValues();
+
+  let ultimaFilaPorClave = {};
+  for (let i = 1; i < data.length; i++) {
+    let clave = String(data[i][1]).trim() + "||" + String(data[i][2]).trim();
+    ultimaFilaPorClave[clave] = i + 1; // fila real en la hoja (1-based); la última ocurrencia gana
+  }
+
+  let filasABorrar = [];
+  for (let i = 1; i < data.length; i++) {
+    let clave = String(data[i][1]).trim() + "||" + String(data[i][2]).trim();
+    let filaActual = i + 1;
+    if (filaActual !== ultimaFilaPorClave[clave]) {
+      filasABorrar.push(filaActual);
+    }
+  }
+
+  filasABorrar.sort((a, b) => b - a).forEach(fila => sheet.deleteRow(fila));
+
+  Logger.log("Filas duplicadas eliminadas: " + filasABorrar.length);
+  return { success: true, eliminadas: filasABorrar.length };
 }
