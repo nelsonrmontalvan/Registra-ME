@@ -1770,11 +1770,11 @@ function obtenerDatosReporteSEA(idMateria) {
   try {
     const ss = SpreadsheetApp.openById(SHEET_ID);
     const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
-    let idSeccion = null, nombreMateria = "", valorAsist = 0;
+    let idSeccion = null, nombreMateria = "", valorAsist = 0, totalCot = 0;
 
     for(let i=1; i<dataMat.length; i++) {
       if(String(dataMat[i][0]) == String(idMateria)) {
-        idSeccion = dataMat[i][1]; nombreMateria = dataMat[i][2]; valorAsist = dataMat[i][7]; break;
+        idSeccion = dataMat[i][1]; nombreMateria = dataMat[i][2]; valorAsist = dataMat[i][7]; totalCot = Number(dataMat[i][3]) || 0; break;
       }
     }
     if(!idSeccion) return { error: "Materia no encontrada" };
@@ -1791,17 +1791,23 @@ function obtenerDatosReporteSEA(idMateria) {
     const dataNotas = ss.getSheetByName("NOTAS").getDataRange().getValues();
 
     let mapIndCat = {};
-    let mapIndPuntaje = {}; // FIX: puntaje vigente por indicador
     let tieneIndAsistencia = false;
+    let cantCotIndicadores = 0;
 
     for(let i=1; i<dataInd.length; i++) {
        if(String(dataInd[i][1]) == String(idMateria)) {
          let idInd = String(dataInd[i][0]);
          mapIndCat[idInd] = dataInd[i][2];
-         mapIndPuntaje[idInd] = Number(dataInd[i][4]) || 0;
          if(dataInd[i][2] === 'ASIST') tieneIndAsistencia = true;
+         if(dataInd[i][2] === 'TRAB_COT') cantCotIndicadores++;
        }
     }
+
+    // Puntaje dinámico cotidiano: totalCot / cantidad de indicadores TRAB_COT
+    // (mismo criterio que obtenerCuadroMateria / obtenerBoletaEstudiante, para que
+    // Cuadro, Boleta y SEA siempre reporten el mismo número. NO usar el PUNTAJE_MAX
+    // individual del indicador: ese campo puede estar corrupto (ver INDICADORES).
+    let puntajeCotDinamico = cantCotIndicadores > 0 ? totalCot / cantCotIndicadores : 0;
 
     let mapAsist = {};
     let valAsistTotal = Number(valorAsist) || 0;
@@ -1819,9 +1825,8 @@ function obtenerDatosReporteSEA(idMateria) {
             let cat = mapIndCat[idInd];
             let nota;
             if(cat === 'TRAB_COT') {
-              // FIX: recalcular con nivel actual y puntaje vigente del indicador
               let nivel = dataNotas[n][5];
-              let notaRecalc = calcularNotaCotidiano(nivel, mapIndPuntaje[idInd]);
+              let notaRecalc = calcularNotaCotidiano(nivel, puntajeCotDinamico);
               nota = notaRecalc !== null ? notaRecalc : 0;
             } else {
               let raw = Number(dataNotas[n][3]);
@@ -2400,30 +2405,36 @@ function getSectionKPIs(idSeccion) {
 // Corregir manualmente desde el editor de Apps Script (Run -> limpiarDuplicadosNotas)
 // Elimina filas duplicadas (mismo INDICADOR + ESTUDIANTE) dejando SOLO la más reciente,
 // consistente con el criterio que ahora usan obtenerDatosEvaluacion / obtenerCuadroMateria / obtenerDatosReporteSEA.
+// Reescribe la hoja completa de una sola vez (rápido) en vez de borrar fila por fila
+// (deleteRow uno por uno es demasiado lento para miles de filas y puede exceder
+// el límite de 6 minutos de ejecución de Apps Script).
 // Hacer una copia del Sheets antes de correrlo.
 // ==========================================
 function limpiarDuplicadosNotas() {
   const ss = SpreadsheetApp.openById(SHEET_ID);
   const sheet = ss.getSheetByName("NOTAS");
   const data = sheet.getDataRange().getValues();
+  const header = data[0];
 
   let ultimaFilaPorClave = {};
   for (let i = 1; i < data.length; i++) {
     let clave = String(data[i][1]).trim() + "||" + String(data[i][2]).trim();
-    ultimaFilaPorClave[clave] = i + 1; // fila real en la hoja (1-based); la última ocurrencia gana
+    ultimaFilaPorClave[clave] = i; // índice dentro de data; la última ocurrencia gana
   }
 
-  let filasABorrar = [];
+  let filasFinales = [header];
   for (let i = 1; i < data.length; i++) {
     let clave = String(data[i][1]).trim() + "||" + String(data[i][2]).trim();
-    let filaActual = i + 1;
-    if (filaActual !== ultimaFilaPorClave[clave]) {
-      filasABorrar.push(filaActual);
+    if (ultimaFilaPorClave[clave] === i) {
+      filasFinales.push(data[i]);
     }
   }
 
-  filasABorrar.sort((a, b) => b - a).forEach(fila => sheet.deleteRow(fila));
+  const eliminadas = data.length - filasFinales.length;
 
-  Logger.log("Filas duplicadas eliminadas: " + filasABorrar.length);
-  return { success: true, eliminadas: filasABorrar.length };
+  sheet.clearContents();
+  sheet.getRange(1, 1, filasFinales.length, header.length).setValues(filasFinales);
+
+  Logger.log("Filas duplicadas eliminadas: " + eliminadas);
+  return { success: true, eliminadas: eliminadas };
 }
