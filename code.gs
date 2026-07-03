@@ -526,10 +526,10 @@ function obtenerIndicadores(idMateria, categoria) {
   let lista = [];
   for(let i=1; i<data.length; i++){
     if(String(data[i][1]) == String(idMateria) && (categoria === 'ALL' || String(data[i][2]) == String(categoria))) {
-      let idInd = String(data[i][0]);
+      let idInd = String(data[i][0]).trim();
       let notasCount = 0;
       for(let n=1; n<dataNotas.length; n++) {
-        if(String(dataNotas[n][1]) == idInd) notasCount++;
+        if(String(dataNotas[n][1]).trim() == idInd) notasCount++;
       }
       lista.push({
         id: data[i][0],
@@ -1528,12 +1528,12 @@ function obtenerBoletaEstudiante(idEstudiante) {
     let puntajeCotDinamico = indsCot.length > 0 ? totalCot / indsCot.length : 0;
 
     indMateria.forEach(ind => {
-       let idInd = String(ind[0]);
+       let idInd = String(ind[0]).trim();
        let cat = ind[2];
 
        let notaEncontrada = null;
        for(let n=1; n<dataNotas.length; n++) {
-         if(String(dataNotas[n][1]) == idInd && String(dataNotas[n][2]).trim() == est.id) {
+         if(String(dataNotas[n][1]).trim() == idInd && String(dataNotas[n][2]).trim() == est.id) {
             let nota;
             if(cat === 'TRAB_COT') {
               let nivel = dataNotas[n][5];
@@ -1604,8 +1604,8 @@ function obtenerCuadroMateria(idMateria) {
     let cantCotIndicadores = 0;
 
     for(let i=1; i<dataInd.length; i++) {
-       if(String(dataInd[i][1]) == String(idMateria)) {
-           let idInd = String(dataInd[i][0]);
+       if(String(dataInd[i][1]).trim() == String(idMateria).trim()) {
+           let idInd = String(dataInd[i][0]).trim();
            mapIndCat[idInd] = dataInd[i][2];
            if(dataInd[i][2] === 'ASIST') tieneIndAsistencia = true;
            if(dataInd[i][2] === 'TRAB_COT') cantCotIndicadores++;
@@ -1625,7 +1625,7 @@ function obtenerCuadroMateria(idMateria) {
        e.notas = { 'TRAB_COT':0, 'TAREAS':0, 'PRUEBAS':0, 'PROYECTOS':0, 'ASIST':0 };
        let notaPorIndicador = {}; // última fila encontrada por indicador (misma regla que la pantalla de calificar)
        for(let n=1; n<dataNotas.length; n++) {
-          let idInd = String(dataNotas[n][1]);
+          let idInd = String(dataNotas[n][1]).trim();
           if(String(dataNotas[n][2]).trim() == String(e.id) && mapIndCat[idInd]) {
              let cat = mapIndCat[idInd];
              let nota;
@@ -1930,8 +1930,8 @@ function obtenerDatosReporteSEA(idMateria) {
     let cantCotIndicadores = 0;
 
     for(let i=1; i<dataInd.length; i++) {
-       if(String(dataInd[i][1]) == String(idMateria)) {
-         let idInd = String(dataInd[i][0]);
+       if(String(dataInd[i][1]).trim() == String(idMateria).trim()) {
+         let idInd = String(dataInd[i][0]).trim();
          mapIndCat[idInd] = dataInd[i][2];
          if(dataInd[i][2] === 'ASIST') tieneIndAsistencia = true;
          if(dataInd[i][2] === 'TRAB_COT') cantCotIndicadores++;
@@ -1954,7 +1954,7 @@ function obtenerDatosReporteSEA(idMateria) {
        let notaPorIndicador = {}; // última fila encontrada por indicador (misma regla que la pantalla de calificar)
 
        for(let n=1; n<dataNotas.length; n++) {
-          let idInd = String(dataNotas[n][1]);
+          let idInd = String(dataNotas[n][1]).trim();
           let idEstNota = String(dataNotas[n][2]).trim();
           if(idEstNota == est.id && mapIndCat[idInd]) {
             let cat = mapIndCat[idInd];
