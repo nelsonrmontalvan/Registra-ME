@@ -1151,10 +1151,109 @@ enterApp: async () => {
             app.state.alertaAsistenciaInterval = setInterval(() => app.checkAlertasDelDia(), 20 * 60 * 1000);
         },
 
-        // Corre ambos chequeos en orden (asistencia primero, luego incidencias) para no solaparlos
+        // Junta asistencia pendiente + incidencias pendientes y las muestra en UN solo mensaje
         checkAlertasDelDia: async () => {
-            await app.checkAsistenciaPendiente();
-            await app.checkIncidenciasPendientes();
+            if (!app.user || !app.user.email) return;
+
+            const hoy = new Date();
+            const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+            const ahora = Date.now();
+
+            const [pendAsist, pendIncid] = await Promise.all([
+                app.api({ action: 'getPendingAttendanceAlerts', email: app.user.email, hoy: fechaHoy }),
+                app.api({ action: 'getPendingIncidentAlerts', email: app.user.email })
+            ]);
+
+            const asistencia = (pendAsist || []).filter(b =>
+                ahora >= Number(localStorage.getItem(`snooze_asist_${b.idMateria}_${b.fecha}`) || 0));
+            const incidencias = (pendIncid || []).filter(inc =>
+                ahora >= Number(localStorage.getItem(`snooze_incid_${inc.id}`) || 0));
+
+            if (!asistencia.length && !incidencias.length) return;
+
+            app.mostrarAlertaDelDia(asistencia, incidencias);
+        },
+
+        mostrarAlertaDelDia: async (asistencia, incidencias) => {
+            const mesesCorto = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+            const fmtFecha = (str) => { const [y,mm,dd] = str.split('-'); return `${dd} ${mesesCorto[parseInt(mm,10)-1]}`; };
+
+            const filaAsistencia = (b, i) => `
+                <div class="flex items-center justify-between gap-3 py-2.5 border-b border-slate-100 last:border-0">
+                    <div class="flex items-start gap-2 text-sm text-slate-700">
+                        <i class="fas fa-clipboard-list text-amber-500 mt-0.5"></i>
+                        <span>Falta pasar lista de <b>${b.nomMateria}</b> en <b>${b.nomSeccion}</b> <span class="text-slate-400">(${fmtFecha(b.fecha)})</span></span>
+                    </div>
+                    <button class="btn-ir-alerta shrink-0 text-xs font-bold text-emerald-600 hover:underline" data-tipo="asistencia" data-idx="${i}">Ir <i class="fas fa-arrow-right"></i></button>
+                </div>`;
+
+            const filaIncidencia = (inc, i) => {
+                const quien = (inc.nombreEstudiante && inc.nombreEstudiante !== 'General / Grupal') ? inc.nombreEstudiante : 'grupal';
+                return `
+                <div class="flex items-center justify-between gap-3 py-2.5 border-b border-slate-100 last:border-0">
+                    <div class="flex items-start gap-2 text-sm text-slate-700">
+                        <i class="fas fa-book-reader text-rose-500 mt-0.5"></i>
+                        <span>Incidencia (<b>${inc.tipo}</b>) pendiente en <b>${inc.nombreSeccion}</b> con <b>${quien}</b></span>
+                    </div>
+                    <button class="btn-ir-alerta shrink-0 text-xs font-bold text-emerald-600 hover:underline" data-tipo="incidencia" data-idx="${i}">Ir <i class="fas fa-arrow-right"></i></button>
+                </div>`;
+            };
+
+            const totalAlertas = asistencia.length + incidencias.length;
+
+            const listaHtml = `
+                ${asistencia.length ? `<p class="text-[10px] font-bold text-amber-500 uppercase tracking-wide mb-1">Pase de lista pendiente</p>${asistencia.map(filaAsistencia).join('')}` : ''}
+                ${incidencias.length ? `<p class="text-[10px] font-bold text-rose-500 uppercase tracking-wide mt-3 mb-1">Incidencias pendientes</p>${incidencias.map(filaIncidencia).join('')}` : ''}
+            `;
+
+            let accionTomada = false;
+
+            const res = await Swal.fire({
+                icon: 'warning',
+                title: `Alerta del Día (${totalAlertas})`,
+                html: `<div class="text-left max-h-80 overflow-y-auto">${listaHtml}</div>`,
+                showDenyButton: true,
+                showCancelButton: true,
+                showConfirmButton: false,
+                denyButtonText: 'Recordar todo en 1 hora',
+                cancelButtonText: 'Cerrar',
+                denyButtonColor: '#f59e0b',
+                cancelButtonColor: '#94a3b8',
+                reverseButtons: true,
+                didOpen: (modal) => {
+                    modal.querySelectorAll('.btn-ir-alerta').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            accionTomada = true;
+                            const tipo = btn.getAttribute('data-tipo');
+                            const idx = Number(btn.getAttribute('data-idx'));
+
+                            if (tipo === 'asistencia') {
+                                const b = asistencia[idx];
+                                localStorage.removeItem(`snooze_asist_${b.idMateria}_${b.fecha}`);
+                                Swal.close();
+                                app.irAPasarLista(b, b.fecha);
+                            } else {
+                                const inc = incidencias[idx];
+                                localStorage.removeItem(`snooze_incid_${inc.id}`);
+                                Swal.close();
+                                app.nav('bitacoras');
+                                app.loadBitacoras().then(() => app.editBitacora(inc.id));
+                            }
+                        });
+                    });
+                }
+            });
+
+            if (accionTomada) return; // el docente ya está resolviendo una alerta puntual; no tocamos las demás
+
+            if (res.isDenied) {
+                asistencia.forEach(b => localStorage.setItem(`snooze_asist_${b.idMateria}_${b.fecha}`, String(Date.now() + 60 * 60 * 1000)));
+                incidencias.forEach(inc => localStorage.setItem(`snooze_incid_${inc.id}`, String(Date.now() + 60 * 60 * 1000)));
+            } else {
+                // Cerrado sin elegir nada: posponemos todo 30 min para no ser invasivos
+                asistencia.forEach(b => localStorage.setItem(`snooze_asist_${b.idMateria}_${b.fecha}`, String(Date.now() + 30 * 60 * 1000)));
+                incidencias.forEach(inc => localStorage.setItem(`snooze_incid_${inc.id}`, String(Date.now() + 30 * 60 * 1000)));
+            }
         },
 
         logout: () => {
@@ -3244,60 +3343,6 @@ renderScheduleList: () => {
         },
 
 
-        // ==========================================
-        // ALERTAS DEL DÍA: pase de lista pendiente
-        // ==========================================
-
-        // Revisa si hay materias con clase hoy que aún no tienen asistencia marcada
-        checkAsistenciaPendiente: async () => {
-            if (!app.user || !app.user.email) return;
-
-            const hoy = new Date();
-            const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
-
-            const pendientes = await app.api({ action: 'getPendingAttendanceAlerts', email: app.user.email, hoy: fechaHoy });
-            if (!pendientes || !pendientes.length) return;
-
-            const ahora = Date.now();
-            for (const b of pendientes) {
-                const key = `snooze_asist_${b.idMateria}_${fechaHoy}`;
-                const snoozeUntil = Number(localStorage.getItem(key) || 0);
-                if (ahora < snoozeUntil) continue; // el docente pidió que se lo recuerde después
-
-                // Mostramos las alertas una por una para no saturar la pantalla
-                await app.mostrarAlertaAsistenciaPendiente(b, fechaHoy);
-            }
-        },
-
-        mostrarAlertaAsistenciaPendiente: async (b, fechaHoy) => {
-            const key = `snooze_asist_${b.idMateria}_${fechaHoy}`;
-
-            const res = await Swal.fire({
-                icon: 'warning',
-                title: 'Alerta del Día',
-                html: `Aún no has pasado lista de <b>${b.nomMateria}</b> en <b>${b.nomSeccion}</b> hoy.`,
-                showCancelButton: true,
-                showDenyButton: true,
-                confirmButtonText: 'Ir a pasar lista',
-                denyButtonText: 'Recordar en 1 hora',
-                cancelButtonText: 'Cerrar',
-                confirmButtonColor: '#16a34a',
-                denyButtonColor: '#f59e0b',
-                cancelButtonColor: '#94a3b8',
-                reverseButtons: true
-            });
-
-            if (res.isConfirmed) {
-                localStorage.removeItem(key);
-                app.irAPasarLista(b, fechaHoy);
-            } else if (res.isDenied) {
-                localStorage.setItem(key, String(Date.now() + 60 * 60 * 1000)); // 1 hora
-            } else {
-                // Cerrado sin elegir: lo posponemos 30 min para no ser invasivos
-                localStorage.setItem(key, String(Date.now() + 30 * 60 * 1000));
-            }
-        },
-
         // Lleva directo a la Matriz de Asistencia con Sección/Materia/Fecha de hoy ya seleccionados
         irAPasarLista: async (b, fechaHoy) => {
             app.nav('asistencia'); // dispara initAsistenciaUI() de forma síncrona
@@ -3309,56 +3354,6 @@ renderScheduleList: () => {
             document.getElementById('as-fin').value = fechaHoy;
 
             app.loadAttendanceMatrix();
-        },
-
-        // Revisa si hay incidencias de Bitácora "Abiertas" cuyo recordatorio ya llegó
-        checkIncidenciasPendientes: async () => {
-            if (!app.user || !app.user.email) return;
-
-            const pendientes = await app.api({ action: 'getPendingIncidentAlerts', email: app.user.email });
-            if (!pendientes || !pendientes.length) return;
-
-            const ahora = Date.now();
-            for (const inc of pendientes) {
-                const key = `snooze_incid_${inc.id}`;
-                const snoozeUntil = Number(localStorage.getItem(key) || 0);
-                if (ahora < snoozeUntil) continue;
-
-                await app.mostrarAlertaIncidenciaPendiente(inc);
-            }
-        },
-
-        mostrarAlertaIncidenciaPendiente: async (inc) => {
-            const key = `snooze_incid_${inc.id}`;
-            const quien = (inc.nombreEstudiante && inc.nombreEstudiante !== 'General / Grupal')
-                ? `con el estudiante <b>${inc.nombreEstudiante}</b>`
-                : `de tipo <b>grupal</b>`;
-
-            const res = await Swal.fire({
-                icon: 'warning',
-                title: 'Alerta del Día',
-                html: `Tienes una incidencia (<b>${inc.tipo}</b>) pendiente de cerrar en <b>${inc.nombreSeccion}</b> ${quien}.<br><span class="text-xs text-slate-400">"${inc.desc}"</span>`,
-                showCancelButton: true,
-                showDenyButton: true,
-                confirmButtonText: 'Ir a Bitácora',
-                denyButtonText: 'Recordar en 1 hora',
-                cancelButtonText: 'Cerrar',
-                confirmButtonColor: '#16a34a',
-                denyButtonColor: '#f59e0b',
-                cancelButtonColor: '#94a3b8',
-                reverseButtons: true
-            });
-
-            if (res.isConfirmed) {
-                localStorage.removeItem(key);
-                app.nav('bitacoras');
-                await app.loadBitacoras();
-                app.editBitacora(inc.id);
-            } else if (res.isDenied) {
-                localStorage.setItem(key, String(Date.now() + 60 * 60 * 1000)); // 1 hora
-            } else {
-                localStorage.setItem(key, String(Date.now() + 30 * 60 * 1000)); // 30 min
-            }
         },
 
         // ==========================================
@@ -3401,15 +3396,18 @@ renderScheduleList: () => {
             const cont = document.getElementById('matrix-container');
             cont.innerHTML = '<div class="text-center py-10"><i class="fas fa-spinner fa-spin text-2xl text-green-600"></i><br>Generando Matriz...</div>';
 
-            const res = await app.api({
-                action: 'getMatrixAttendance',
-                idSeccion: idSec, idMateria: idMat, fIni: fIni, fFin: fFin
-            });
+            const [res, diasNoLectivos] = await Promise.all([
+                app.api({ action: 'getMatrixAttendance', idSeccion: idSec, idMateria: idMat, fIni: fIni, fFin: fFin }),
+                app.api({ action: 'getNonSchoolDays', idMateria: idMat })
+            ]);
 
             if(!res.estudiantes || res.estudiantes.length === 0) {
                 cont.innerHTML = '<div class="text-center py-10 text-gray-400">Sin estudiantes.</div>';
                 return;
             }
+
+            const mapaNoLectivos = {};
+            (diasNoLectivos || []).forEach(nl => { mapaNoLectivos[nl.fecha] = nl.motivo || 'Sin clases'; });
 
             // 1. GENERAR COLUMNAS DE FECHAS (Basado en la configuración)
             let dateCols = [];
@@ -3439,8 +3437,8 @@ renderScheduleList: () => {
             // Eliminar duplicados si hay traslape de configs
             dateCols = dateCols.filter((v,i,a)=>a.findIndex(t=>(t.dateStr === v.dateStr))===i);
 
-            // 2. CALCULAR TOTAL DE LECCIONES EN EL PERIODO
-            let totalLeccionesPeriodo = dateCols.reduce((sum, d) => sum + Number(d.lessons), 0);
+            // 2. CALCULAR TOTAL DE LECCIONES EN EL PERIODO (excluyendo días marcados como "sin clases")
+            let totalLeccionesPeriodo = dateCols.reduce((sum, d) => sum + (mapaNoLectivos[d.dateStr] ? 0 : Number(d.lessons)), 0);
 
             // Guardamos el contexto para poder abrir la Ficha del Estudiante sin otra llamada al backend
             app.state.matrixData = {
@@ -3461,12 +3459,26 @@ renderScheduleList: () => {
                         <th class="p-2 border w-10 text-center text-orange-500">E</th>
                         <th class="p-2 border w-10 text-center text-blue-500">J</th>
                         <!-- FECHAS -->
-                        ${dateCols.map(d => `<th class="p-2 border min-w-[50px] text-center bg-white cursor-pointer hover:bg-green-100 transition select-none" title="Click para marcar todos Presentes\n${d.lessons} Lecciones" onclick="app.markAllPresent('${d.dateStr}', '${idMat}', this)">
-                            <div class="flex flex-col items-center gap-0.5">
-                                <span>${d.label}</span>
-                                <i class="fas fa-check-circle text-gray-300 text-xs mark-all-icon"></i>
-                            </div>
-                        </th>`).join('')}
+                        ${dateCols.map(d => {
+                            const esNoLectivo = !!mapaNoLectivos[d.dateStr];
+                            const motivo = mapaNoLectivos[d.dateStr] || '';
+                            if (esNoLectivo) {
+                                return `<th class="p-2 border min-w-[50px] text-center bg-slate-100 select-none" title="Sin clases: ${motivo}">
+                                    <div class="flex flex-col items-center gap-0.5">
+                                        <span class="text-slate-400">${d.label}</span>
+                                        <i class="fas fa-ban text-slate-400 text-xs"></i>
+                                        <button onclick="app.toggleDiaNoLectivo('${d.dateStr}', '${idMat}', true)" class="text-[8px] text-slate-400 hover:text-indigo-600 font-normal normal-case" title="Quitar marca de sin clases">Quitar</button>
+                                    </div>
+                                </th>`;
+                            }
+                            return `<th class="p-2 border min-w-[50px] text-center bg-white select-none group">
+                                <div class="flex flex-col items-center gap-0.5">
+                                    <span class="cursor-pointer hover:text-green-700" onclick="app.markAllPresent('${d.dateStr}', '${idMat}', this)" title="Click para marcar todos Presentes\n${d.lessons} Lecciones">${d.label}</span>
+                                    <i class="fas fa-check-circle text-gray-300 text-xs mark-all-icon cursor-pointer" onclick="app.markAllPresent('${d.dateStr}', '${idMat}', this)"></i>
+                                    <button onclick="app.toggleDiaNoLectivo('${d.dateStr}', '${idMat}', false)" class="text-[8px] text-slate-300 hover:text-rose-500 font-normal normal-case opacity-0 group-hover:opacity-100 transition" title="Marcar día sin clases (feriado/evento)">Sin clases</button>
+                                </div>
+                            </th>`;
+                        }).join('')}
                     </tr>
                 </thead>
                 <tbody class="divide-y">`;
@@ -3477,9 +3489,13 @@ renderScheduleList: () => {
                 let perdidas = 0; // Puntos perdidos (Lecciones)
 
                 let cellsHtml = dateCols.map(d => {
+                    if (mapaNoLectivos[d.dateStr]) {
+                        return `<td class="border p-1 text-center bg-slate-50 text-slate-300 text-xs" data-fecha="${d.dateStr}" data-est="${est.id}" title="Sin clases">–</td>`;
+                    }
+
                     let key = est.id + "|" + d.dateStr;
                     let val = res.marcas[key] || ""; // Estado actual (P, AI, T, E, J) o vacío
-                    
+
                     // Cálculos
                     if(val === 'AI') { sumAI++; perdidas += Number(d.lessons); } // Pierde toda la lección
                     if(val === 'T')  { sumT++;  perdidas += 0; } // MEP: Tardía no resta puntos directos, suma a conducta o 3T=1A (Regla simple aquí)
@@ -3517,6 +3533,41 @@ renderScheduleList: () => {
 
             html += `</tbody></table>`;
             cont.innerHTML = html;
+        },
+
+        // Marca (o quita la marca de) un día como "sin clases" (feriado/evento) para la materia actual
+        toggleDiaNoLectivo: async (fecha, idMat, yaMarcado) => {
+            if (yaMarcado) {
+                const conf = await Swal.fire({
+                    title: '¿Quitar marca de "sin clases"?',
+                    text: 'Ese día volverá a contar como lección normal y podrá aparecer en las alertas si no se marca asistencia.',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#4f46e5',
+                    confirmButtonText: 'Sí, quitar',
+                    cancelButtonText: 'Cancelar'
+                });
+                if (!conf.isConfirmed) return;
+
+                await app.api({ action: 'deleteNonSchoolDay', idMateria: idMat, fecha });
+            } else {
+                const { value: motivo, isConfirmed } = await Swal.fire({
+                    title: 'Marcar día sin clases',
+                    html: `Ese día (<b>${fecha}</b>) no contará como lección ni aparecerá en las alertas de asistencia pendiente.`,
+                    input: 'text',
+                    inputPlaceholder: 'Motivo (ej: Feriado, Actividad institucional)',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#4f46e5',
+                    confirmButtonText: 'Marcar',
+                    cancelButtonText: 'Cancelar'
+                });
+                if (!isConfirmed) return;
+
+                await app.api({ action: 'saveNonSchoolDay', email: app.user.email, idMateria: idMat, fecha, motivo: motivo || '' });
+            }
+
+            app.loadAttendanceMatrix();
         },
 
         // Click en celda para cambiar estado

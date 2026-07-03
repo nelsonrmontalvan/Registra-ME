@@ -63,6 +63,9 @@ function doPost(e) {
     if(action === "getMatrixAttendance") return response(obtenerMatrizAsistencia(data.idSeccion, data.idMateria, data.fIni, data.fFin));
     if(action === "saveMark") return response(guardarMarcaAsistencia(data));
     if(action === "getPendingAttendanceAlerts") return response(obtenerAlertasAsistenciaPendiente(data.email, data.hoy));
+    if(action === "saveNonSchoolDay") return response(guardarDiaNoLectivo(data));
+    if(action === "deleteNonSchoolDay") return response(eliminarDiaNoLectivo(data.idMateria, data.fecha));
+    if(action === "getNonSchoolDays") return response(obtenerDiasNoLectivos(data.idMateria));
 
     // --- ASISTENCIA ---
     if(action === "saveAttendance") return response(guardarAsistenciaMasiva(data));
@@ -759,15 +762,19 @@ function eliminarConfigHorario(id) {
 }
 
 // Detecta bloques de horario que caen HOY y aún no tienen ninguna marca de asistencia registrada
+// Revisa HOY y los últimos VENTANA_DIAS hacia atrás: cualquier día de clase (según CONF_HORARIO)
+// que se haya quedado sin ninguna marca de asistencia, salvo que el día esté marcado como "sin clases"
+// (feriado/evento) en DIAS_NO_LECTIVOS.
 function obtenerAlertasAsistenciaPendiente(email, fechaHoy) {
   try {
+    const VENTANA_DIAS = 7;
     const ss = SpreadsheetApp.openById(SHEET_ID);
     const idUsuario = String(obtenerIdUsuarioPorEmail(email)).trim();
     if (!idUsuario || !fechaHoy) return [];
 
     const diasMap = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
     const [y, m, d] = fechaHoy.split('-').map(Number);
-    const nombreDiaHoy = diasMap[new Date(y, m - 1, d).getDay()];
+    const hoyDate = new Date(y, m - 1, d);
 
     const dataSecc = ss.getSheetByName("SECCIONES").getDataRange().getValues();
     let mapaSec = {};
@@ -780,40 +787,121 @@ function obtenerAlertasAsistenciaPendiente(email, fechaHoy) {
     let mapaMat = {};
     for (let i = 1; i < dataMat.length; i++) mapaMat[dataMat[i][0]] = dataMat[i][2];
 
+    // Días marcados manualmente como "sin clases" (feriado/evento), por materia+fecha
+    const sheetNL = ss.getSheetByName("DIAS_NO_LECTIVOS");
+    let noLectivos = {};
+    if (sheetNL) {
+      const dataNL = sheetNL.getDataRange().getValues();
+      for (let i = 1; i < dataNL.length; i++) {
+        noLectivos[String(dataNL[i][1]).trim() + "|" + formatearFechaInput(dataNL[i][2])] = true;
+      }
+    }
+
+    // Set de "idMateria|fecha" que ya tienen alguna marca de asistencia
+    const sheetAsis = ss.getSheetByName("ASISTENCIA_DATA");
+    const dataAsis = sheetAsis ? sheetAsis.getDataRange().getValues() : [];
+    let materiasConMarca = {};
+    for (let i = 1; i < dataAsis.length; i++) {
+      materiasConMarca[String(dataAsis[i][3]).trim() + "|" + formatearFechaInput(dataAsis[i][1])] = true;
+    }
+
     const dataCfg = ss.getSheetByName("CONF_HORARIO").getDataRange().getValues();
-    let bloquesHoy = [];
+    let pendientes = [];
+
     for (let i = 1; i < dataCfg.length; i++) {
       const idSec = String(dataCfg[i][1]);
       if (!mapaSec[idSec]) continue;
 
+      const idMateria = String(dataCfg[i][2]);
       const ini = formatearFechaInput(dataCfg[i][3]);
       const fin = formatearFechaInput(dataCfg[i][4]);
-      if (fechaHoy < ini || fechaHoy > fin) continue;
 
       let dias = {};
       try { dias = JSON.parse(dataCfg[i][5]); } catch (e) { dias = {}; }
-      if (!dias[nombreDiaHoy]) continue;
 
-      bloquesHoy.push({
-        idSeccion: idSec,
-        nomSeccion: mapaSec[idSec],
-        idMateria: String(dataCfg[i][2]),
-        nomMateria: mapaMat[dataCfg[i][2]] || "Materia Borrada"
-      });
-    }
-    if (bloquesHoy.length === 0) return [];
+      for (let offset = 0; offset <= VENTANA_DIAS; offset++) {
+        const fechaCheck = new Date(hoyDate.getTime());
+        fechaCheck.setDate(fechaCheck.getDate() - offset);
+        const fechaStr = Utilities.formatDate(fechaCheck, Session.getScriptTimeZone(), "yyyy-MM-dd");
 
-    const sheetAsis = ss.getSheetByName("ASISTENCIA_DATA");
-    const dataAsis = sheetAsis ? sheetAsis.getDataRange().getValues() : [];
-    let materiasConMarcaHoy = {};
-    for (let i = 1; i < dataAsis.length; i++) {
-      if (formatearFechaInput(dataAsis[i][1]) === fechaHoy) {
-        materiasConMarcaHoy[String(dataAsis[i][3])] = true;
+        if (fechaStr < ini || fechaStr > fin) continue;
+
+        const nombreDia = diasMap[fechaCheck.getDay()];
+        if (!dias[nombreDia]) continue; // no era día de clase para esa materia
+
+        if (noLectivos[idMateria + "|" + fechaStr]) continue; // marcado manualmente como sin clases
+        if (materiasConMarca[idMateria + "|" + fechaStr]) continue; // ya tiene asistencia marcada
+
+        pendientes.push({
+          idSeccion: idSec,
+          nomSeccion: mapaSec[idSec],
+          idMateria: idMateria,
+          nomMateria: mapaMat[idMateria] || "Materia Borrada",
+          fecha: fechaStr
+        });
       }
     }
 
-    return bloquesHoy.filter(b => !materiasConMarcaHoy[b.idMateria]);
+    return pendientes;
   } catch (e) { return { error: e.toString() }; }
+}
+
+// Marca (o actualiza el motivo de) un día como "sin clases" para una materia — feriado, evento, etc.
+function guardarDiaNoLectivo(form) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    let sheet = ss.getSheetByName("DIAS_NO_LECTIVOS");
+    if (!sheet) {
+      sheet = ss.insertSheet("DIAS_NO_LECTIVOS");
+      sheet.appendRow(["ID", "ID_MATERIA_FK", "FECHA", "MOTIVO", "ID_USUARIO_FK"]);
+    }
+    const idUsuario = obtenerIdUsuarioPorEmail(form.email);
+    const data = sheet.getDataRange().getValues();
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][1]).trim() === String(form.idMateria).trim() &&
+          formatearFechaInput(data[i][2]) === form.fecha) {
+        sheet.getRange(i + 1, 4).setValue(form.motivo || "");
+        return { success: true, message: "Día actualizado." };
+      }
+    }
+
+    sheet.appendRow(["NL-" + Date.now(), form.idMateria, form.fecha, form.motivo || "", idUsuario]);
+    return { success: true, message: "Día marcado como sin clases." };
+  } catch (e) { return { success: false, message: e.toString() }; }
+}
+
+function eliminarDiaNoLectivo(idMateria, fecha) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName("DIAS_NO_LECTIVOS");
+    if (!sheet) return { success: false };
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][1]).trim() === String(idMateria).trim() && formatearFechaInput(data[i][2]) === fecha) {
+        sheet.deleteRow(i + 1);
+        return { success: true };
+      }
+    }
+    return { success: false };
+  } catch (e) { return { success: false, message: e.toString() }; }
+}
+
+// Trae los días "sin clases" configurados para una materia (para pintarlos distinto en la matriz)
+function obtenerDiasNoLectivos(idMateria) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName("DIAS_NO_LECTIVOS");
+    if (!sheet) return [];
+    const data = sheet.getDataRange().getValues();
+    let lista = [];
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][1]).trim() === String(idMateria).trim()) {
+        lista.push({ fecha: formatearFechaInput(data[i][2]), motivo: data[i][3] });
+      }
+    }
+    return lista;
+  } catch (e) { return []; }
 }
 
 // Trae TODOS los horarios del docente (todas las instituciones/secciones), para la vista de consulta
