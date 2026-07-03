@@ -2536,6 +2536,72 @@ function getSectionKPIs(idSeccion) {
 }
 
 // ==========================================
+// DIAGNÓSTICO TEMPORAL: por qué la nota de Prueba #2 no suma para Garita
+// Correr manualmente desde el editor de Apps Script (seleccionar esta función
+// en el dropdown de arriba -> Run/Ejecutar), y luego revisar Ver -> Registros
+// de ejecución (o Ctrl+Enter) para ver el resultado. Borrar esta función
+// cuando ya no se necesite.
+// ==========================================
+function diagnosticarNotaEstudiante() {
+  const idMateria = "MAT-726507";
+  const idEstudianteBuscado = "EST-473930404";
+
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+  const dataEst = ss.getSheetByName("ESTUDIANTES").getDataRange().getValues();
+  const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
+  const dataNotas = ss.getSheetByName("NOTAS").getDataRange().getValues();
+
+  // 1. Materia
+  let materia = null;
+  for (let i = 1; i < dataMat.length; i++) {
+    if (String(dataMat[i][0]) == String(idMateria)) { materia = { idSec: dataMat[i][1], nombre: dataMat[i][2] }; break; }
+  }
+  Logger.log("MATERIA: " + JSON.stringify(materia));
+
+  // 2. ¿Hay más de un "Garita" en ESTUDIANTES? ¿El ID buscado pertenece a la sección de esta materia?
+  let estudianteBuscado = null;
+  let todosLosGarita = [];
+  for (let i = 1; i < dataEst.length; i++) {
+    const nombre = String(dataEst[i][3] || "");
+    if (nombre.toUpperCase().includes("GARITA")) {
+      todosLosGarita.push({ id: dataEst[i][0], nombre: dataEst[i][3], idSec: dataEst[i][1] });
+    }
+    if (String(dataEst[i][0]).trim() === idEstudianteBuscado) {
+      estudianteBuscado = { id: dataEst[i][0], nombre: dataEst[i][3], idSec: dataEst[i][1] };
+    }
+  }
+  Logger.log("TODOS LOS 'GARITA' EN ESTUDIANTES: " + JSON.stringify(todosLosGarita));
+  Logger.log("ESTUDIANTE BUSCADO (" + idEstudianteBuscado + "): " + JSON.stringify(estudianteBuscado));
+  Logger.log("¿Su idSec coincide con el idSec de la materia? " +
+    (estudianteBuscado ? (String(estudianteBuscado.idSec).trim() === String(materia.idSec).trim()) : "N/A - no encontrado"));
+
+  // 3. Indicadores de la materia (con longitud exacta del ID, para detectar espacios ocultos)
+  let indicadores = [];
+  for (let i = 1; i < dataInd.length; i++) {
+    if (String(dataInd[i][1]).trim() === String(idMateria).trim()) {
+      indicadores.push({ id: dataInd[i][0], idLongitud: String(dataInd[i][0]).length, cat: dataInd[i][2], desc: dataInd[i][3] });
+    }
+  }
+  Logger.log("INDICADORES DE LA MATERIA: " + JSON.stringify(indicadores));
+
+  // 4. Todas las filas de NOTAS para ese estudiante, con longitud exacta del ID de indicador
+  let notasDelEstudiante = [];
+  for (let n = 1; n < dataNotas.length; n++) {
+    const idEstNota = String(dataNotas[n][2]).trim();
+    if (idEstNota === idEstudianteBuscado) {
+      notasDelEstudiante.push({
+        idIndicadorCrudo: dataNotas[n][1],
+        idIndicadorLongitud: String(dataNotas[n][1]).length,
+        pctObtenido: dataNotas[n][3],
+        fecha: dataNotas[n][4]
+      });
+    }
+  }
+  Logger.log("NOTAS DEL ESTUDIANTE " + idEstudianteBuscado + ": " + JSON.stringify(notasDelEstudiante));
+}
+
+// ==========================================
 // MANTENIMIENTO ÚNICO: DEDUPLICAR NOTAS
 // Corregir manualmente desde el editor de Apps Script (Run -> limpiarDuplicadosNotas)
 // Elimina filas duplicadas (mismo INDICADOR + ESTUDIANTE) dejando SOLO la más reciente,
