@@ -79,6 +79,7 @@ function doPost(e) {
     if(action === "deleteBitacora") return response(eliminarBitacora(data.id));
     if(action === "closeBitacora") return response(cerrarBitacora(data.id));
     if(action === "countAlerts") return response(contarAlertas(data.email));
+    if(action === "getPendingIncidentAlerts") return response(obtenerIncidenciasPendientes(data.email));
     if(action === "pdfBitacora") return response(generarPdfIncidencia(data.id));
 
     // --- MI AULA ---
@@ -1145,6 +1146,29 @@ function contarAlertas(email) {
 
 function eliminarBitacora(id) {
   return eliminarFilaGenerico("BITACORAS", id);
+}
+
+// Incidencias "Abiertas" cuyo recordatorio ya llegó (o pasó) — para la Alerta del Día
+function obtenerIncidenciasPendientes(email) {
+  try {
+    const lista = obtenerBitacoras(email);
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+
+    return lista.filter(b => {
+      if (b.estado !== 'Abierto') return false;
+      if (!b.recordatorio) return false;
+      const parts = b.recordatorio.split('-');
+      const fAlert = new Date(parts[0], parts[1] - 1, parts[2]);
+      return fAlert <= hoy;
+    }).map(b => ({
+      id: b.id,
+      nombreSeccion: b.nombreSeccion,
+      nombreEstudiante: b.nombreEstudiante,
+      tipo: b.tipo,
+      desc: b.desc,
+      fecha: b.fecha
+    }));
+  } catch (e) { return []; }
 }
 
 // --- MI AULA ---

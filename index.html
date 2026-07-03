@@ -1143,12 +1143,18 @@ enterApp: async () => {
                 app.loadDashboardData();
             }
 
-            // --- ALERTAS DEL DÍA: pase de lista pendiente ---
+            // --- ALERTAS DEL DÍA: pase de lista pendiente + incidencias sin cerrar ---
             // Primer chequeo poco después de entrar (a que app.data.secciones ya esté cargado)
-            setTimeout(() => app.checkAsistenciaPendiente(), 4000);
+            setTimeout(() => app.checkAlertasDelDia(), 4000);
             // Y luego revisamos cada 20 minutos mientras la pestaña siga abierta
             if (app.state.alertaAsistenciaInterval) clearInterval(app.state.alertaAsistenciaInterval);
-            app.state.alertaAsistenciaInterval = setInterval(() => app.checkAsistenciaPendiente(), 20 * 60 * 1000);
+            app.state.alertaAsistenciaInterval = setInterval(() => app.checkAlertasDelDia(), 20 * 60 * 1000);
+        },
+
+        // Corre ambos chequeos en orden (asistencia primero, luego incidencias) para no solaparlos
+        checkAlertasDelDia: async () => {
+            await app.checkAsistenciaPendiente();
+            await app.checkIncidenciasPendientes();
         },
 
         logout: () => {
@@ -3303,6 +3309,56 @@ renderScheduleList: () => {
             document.getElementById('as-fin').value = fechaHoy;
 
             app.loadAttendanceMatrix();
+        },
+
+        // Revisa si hay incidencias de Bitácora "Abiertas" cuyo recordatorio ya llegó
+        checkIncidenciasPendientes: async () => {
+            if (!app.user || !app.user.email) return;
+
+            const pendientes = await app.api({ action: 'getPendingIncidentAlerts', email: app.user.email });
+            if (!pendientes || !pendientes.length) return;
+
+            const ahora = Date.now();
+            for (const inc of pendientes) {
+                const key = `snooze_incid_${inc.id}`;
+                const snoozeUntil = Number(localStorage.getItem(key) || 0);
+                if (ahora < snoozeUntil) continue;
+
+                await app.mostrarAlertaIncidenciaPendiente(inc);
+            }
+        },
+
+        mostrarAlertaIncidenciaPendiente: async (inc) => {
+            const key = `snooze_incid_${inc.id}`;
+            const quien = (inc.nombreEstudiante && inc.nombreEstudiante !== 'General / Grupal')
+                ? `con el estudiante <b>${inc.nombreEstudiante}</b>`
+                : `de tipo <b>grupal</b>`;
+
+            const res = await Swal.fire({
+                icon: 'warning',
+                title: 'Alerta del Día',
+                html: `Tienes una incidencia (<b>${inc.tipo}</b>) pendiente de cerrar en <b>${inc.nombreSeccion}</b> ${quien}.<br><span class="text-xs text-slate-400">"${inc.desc}"</span>`,
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: 'Ir a Bitácora',
+                denyButtonText: 'Recordar en 1 hora',
+                cancelButtonText: 'Cerrar',
+                confirmButtonColor: '#16a34a',
+                denyButtonColor: '#f59e0b',
+                cancelButtonColor: '#94a3b8',
+                reverseButtons: true
+            });
+
+            if (res.isConfirmed) {
+                localStorage.removeItem(key);
+                app.nav('bitacoras');
+                await app.loadBitacoras();
+                app.editBitacora(inc.id);
+            } else if (res.isDenied) {
+                localStorage.setItem(key, String(Date.now() + 60 * 60 * 1000)); // 1 hora
+            } else {
+                localStorage.setItem(key, String(Date.now() + 30 * 60 * 1000)); // 30 min
+            }
         },
 
         // ==========================================
