@@ -4194,14 +4194,15 @@ fillMaxScore: () => {
                     <tbody>`;
             
             res.lista.forEach(r => {
-                // Importante: Usar coma o punto según la región, aquí forzamos formato numérico
+                // x:num fuerza a Excel a leer el valor como número real (formato invariante con punto),
+                // sin importar la configuración regional del Excel del usuario (evita que quede como texto alineado a la izquierda).
                 excelContent += `<tr>
                     <td>${r.Id}</td>
                     <td>${r.Nombre}</td>
-                    <td>${r.Cotidiano}</td>
-                    <td>${r.Tareas}</td>
-                    <td>${r.Prueba}</td>
-                    <td>${r.Asistencia}</td>
+                    <td x:num="${r.Cotidiano}" align="right">${r.Cotidiano}</td>
+                    <td x:num="${r.Tareas}" align="right">${r.Tareas}</td>
+                    <td x:num="${r.Prueba}" align="right">${r.Prueba}</td>
+                    <td x:num="${r.Asistencia}" align="right">${r.Asistencia}</td>
                 </tr>`;
             });
 
