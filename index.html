@@ -218,6 +218,17 @@
             word-break: break-word !important;
         }
     }
+
+    /* IMPRESIÓN: Ficha de Asistencia (solo se ve el documento, nada del dashboard) */
+    #ficha-print-area { display: none; }
+    @media print {
+        body * { visibility: hidden; }
+        #ficha-print-area, #ficha-print-area * { visibility: visible; }
+        #ficha-print-area {
+            display: block !important;
+            position: absolute; top: 0; left: 0; width: 100%;
+        }
+    }
 </style>
 </head>
 
@@ -532,98 +543,126 @@
  <!-- VISTA: CONFIGURACIÓN DE HORARIO (REDISEÑADA) -->
             <!-- VISTA: CONFIGURACIÓN DE HORARIOS -->
 <div id="view-horarios" class="view hidden fade-in">
-    
-    <!-- 1. FORMULARIO COMPACTO (CREAR) -->
-    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6">
-        <h3 class="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wide border-b pb-2">
-            <i class="fas fa-plus-circle text-indigo-600 mr-2"></i>Asignar Bloque
-        </h3>
-        
-        <!-- Fila 1: Selectores -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-            <div>
-                <label class="text-[10px] font-bold text-gray-400 uppercase">Institución</label>
-                <select id="hc-inst" class="w-full p-2 border rounded bg-gray-50 text-sm focus:ring-1 focus:ring-indigo-500" onchange="app.loadSecHorarioConfig()"></select>
-            </div>
-            
-            <div>
-                <label class="text-[10px] font-bold text-gray-400 uppercase">Sección</label>
-                <select id="hc-sec" class="w-full p-2 border rounded bg-gray-50 text-sm focus:ring-1 focus:ring-indigo-500" onchange="app.loadMatHorarioConfig()"></select>
-            </div>
-            
-            <div>
-                <label class="text-[10px] font-bold text-gray-400 uppercase">Materia</label>
-                <select id="hc-mat" class="w-full p-2 border rounded bg-white text-sm font-bold text-indigo-700 border-indigo-200 focus:ring-1 focus:ring-indigo-500"></select>
-            </div>
-        </div>
 
-        <!-- Fila 2: Días y Fechas -->
-        <div class="flex flex-col md:flex-row gap-4 items-end">
-            
-            <!-- Días (Compacto) -->
-            <div class="flex-1">
-                <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Lecciones por día</label>
-                <div class="flex gap-2" id="days-container">
-                    <!-- JS Inyecta aquí los checkboxes -->
-                </div>
-            </div>
-
-            <!-- Fechas -->
-            <div class="flex gap-2">
+    <!-- 1. BARRA DE FILTROS + BOTÓN NUEVO HORARIO -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-4">
+        <div class="flex flex-wrap items-end justify-between gap-3">
+            <div class="flex flex-wrap gap-3">
                 <div>
-                    <label class="text-[10px] font-bold text-gray-400 uppercase">Desde</label>
-                    <input type="date" id="hc-ini" class="p-1.5 border rounded text-xs w-32">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Institución</label>
+                    <select id="hf-inst" class="p-2 border rounded bg-gray-50 text-sm focus:ring-1 focus:ring-indigo-500 min-w-[150px]" onchange="app.onHorarioFilterInstChange()"></select>
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-gray-400 uppercase">Hasta</label>
-                    <input type="date" id="hc-fin" class="p-1.5 border rounded text-xs w-32">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Sección</label>
+                    <select id="hf-sec" class="p-2 border rounded bg-gray-50 text-sm focus:ring-1 focus:ring-indigo-500 min-w-[150px]" onchange="app.onHorarioFilterSecChange()"></select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Materia</label>
+                    <select id="hf-mat" class="p-2 border rounded bg-gray-50 text-sm focus:ring-1 focus:ring-indigo-500 min-w-[150px]" onchange="app.renderScheduleList()"></select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Vigente en fecha</label>
+                    <div class="flex items-center gap-1">
+                        <input type="date" id="filter-hc-date" class="p-2 border rounded text-sm bg-white" onchange="app.filterScheduleList()">
+                        <button onclick="app.filterScheduleList(true)" class="h-9 w-9 flex items-center justify-center text-gray-400 hover:text-indigo-600" title="Limpiar filtro"><i class="fas fa-times"></i></button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Botón -->
-          <!-- Botones (Guardar y Cancelar) -->
-            <div class="flex gap-2">
-                <!-- Botón Cancelar (Oculto por defecto) -->
-                <button id="btn-cancel-schedule" onclick="app.cancelEditSchedule()" class="hidden bg-slate-200 text-slate-600 px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-slate-300 transition h-9">
-                    Cancelar
-                </button>
-                
-                <!-- Botón Guardar / Actualizar -->
-                <button id="btn-save-schedule" onclick="app.saveScheduleConfig()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition h-9">
-                    Guardar
-                </button>
-            </div>
+            <button onclick="app.abrirModalNuevoHorario()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition h-9 flex items-center gap-2 shrink-0">
+                <i class="fas fa-plus-circle"></i> Nuevo Horario
+            </button>
         </div>
     </div>
 
-    <!-- 2. CONSULTA Y LISTADO -->
+    <!-- 2. CONSULTA Y LISTADO (VISTA POR DEFECTO: TODOS LOS HORARIOS) -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div class="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
             <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wide">
                 <i class="fas fa-list text-gray-400 mr-2"></i>Horarios Asignados
             </h3>
-            
-            <!-- Filtro Rango para la Consulta -->
-            <div class="flex items-center gap-2">
-                <span class="text-[10px] font-bold text-gray-400 uppercase">Filtrar Vigencia:</span>
-                <input type="date" id="filter-hc-date" class="p-1 border rounded text-xs bg-white" onchange="app.filterScheduleList()">
-                <button onclick="app.filterScheduleList(true)" class="text-gray-400 hover:text-indigo-600" title="Limpiar filtro"><i class="fas fa-times"></i></button>
-            </div>
         </div>
-        
-        <div id="schedule-list" class="divide-y divide-gray-100 max-h-96 overflow-y-auto">
-            <div class="p-8 text-center text-gray-400 text-sm">Selecciona una sección arriba para ver sus horarios.</div>
+
+        <div id="schedule-list" class="divide-y divide-gray-100 max-h-[60vh] overflow-y-auto">
+            <div class="p-8 text-center text-gray-400 text-sm"><i class="fas fa-spinner fa-spin"></i> Cargando horarios...</div>
         </div>
     </div>
 
-</div> 
+</div>
+
+<!-- MODAL: NUEVO / EDITAR BLOQUE DE HORARIO -->
+<div id="modal-nuevo-horario" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(15,23,42,0.5)">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl animate-fade-in overflow-hidden">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+            <h3 class="text-sm font-bold text-gray-700 uppercase tracking-wide" id="modal-horario-titulo">
+                <i class="fas fa-plus-circle text-indigo-600 mr-2"></i>Asignar Bloque
+            </h3>
+            <button onclick="app.cerrarModalHorario()" class="w-9 h-9 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition text-lg">&times;</button>
+        </div>
+
+        <div class="p-5">
+            <!-- Fila 1: Selectores -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Institución</label>
+                    <select id="hc-inst" class="w-full p-2 border rounded bg-gray-50 text-sm focus:ring-1 focus:ring-indigo-500" onchange="app.loadSecHorarioConfig()"></select>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Sección</label>
+                    <select id="hc-sec" class="w-full p-2 border rounded bg-gray-50 text-sm focus:ring-1 focus:ring-indigo-500" onchange="app.loadMatHorarioConfig()"></select>
+                </div>
+
+                <div>
+                    <label class="text-[10px] font-bold text-gray-400 uppercase">Materia</label>
+                    <select id="hc-mat" class="w-full p-2 border rounded bg-white text-sm font-bold text-indigo-700 border-indigo-200 focus:ring-1 focus:ring-indigo-500"></select>
+                </div>
+            </div>
+
+            <!-- Fila 2: Días y Fechas -->
+            <div class="flex flex-wrap gap-4 items-end">
+
+                <!-- Días (Compacto) -->
+                <div class="flex-1 min-w-[220px]">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Lecciones por día</label>
+                    <div class="flex gap-2 flex-wrap" id="days-container">
+                        <!-- JS Inyecta aquí los checkboxes -->
+                    </div>
+                </div>
+
+                <!-- Fechas -->
+                <div class="flex gap-2 shrink-0">
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">Desde</label>
+                        <input type="date" id="hc-ini" class="p-1.5 border rounded text-xs w-32">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase">Hasta</label>
+                        <input type="date" id="hc-fin" class="p-1.5 border rounded text-xs w-32">
+                    </div>
+                </div>
+
+                <!-- Botones (Guardar y Cancelar) -->
+                <div class="flex gap-2 shrink-0 ml-auto">
+                    <button id="btn-cancel-schedule" onclick="app.cancelEditSchedule()" class="hidden bg-slate-200 text-slate-600 px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-slate-300 transition h-9">
+                        Cancelar
+                    </button>
+
+                    <button id="btn-save-schedule" onclick="app.saveScheduleConfig()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg font-bold text-sm shadow hover:bg-indigo-700 transition h-9">
+                        Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- VISTA: MATRIZ DE ASISTENCIA -->
 <div id="view-asistencia" class="view hidden fade-in flex flex-col h-full">
 
     <!-- 1. HEADER DE FILTROS -->
     <div class="bg-white p-3 md:p-4 rounded-xl shadow mb-3 md:mb-4">
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3 mb-3">
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 md:gap-3">
             <div class="flex flex-col gap-1">
                 <label class="text-xs font-bold text-gray-500">Sección</label>
                 <select id="as-sec" class="p-2 border rounded text-sm w-full" onchange="app.loadMatAsistencia()"></select>
@@ -640,10 +679,13 @@
                 <label class="text-xs font-bold text-gray-500">Hasta</label>
                 <input type="date" id="as-fin" class="p-2 border rounded text-sm w-full">
             </div>
+            <div class="flex flex-col gap-1 col-span-2 sm:col-span-1">
+                <label class="text-xs font-bold text-gray-500 invisible hidden sm:block">Consultar</label>
+                <button onclick="app.loadAttendanceMatrix()" class="w-full bg-green-600 text-white px-5 py-2 rounded-lg font-bold hover:bg-green-700 shadow transition flex items-center justify-center gap-2">
+                    <i class="fas fa-search"></i> Consultar
+                </button>
+            </div>
         </div>
-        <button onclick="app.loadAttendanceMatrix()" class="w-full sm:w-auto bg-green-600 text-white px-5 py-2.5 rounded-lg font-bold hover:bg-green-700 shadow transition flex items-center justify-center gap-2">
-            <i class="fas fa-search"></i> Consultar
-        </button>
     </div>
 
     <!-- 2. MATRIZ SCROLLEABLE (AQUÍ ES SU LUGAR CORRECTO) -->
@@ -1098,8 +1140,15 @@ enterApp: async () => {
 
             } else {
                 document.getElementById('menu-admin').classList.add('hidden');
-                app.loadDashboardData(); 
+                app.loadDashboardData();
             }
+
+            // --- ALERTAS DEL DÍA: pase de lista pendiente ---
+            // Primer chequeo poco después de entrar (a que app.data.secciones ya esté cargado)
+            setTimeout(() => app.checkAsistenciaPendiente(), 4000);
+            // Y luego revisamos cada 20 minutos mientras la pestaña siga abierta
+            if (app.state.alertaAsistenciaInterval) clearInterval(app.state.alertaAsistenciaInterval);
+            app.state.alertaAsistenciaInterval = setInterval(() => app.checkAsistenciaPendiente(), 20 * 60 * 1000);
         },
 
         logout: () => {
@@ -2554,9 +2603,22 @@ openStudents: async (idSec, nombreSec) => {
 
         // ELIMINAR SECCIÓN
         deleteSection: async (id) => {
+            // Revisamos si esta sección tiene horarios de asistencia configurados
+            Swal.fire({ title: 'Verificando...', didOpen: () => Swal.showLoading() });
+            const horarios = await app.api({ action: 'getConfigHorarios', idSeccion: id });
+            Swal.close();
+
+            let textoAdvertencia = "Se borrarán también los alumnos y notas asociadas. ¡Cuidado!";
+            if (horarios && horarios.length > 0) {
+                const nombresMat = horarios.map(h => h.nomMateria).join(', ');
+                textoAdvertencia = `Se borrarán también los alumnos y notas asociadas.<br><br>
+                    <b class="text-red-600">⚠ Esta sección tiene ${horarios.length} horario(s) de asistencia configurado(s)</b> (${nombresMat}).
+                    Si continúas, esa sección se quedará <b>sin asistencia registrable</b> y perderás la configuración de horarios.`;
+            }
+
             const conf = await Swal.fire({
                 title: '¿Eliminar Sección?',
-                text: "Se borrarán también los alumnos y notas asociadas. ¡Cuidado!",
+                html: textoAdvertencia,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
@@ -2763,10 +2825,18 @@ openStudents: async (idSec, nombreSec) => {
                 </div>`;
             });
 
-            // 2. Cargar Instituciones
+            // 2. Cargar Instituciones (select del modal de creación)
             const selInst = document.getElementById('hc-inst');
             selInst.innerHTML = '<option value="">Institución...</option>';
             if(app.data.instituciones) app.data.instituciones.forEach(i => selInst.innerHTML += `<option value="${i.id}">${i.nombre}</option>`);
+
+            // 3. Cargar Instituciones (select del filtro de la lista)
+            const selFiltroInst = document.getElementById('hf-inst');
+            selFiltroInst.innerHTML = '<option value="">Todas las instituciones</option>';
+            if(app.data.instituciones) app.data.instituciones.forEach(i => selFiltroInst.innerHTML += `<option value="${i.id}">${i.nombre}</option>`);
+
+            // 4. Vista por defecto: consultar TODOS los horarios del docente
+            app.loadAllSchedules();
         },
 
         toggleDayInput: (day) => {
@@ -2823,8 +2893,6 @@ openStudents: async (idSec, nombreSec) => {
                     selMat.innerHTML = '<option value="">No hay materias</option>';
                 }
 
-                app.loadScheduleList(idSec); // Cargar lista inferior
-
             } catch (error) {
                 console.error(error);
                 selMat.innerHTML = '<option value="">Error</option>';
@@ -2857,25 +2925,10 @@ saveScheduleConfig: async () => {
             
             if(res.success) {
                 Swal.fire(payload.idConfig ? 'Actualizado' : 'Guardado','','success');
-                app.loadScheduleList(payload.idSeccion);
-                
-                // LIMPIEZA Y RESET DEL ESTADO
-                app.state.editingScheduleId = null;
-                document.getElementById('hc-ini').value = '';
-                document.getElementById('hc-fin').value = '';
-                document.getElementById('hc-mat').value = '';
-                
-                // Resetear checkboxes
-                document.querySelectorAll('.chk-day').forEach(chk => {
-                    chk.checked = false;
-                    app.toggleDayInput(chk.value);
-                });
 
-                // Restaurar botón
-                const btn = document.querySelector('button[onclick="app.saveScheduleConfig()"]');
-                btn.innerText = "Guardar";
-                btn.classList.add('bg-indigo-600');
-                btn.classList.remove('bg-emerald-600');
+                // Cerrar el modal, resetear el formulario y refrescar la lista completa
+                app.cerrarModalHorario();
+                app.loadAllSchedules();
             }
         },
 
@@ -2897,9 +2950,7 @@ saveScheduleConfig: async () => {
             }
         },
 // 2. FUNCIÓN PARA CARGAR DATOS EN EL FORMULARIO (Modo Edición)
-        editScheduleConfig: (id) => {
-            console.log("Editando ID:", id); // Para ver si entra en la consola
-
+        editScheduleConfig: async (id) => {
             // A. Buscar el objeto en memoria
             const item = app.data.tempScheduleList.find(x => x.id === id);
             if (!item) return console.error("No se encontró el horario en memoria");
@@ -2907,11 +2958,17 @@ saveScheduleConfig: async () => {
             // B. Guardar el ID en estado global
             app.state.editingScheduleId = id;
 
-            // C. Rellenar Campos Básicos
-            const selMat = document.getElementById('hc-mat');
-            selMat.value = item.idMateria;
+            // Abrir el modal en modo edición
+            app.abrirModalNuevoHorario(true);
 
-            document.getElementById('hc-ini').value = item.ini; 
+            // C. Rellenar la cadena Institución -> Sección -> Materia
+            document.getElementById('hc-inst').value = item.idInstitucion;
+            app.loadSecHorarioConfig();
+            document.getElementById('hc-sec').value = item.idSeccion;
+            await app.loadMatHorarioConfig();
+            document.getElementById('hc-mat').value = item.idMateria;
+
+            document.getElementById('hc-ini').value = item.ini;
             document.getElementById('hc-fin').value = item.fin;
 
             // D. Rellenar Días (Checkboxes e Inputs)
@@ -2945,11 +3002,29 @@ saveScheduleConfig: async () => {
             }
             if(btnCancel) {
                 // Hacemos visible el botón de cancelar
-                btnCancel.classList.remove('hidden'); 
+                btnCancel.classList.remove('hidden');
             }
-            
-            // F. Scroll suave hacia arriba
-            document.getElementById('view-horarios').scrollIntoView({ behavior: 'smooth' });
+        },
+
+        // ABRIR / CERRAR EL MODAL DE CREAR-EDITAR BLOQUE DE HORARIO
+        abrirModalNuevoHorario: (isEdit) => {
+            document.getElementById('modal-nuevo-horario').classList.remove('hidden');
+            document.getElementById('modal-horario-titulo').innerHTML = isEdit
+                ? '<i class="fas fa-pen text-emerald-600 mr-2"></i>Editar Bloque de Horario'
+                : '<i class="fas fa-plus-circle text-indigo-600 mr-2"></i>Asignar Bloque';
+
+            if (!isEdit) {
+                // Arrancamos siempre en limpio para crear uno nuevo
+                app.cancelEditSchedule();
+                document.getElementById('hc-inst').value = '';
+                document.getElementById('hc-sec').innerHTML = '<option value="">Sección...</option>';
+                document.getElementById('hc-mat').innerHTML = '<option value="">Materia...</option>';
+            }
+        },
+
+        cerrarModalHorario: () => {
+            document.getElementById('modal-nuevo-horario').classList.add('hidden');
+            app.cancelEditSchedule();
         },
 
         // CANCELAR EDICIÓN DE HORARIO Y REINICIAR FORMULARIO
@@ -2981,21 +3056,71 @@ saveScheduleConfig: async () => {
             }
         },
 
-        // 3. LISTADO Y FILTRO
-        loadScheduleList: async (idSec) => {
+        // Vista por defecto: TODOS los horarios del docente (todas las instituciones/secciones)
+        loadAllSchedules: async () => {
             const div = document.getElementById('schedule-list');
-            div.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-indigo-500"></i></div>';
-            
-            const list = await app.api({action:'getConfigHorarios', idSeccion:idSec});
-            app.data.tempScheduleList = list || []; 
-            app.renderScheduleList(); 
+            div.innerHTML = '<div class="p-8 text-center text-gray-400 text-sm"><i class="fas fa-spinner fa-spin"></i> Cargando horarios...</div>';
+
+            const list = await app.api({ action: 'getAllConfigHorarios', email: app.user.email });
+            app.data.tempScheduleList = list || [];
+            app.populateHorarioFilters();
+            app.renderScheduleList();
+        },
+
+        // Repuebla los selects de Sección/Materia del filtro según lo que ya está cargado
+        populateHorarioFilters: () => {
+            const selSec = document.getElementById('hf-sec');
+            const selMat = document.getElementById('hf-mat');
+            const fInst = document.getElementById('hf-inst').value;
+            const fSec = selSec.value;
+
+            const seccionesFiltradas = (app.data.secciones || []).filter(s => !fInst || String(s.idInstitucion) === String(fInst));
+            const prevSec = selSec.value;
+            selSec.innerHTML = '<option value="">Todas las secciones</option>' + seccionesFiltradas.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
+            if (seccionesFiltradas.some(s => String(s.id) === String(prevSec))) selSec.value = prevSec;
+
+            const materiasUnicas = {};
+            (app.data.tempScheduleList || []).forEach(c => {
+                if ((!fInst || String(c.idInstitucion) === String(fInst)) && (!fSec || String(c.idSeccion) === String(fSec))) {
+                    materiasUnicas[c.idMateria] = c.nomMateria;
+                }
+            });
+            const prevMat = selMat.value;
+            selMat.innerHTML = '<option value="">Todas las materias</option>' + Object.entries(materiasUnicas).map(([mid, nom]) => `<option value="${mid}">${nom}</option>`).join('');
+            if (materiasUnicas[prevMat]) selMat.value = prevMat;
+        },
+
+        onHorarioFilterInstChange: () => {
+            document.getElementById('hf-sec').value = '';
+            document.getElementById('hf-mat').value = '';
+            app.populateHorarioFilters();
+            app.renderScheduleList();
+        },
+
+        onHorarioFilterSecChange: () => {
+            document.getElementById('hf-mat').value = '';
+            app.populateHorarioFilters();
+            app.renderScheduleList();
+        },
+
+        // Limpia/dispara el filtro de fecha de vigencia
+        filterScheduleList: (clear) => {
+            if (clear) document.getElementById('filter-hc-date').value = '';
+            app.renderScheduleList();
         },
 
 renderScheduleList: () => {
             const div = document.getElementById('schedule-list');
             const filterDateVal = document.getElementById('filter-hc-date').value;
-            
+            const fInst = document.getElementById('hf-inst').value;
+            const fSec = document.getElementById('hf-sec').value;
+            const fMat = document.getElementById('hf-mat').value;
+
             let list = app.data.tempScheduleList || [];
+
+            if (fInst) list = list.filter(c => String(c.idInstitucion) === String(fInst));
+            if (fSec) list = list.filter(c => String(c.idSeccion) === String(fSec));
+            if (fMat) list = list.filter(c => String(c.idMateria) === String(fMat));
 
             if(filterDateVal) {
                 const fFilter = new Date(filterDateVal);
@@ -3012,34 +3137,56 @@ renderScheduleList: () => {
                 return;
             }
 
+            const mesesCorto = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+            const fmtFecha = (str) => {
+                const [y,m,d] = str.split('-');
+                return `${d} ${mesesCorto[parseInt(m,10)-1]} ${y}`;
+            };
+
+            const hoy = new Date(); hoy.setHours(0,0,0,0);
+
             list.forEach(c => {
-                let diasStr = Object.keys(c.dias).map(k=> `<span class="bg-gray-100 px-1.5 rounded text-gray-600 font-bold">${k.substring(0,3)}:${c.dias[k]}</span>`).join(' ');
-                
+                let diasStr = Object.keys(c.dias).map(k=>
+                    `<span class="bg-indigo-50 text-indigo-700 border border-indigo-100 px-2 py-0.5 rounded-md font-semibold">${k} <span class="text-indigo-400 font-normal">· ${c.dias[k]} lec.</span></span>`
+                ).join(' ');
+
+                // Estado de vigencia según la fecha actual
+                const fIni = new Date(c.ini.replace(/-/g, '\/'));
+                const fFin = new Date(c.fin.replace(/-/g, '\/'));
+                const vigente = hoy >= fIni && hoy <= fFin;
+                const badgeVigencia = vigente
+                    ? `<span class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"><i class="fas fa-circle text-emerald-500 text-[6px] mr-1"></i>Vigente</span>`
+                    : `<span class="bg-red-50 text-red-600 border border-red-200 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"><i class="fas fa-circle text-red-500 text-[6px] mr-1"></i>No vigente</span>`;
+
                 div.innerHTML += `
                 <div class="flex justify-between items-center p-3 hover:bg-gray-50 transition group border-b border-gray-50 last:border-0">
                     <div class="flex items-center gap-3">
-                        <div class="bg-indigo-100 text-indigo-600 h-8 w-8 rounded flex items-center justify-center font-bold text-xs">
+                        <div class="bg-indigo-100 text-indigo-600 h-8 w-8 rounded flex items-center justify-center font-bold text-xs shrink-0">
                             <i class="fas fa-calendar-alt"></i>
                         </div>
                         <div>
-                            <h5 class="font-bold text-sm text-gray-800">${c.nomMateria}</h5>
-                            <div class="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                                <span><i class="fas fa-clock mr-1"></i>${c.ini} al ${c.fin}</span>
-                                <span class="text-gray-300">|</span>
-                                <div class="flex gap-1 text-[10px]">${diasStr}</div>
+                            <div class="flex items-center gap-2">
+                                <h5 class="font-bold text-sm text-gray-800">${c.nomMateria}</h5>
+                                ${badgeVigencia}
                             </div>
+                            <p class="text-[11px] text-gray-400 font-medium">${c.nomInstitucion} · ${c.nomSeccion}</p>
+                            <div class="flex items-center gap-1.5 mt-1 text-xs text-gray-500">
+                                <i class="fas fa-calendar-day text-gray-400"></i>
+                                <span>Vigente del <span class="font-semibold text-gray-700">${fmtFecha(c.ini)}</span> al <span class="font-semibold text-gray-700">${fmtFecha(c.fin)}</span></span>
+                            </div>
+                            <div class="flex flex-wrap gap-1.5 mt-1.5 text-[10px]">${diasStr}</div>
                         </div>
                     </div>
-                    
+
                     <!-- AQUÍ ESTÁ EL CAMBIO: CONTENEDOR CON LOS DOS BOTONES -->
                     <div class="flex items-center gap-1">
                         <!-- Botón Editar (Lápiz Azul) -->
                         <button onclick="app.editScheduleConfig('${c.id}')" class="h-8 w-8 rounded-full hover:bg-blue-50 text-gray-300 hover:text-blue-600 transition flex items-center justify-center" title="Editar">
                             <i class="fas fa-pen text-xs"></i>
                         </button>
-                        
+
                         <!-- Botón Eliminar (Basura Roja) -->
-                        <button onclick="app.delScheduleConfig('${c.id}', '${c.idSeccion}')" class="h-8 w-8 rounded-full hover:bg-red-50 text-gray-300 hover:text-red-500 transition flex items-center justify-center" title="Eliminar">
+                        <button onclick="app.delScheduleConfig('${c.id}', '${c.nomMateria.replace(/'/g, "\\'")}')" class="h-8 w-8 rounded-full hover:bg-red-50 text-gray-300 hover:text-red-500 transition flex items-center justify-center" title="Eliminar">
                             <i class="fas fa-trash-alt text-xs"></i>
                         </button>
                     </div>
@@ -3049,11 +3196,11 @@ renderScheduleList: () => {
         },
 
         // ELIMINAR BLOQUE DE HORARIO (VERSIÓN V-PRO)
-        delScheduleConfig: async (id, idSec) => {
-            // 1. Alerta de confirmación
+        delScheduleConfig: async (id, nomMateria) => {
+            // 1. Alerta de confirmación (explica la consecuencia real sobre la asistencia)
             const conf = await Swal.fire({
                 title: '¿Eliminar bloque de horario?',
-                text: "Esta acción no se puede deshacer.",
+                html: `La materia <b>${nomMateria}</b> quedará <b>sin lecciones programadas</b> para ese período: no se podrá registrar ni consultar asistencia ahí hasta que configures un horario nuevo.<br><br>Esta acción no se puede deshacer.`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#d33',
@@ -3065,21 +3212,21 @@ renderScheduleList: () => {
             if (conf.isConfirmed) {
                 // 2. Animación de carga
                 Swal.fire({ title: 'Eliminando...', didOpen: () => Swal.showLoading() });
-                
+
                 try {
                     // 3. Llamada al Backend
                     const res = await app.api({ action: 'delConfigHorario', id: id });
-                    
+
                     if (res && res.success) {
                         Swal.fire({
-                            icon: 'success', 
-                            title: 'Eliminado', 
-                            text: 'El horario ha sido borrado.', 
-                            timer: 1500, 
+                            icon: 'success',
+                            title: 'Eliminado',
+                            text: 'El horario ha sido borrado.',
+                            timer: 1500,
                             showConfirmButton: false
                         });
                         // 4. Recargar la lista visualmente
-                        app.loadScheduleList(idSec);
+                        app.loadAllSchedules();
                     } else {
                         Swal.fire('Error', res.message || 'No se pudo eliminar.', 'error');
                     }
@@ -3092,9 +3239,76 @@ renderScheduleList: () => {
 
 
         // ==========================================
+        // ALERTAS DEL DÍA: pase de lista pendiente
+        // ==========================================
+
+        // Revisa si hay materias con clase hoy que aún no tienen asistencia marcada
+        checkAsistenciaPendiente: async () => {
+            if (!app.user || !app.user.email) return;
+
+            const hoy = new Date();
+            const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+
+            const pendientes = await app.api({ action: 'getPendingAttendanceAlerts', email: app.user.email, hoy: fechaHoy });
+            if (!pendientes || !pendientes.length) return;
+
+            const ahora = Date.now();
+            for (const b of pendientes) {
+                const key = `snooze_asist_${b.idMateria}_${fechaHoy}`;
+                const snoozeUntil = Number(localStorage.getItem(key) || 0);
+                if (ahora < snoozeUntil) continue; // el docente pidió que se lo recuerde después
+
+                // Mostramos las alertas una por una para no saturar la pantalla
+                await app.mostrarAlertaAsistenciaPendiente(b, fechaHoy);
+            }
+        },
+
+        mostrarAlertaAsistenciaPendiente: async (b, fechaHoy) => {
+            const key = `snooze_asist_${b.idMateria}_${fechaHoy}`;
+
+            const res = await Swal.fire({
+                icon: 'warning',
+                title: 'Alerta del Día',
+                html: `Aún no has pasado lista de <b>${b.nomMateria}</b> en <b>${b.nomSeccion}</b> hoy.`,
+                showCancelButton: true,
+                showDenyButton: true,
+                confirmButtonText: 'Ir a pasar lista',
+                denyButtonText: 'Recordar en 1 hora',
+                cancelButtonText: 'Cerrar',
+                confirmButtonColor: '#16a34a',
+                denyButtonColor: '#f59e0b',
+                cancelButtonColor: '#94a3b8',
+                reverseButtons: true
+            });
+
+            if (res.isConfirmed) {
+                localStorage.removeItem(key);
+                app.irAPasarLista(b, fechaHoy);
+            } else if (res.isDenied) {
+                localStorage.setItem(key, String(Date.now() + 60 * 60 * 1000)); // 1 hora
+            } else {
+                // Cerrado sin elegir: lo posponemos 30 min para no ser invasivos
+                localStorage.setItem(key, String(Date.now() + 30 * 60 * 1000));
+            }
+        },
+
+        // Lleva directo a la Matriz de Asistencia con Sección/Materia/Fecha de hoy ya seleccionados
+        irAPasarLista: async (b, fechaHoy) => {
+            app.nav('asistencia'); // dispara initAsistenciaUI() de forma síncrona
+
+            document.getElementById('as-sec').value = b.idSeccion;
+            await app.loadMatAsistencia();
+            document.getElementById('as-mat').value = b.idMateria;
+            document.getElementById('as-ini').value = fechaHoy;
+            document.getElementById('as-fin').value = fechaHoy;
+
+            app.loadAttendanceMatrix();
+        },
+
+        // ==========================================
         // NUEVO: ASISTENCIA 2.0 (MATRIZ)
         // ==========================================
-        
+
         // 1. Iniciar filtros
         initAsistenciaUI: () => {
             const selSec = document.getElementById('as-sec');
@@ -3118,7 +3332,8 @@ renderScheduleList: () => {
         },
 
         loadAttendanceMatrix: async () => {
-            const idSec = document.getElementById('as-sec').value;
+            const selSec = document.getElementById('as-sec');
+            const idSec = selSec.value;
             const selMat = document.getElementById('as-mat');
             const idMat = selMat.value;
             const valAsistencia = parseFloat(selMat.options[selMat.selectedIndex].getAttribute('data-p-asis')) || 0;
@@ -3170,6 +3385,14 @@ renderScheduleList: () => {
 
             // 2. CALCULAR TOTAL DE LECCIONES EN EL PERIODO
             let totalLeccionesPeriodo = dateCols.reduce((sum, d) => sum + Number(d.lessons), 0);
+
+            // Guardamos el contexto para poder abrir la Ficha del Estudiante sin otra llamada al backend
+            app.state.matrixData = {
+                dateCols, marcas: res.marcas, idMat, valAsistencia, totalLeccionesPeriodo,
+                nombreMat: selMat.options[selMat.selectedIndex].text,
+                nombreSec: selSec.options[selSec.selectedIndex].text,
+                fIni, fFin
+            };
 
             // 3. CONSTRUIR TABLA HTML
             let html = `<table class="w-full text-sm border-collapse">
@@ -3226,7 +3449,7 @@ renderScheduleList: () => {
                 if(porcentaje < 0) porcentaje = 0;
 
                 html += `<tr>
-                    <td class="p-2 border sticky left-0 bg-white font-medium truncate z-10">${est.nombre}</td>
+                    <td class="p-2 border sticky left-0 bg-white font-medium truncate z-10 text-indigo-700 hover:text-indigo-900 hover:underline cursor-pointer" onclick="app.verFichaAsistencia('${est.id}', '${est.nombre.replace(/'/g, "\\'")}')" title="Ver ficha de asistencia">${est.nombre}</td>
                     <td class="p-2 border text-center font-bold bg-gray-50">${porcentaje.toFixed(1)}%</td>
                     <td class="p-2 border text-center text-red-600 bg-red-50 font-bold">${sumAI}</td>
                     <td class="p-2 border text-center text-yellow-600">${sumT}</td>
@@ -4911,6 +5134,130 @@ adminLoadUsers: async () => {
             });
         },
 
+        // 2.b FICHA DE ASISTENCIA DEL ESTUDIANTE (RADIOGRAFÍA POR FECHAS)
+        // Reutiliza los datos ya cargados en la matriz (sin llamada extra al backend)
+        verFichaAsistencia: (idEst, nombreEst) => {
+            const m = app.state.matrixData;
+            if(!m) return Swal.fire('Sin datos', 'Consulta primero la matriz.', 'info');
+
+            const diasSemana = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+            const estadoInfo = {
+                P:  { label: 'Presente',             color: 'bg-green-50 text-green-700 border-green-200' },
+                AI: { label: 'Ausencia Injustificada', color: 'bg-red-50 text-red-700 border-red-200' },
+                T:  { label: 'Tardía',                color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+                E:  { label: 'Escapada',              color: 'bg-orange-50 text-orange-700 border-orange-200' },
+                J:  { label: 'Justificada',           color: 'bg-blue-50 text-blue-700 border-blue-200' },
+                '': { label: 'Sin marcar',            color: 'bg-slate-50 text-slate-400 border-slate-200' }
+            };
+
+            let sumAI = 0, sumT = 0, sumE = 0, sumJ = 0, perdidas = 0;
+            const filas = m.dateCols.map(d => {
+                const val = m.marcas[idEst + "|" + d.dateStr] || '';
+                if(val === 'AI') { sumAI++; perdidas += Number(d.lessons); }
+                if(val === 'T') sumT++;
+                if(val === 'E') sumE++;
+                if(val === 'J') sumJ++;
+                return { ...d, val };
+            }).reverse(); // más reciente primero
+
+            let porcentaje = 100;
+            if(m.totalLeccionesPeriodo > 0) {
+                const factor = m.valAsistencia / m.totalLeccionesPeriodo;
+                porcentaje = Math.max(0, m.valAsistencia - (perdidas * factor));
+            }
+            const porcColor = porcentaje >= 90 ? 'text-emerald-600' : porcentaje >= 75 ? 'text-amber-600' : 'text-red-600';
+
+            document.getElementById('ficha-asis-materia').innerText = `${m.nombreSec} · ${m.nombreMat}`;
+            document.getElementById('ficha-asis-nombre').innerText = nombreEst;
+            const emision = new Date().toLocaleString('es-CR', { dateStyle: 'medium', timeStyle: 'short' });
+            document.getElementById('ficha-asis-fecha-emision').innerText = emision;
+
+            // Guardamos todo lo necesario para poder generar el PDF sin recalcular
+            app.state.fichaData = {
+                nombreEst, nombreSec: m.nombreSec, nombreMat: m.nombreMat,
+                fIni: m.fIni, fFin: m.fFin, porcentaje, filas, estadoInfo, diasSemana, emision
+            };
+
+            const resumenHtml = `
+                <div class="grid grid-cols-5 gap-2 mb-4">
+                    <div class="flex flex-col items-center bg-slate-50 border border-slate-200 rounded-xl p-2">
+                        <span class="text-xl font-extrabold ${porcColor}">${porcentaje.toFixed(1)}%</span>
+                        <span class="text-[9px] font-bold text-slate-400 mt-1">% Obt.</span>
+                    </div>
+                    <div class="flex flex-col items-center bg-red-50 border border-red-100 rounded-xl p-2">
+                        <span class="text-xl font-extrabold text-red-600">${sumAI}</span>
+                        <span class="text-[9px] font-bold text-red-500 mt-1">Aus. Inj.</span>
+                    </div>
+                    <div class="flex flex-col items-center bg-yellow-50 border border-yellow-100 rounded-xl p-2">
+                        <span class="text-xl font-extrabold text-yellow-600">${sumT}</span>
+                        <span class="text-[9px] font-bold text-yellow-500 mt-1">Tardías</span>
+                    </div>
+                    <div class="flex flex-col items-center bg-orange-50 border border-orange-100 rounded-xl p-2">
+                        <span class="text-xl font-extrabold text-orange-600">${sumE}</span>
+                        <span class="text-[9px] font-bold text-orange-500 mt-1">Escapadas</span>
+                    </div>
+                    <div class="flex flex-col items-center bg-blue-50 border border-blue-100 rounded-xl p-2">
+                        <span class="text-xl font-extrabold text-blue-600">${sumJ}</span>
+                        <span class="text-[9px] font-bold text-blue-500 mt-1">Justif.</span>
+                    </div>
+                </div>`;
+
+            const timelineHtml = filas.length
+                ? `<div class="flex flex-col gap-1.5">
+                    ${filas.map(f => {
+                        const info = estadoInfo[f.val];
+                        const dayName = diasSemana[f.dateObj.getDay()];
+                        return `<div class="flex items-center justify-between border rounded-lg px-3 py-2 ${info.color}">
+                            <div class="flex flex-col">
+                                <span class="text-xs font-bold">${f.label} <span class="font-normal opacity-70">· ${dayName}</span></span>
+                                <span class="text-[10px] opacity-70">${f.lessons} lección(es)</span>
+                            </div>
+                            <span class="text-[10px] font-bold uppercase tracking-wide">${info.label}</span>
+                        </div>`;
+                    }).join('')}
+                   </div>`
+                : `<p class="text-center text-slate-400 text-xs py-6">No hay fechas de clase en el rango consultado.</p>`;
+
+            document.getElementById('ficha-asis-body').innerHTML = resumenHtml + timelineHtml;
+            document.getElementById('modal-ficha-asistencia').classList.remove('hidden');
+        },
+
+        // Genera el documento imprimible de la Ficha y abre el diálogo de impresión (Guardar como PDF)
+        descargarFichaPDF: () => {
+            const f = app.state.fichaData;
+            if(!f) return;
+
+            document.getElementById('print-fa-nombre').innerText = f.nombreEst;
+            document.getElementById('print-fa-seccion').innerText = f.nombreSec;
+            document.getElementById('print-fa-materia').innerText = f.nombreMat;
+            document.getElementById('print-fa-periodo').innerText = `${f.fIni} al ${f.fFin}`;
+            document.getElementById('print-fa-porcentaje').innerText = `${f.porcentaje.toFixed(1)}%`;
+            document.getElementById('print-fa-emision').innerText = f.emision;
+
+            let nombreDocente = app.user.email.split('@')[0];
+            nombreDocente = nombreDocente.charAt(0).toUpperCase() + nombreDocente.slice(1);
+            document.getElementById('print-fa-docente').innerText = `${nombreDocente} (${app.user.email})`;
+
+            document.getElementById('print-fa-tbody').innerHTML = f.filas.map(row => {
+                const info = f.estadoInfo[row.val];
+                const dayName = f.diasSemana[row.dateObj.getDay()];
+                return `<tr>
+                    <td style="border:1px solid #cbd5e1;padding:6px;">${row.label}</td>
+                    <td style="border:1px solid #cbd5e1;padding:6px;">${dayName}</td>
+                    <td style="border:1px solid #cbd5e1;padding:6px;text-align:center;">${row.lessons}</td>
+                    <td style="border:1px solid #cbd5e1;padding:6px;">${info.label}</td>
+                </tr>`;
+            }).join('');
+
+            // Sugerimos el nombre del archivo cambiando el título de la pestaña
+            // (los navegadores usan document.title como nombre por defecto al "Guardar como PDF")
+            const tituloOriginal = document.title;
+            document.title = `Resumen de Asistencia - ${f.nombreEst}`;
+            window.addEventListener('afterprint', () => { document.title = tituloOriginal; }, { once: true });
+
+            window.print();
+        },
+
         // 3. VER NOTAS DE MATERIA (MODAL TABLA)
         verNotasMateria: async (idMat, nomMat) => {
             Swal.fire({ title: 'Generando Cuadro...', didOpen: () => Swal.showLoading() });
@@ -5698,6 +6045,76 @@ loadAuditoriaData: async () => {
         <div id="kpi-body" class="p-5 grid grid-cols-1 gap-3 max-h-[70vh] overflow-y-auto"></div>
         <div class="px-6 py-3 border-t border-slate-100 bg-slate-50 text-center">
             <p class="text-[10px] text-slate-400">Los datos se calculan en tiempo real la Base de Datos</p>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: FICHA DE ASISTENCIA (RADIOGRAFÍA POR FECHAS) -->
+<div id="modal-ficha-asistencia" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(15,23,42,0.5)">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg animate-fade-in overflow-hidden flex flex-col" style="max-height:85vh">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
+            <div>
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Historial de Asistencia</p>
+                <p class="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-0.5" id="ficha-asis-materia">Sección · Materia</p>
+                <h2 class="text-lg font-black text-slate-800" id="ficha-asis-nombre">Estudiante</h2>
+            </div>
+            <button onclick="document.getElementById('modal-ficha-asistencia').classList.add('hidden')"
+                class="w-9 h-9 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition text-lg">&times;</button>
+        </div>
+        <div id="ficha-asis-body" class="p-5 overflow-y-auto"></div>
+        <div class="px-6 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between gap-3 shrink-0">
+            <p class="text-[10px] text-slate-400 leading-tight">Documento oficial emitido por RegistraME V-Pro.<br>Generado el <span id="ficha-asis-fecha-emision"></span></p>
+            <button onclick="app.descargarFichaPDF()" class="shrink-0 bg-slate-800 text-white px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-900 transition flex items-center gap-2">
+                <i class="fas fa-file-pdf text-red-400"></i> Descargar PDF
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ÁREA IMPRIMIBLE (SOLO VISIBLE AL IMPRIMIR / GUARDAR PDF) -->
+<div id="ficha-print-area">
+    <div style="max-width:700px;margin:0 auto;padding:32px;font-family:Arial,Helvetica,sans-serif;color:#1e293b;">
+        <div style="text-align:center;border-bottom:2px solid #16a34a;padding-bottom:12px;margin-bottom:16px;">
+            <h1 style="font-size:20px;margin:0;font-weight:900;">RegistraME <span style="color:#16a34a;">V-Pro</span></h1>
+            <p style="font-size:11px;color:#64748b;margin:2px 0 0;text-transform:uppercase;letter-spacing:1px;">Historial de Asistencia</p>
+        </div>
+        <table style="width:100%;font-size:13px;margin-bottom:16px;">
+            <tr>
+                <td style="padding:4px 0;color:#64748b;">Estudiante:</td>
+                <td style="padding:4px 0;font-weight:bold;" id="print-fa-nombre"></td>
+            </tr>
+            <tr>
+                <td style="padding:4px 0;color:#64748b;">Sección:</td>
+                <td style="padding:4px 0;font-weight:bold;" id="print-fa-seccion"></td>
+            </tr>
+            <tr>
+                <td style="padding:4px 0;color:#64748b;">Materia:</td>
+                <td style="padding:4px 0;font-weight:bold;" id="print-fa-materia"></td>
+            </tr>
+            <tr>
+                <td style="padding:4px 0;color:#64748b;">Período consultado:</td>
+                <td style="padding:4px 0;font-weight:bold;" id="print-fa-periodo"></td>
+            </tr>
+            <tr>
+                <td style="padding:4px 0;color:#64748b;">% de asistencia obtenido:</td>
+                <td style="padding:4px 0;font-weight:bold;" id="print-fa-porcentaje"></td>
+            </tr>
+        </table>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;" id="print-fa-tabla">
+            <thead>
+                <tr style="background:#f1f5f9;">
+                    <th style="border:1px solid #cbd5e1;padding:6px;text-align:left;">Fecha</th>
+                    <th style="border:1px solid #cbd5e1;padding:6px;text-align:left;">Día</th>
+                    <th style="border:1px solid #cbd5e1;padding:6px;text-align:center;">Lecciones</th>
+                    <th style="border:1px solid #cbd5e1;padding:6px;text-align:left;">Estado</th>
+                </tr>
+            </thead>
+            <tbody id="print-fa-tbody"></tbody>
+        </table>
+        <div style="margin-top:24px;padding-top:12px;border-top:1px solid #cbd5e1;font-size:10px;color:#94a3b8;text-align:center;">
+            Este documento es de carácter oficial, emitido automáticamente por la plataforma RegistraME V-Pro.<br>
+            Docente responsable: <span id="print-fa-docente" style="color:#475569;font-weight:bold;"></span><br>
+            Fecha y hora de emisión: <span id="print-fa-emision"></span>
         </div>
     </div>
 </div>

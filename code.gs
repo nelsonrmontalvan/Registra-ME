@@ -58,9 +58,11 @@ function doPost(e) {
     // --- HORARIOS ---
     if(action === "saveConfigHorario") return response(guardarConfigHorario(data));
     if(action === "getConfigHorarios") return response(obtenerConfigHorarios(data.idSeccion));
+    if(action === "getAllConfigHorarios") return response(obtenerTodosLosHorarios(data.email));
     if(action === "delConfigHorario") return response(eliminarConfigHorario(data.id));
     if(action === "getMatrixAttendance") return response(obtenerMatrizAsistencia(data.idSeccion, data.idMateria, data.fIni, data.fFin));
     if(action === "saveMark") return response(guardarMarcaAsistencia(data));
+    if(action === "getPendingAttendanceAlerts") return response(obtenerAlertasAsistenciaPendiente(data.email, data.hoy));
 
     // --- ASISTENCIA ---
     if(action === "saveAttendance") return response(guardarAsistenciaMasiva(data));
@@ -747,6 +749,115 @@ function obtenerConfigHorarios(idSeccion) {
 
 function eliminarConfigHorario(id) {
   return eliminarFilaGenerico("CONF_HORARIO", id);
+}
+
+// Detecta bloques de horario que caen HOY y aún no tienen ninguna marca de asistencia registrada
+function obtenerAlertasAsistenciaPendiente(email, fechaHoy) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const idUsuario = String(obtenerIdUsuarioPorEmail(email)).trim();
+    if (!idUsuario || !fechaHoy) return [];
+
+    const diasMap = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const [y, m, d] = fechaHoy.split('-').map(Number);
+    const nombreDiaHoy = diasMap[new Date(y, m - 1, d).getDay()];
+
+    const dataSecc = ss.getSheetByName("SECCIONES").getDataRange().getValues();
+    let mapaSec = {};
+    for (let i = 1; i < dataSecc.length; i++) {
+      if (String(dataSecc[i][6]).trim() === idUsuario) mapaSec[dataSecc[i][0]] = dataSecc[i][2];
+    }
+    if (Object.keys(mapaSec).length === 0) return [];
+
+    const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+    let mapaMat = {};
+    for (let i = 1; i < dataMat.length; i++) mapaMat[dataMat[i][0]] = dataMat[i][2];
+
+    const dataCfg = ss.getSheetByName("CONF_HORARIO").getDataRange().getValues();
+    let bloquesHoy = [];
+    for (let i = 1; i < dataCfg.length; i++) {
+      const idSec = String(dataCfg[i][1]);
+      if (!mapaSec[idSec]) continue;
+
+      const ini = formatearFechaInput(dataCfg[i][3]);
+      const fin = formatearFechaInput(dataCfg[i][4]);
+      if (fechaHoy < ini || fechaHoy > fin) continue;
+
+      let dias = {};
+      try { dias = JSON.parse(dataCfg[i][5]); } catch (e) { dias = {}; }
+      if (!dias[nombreDiaHoy]) continue;
+
+      bloquesHoy.push({
+        idSeccion: idSec,
+        nomSeccion: mapaSec[idSec],
+        idMateria: String(dataCfg[i][2]),
+        nomMateria: mapaMat[dataCfg[i][2]] || "Materia Borrada"
+      });
+    }
+    if (bloquesHoy.length === 0) return [];
+
+    const sheetAsis = ss.getSheetByName("ASISTENCIA_DATA");
+    const dataAsis = sheetAsis ? sheetAsis.getDataRange().getValues() : [];
+    let materiasConMarcaHoy = {};
+    for (let i = 1; i < dataAsis.length; i++) {
+      if (formatearFechaInput(dataAsis[i][1]) === fechaHoy) {
+        materiasConMarcaHoy[String(dataAsis[i][3])] = true;
+      }
+    }
+
+    return bloquesHoy.filter(b => !materiasConMarcaHoy[b.idMateria]);
+  } catch (e) { return { error: e.toString() }; }
+}
+
+// Trae TODOS los horarios del docente (todas las instituciones/secciones), para la vista de consulta
+function obtenerTodosLosHorarios(email) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const idUsuario = String(obtenerIdUsuarioPorEmail(email)).trim();
+    if (!idUsuario) return [];
+
+    const dataInst = ss.getSheetByName("INSTITUCIONES").getDataRange().getValues();
+    let mapaInst = {};
+    for (let i = 1; i < dataInst.length; i++) mapaInst[dataInst[i][0]] = dataInst[i][1];
+
+    const dataSecc = ss.getSheetByName("SECCIONES").getDataRange().getValues();
+    let mapaSec = {};
+    for (let i = 1; i < dataSecc.length; i++) {
+      if (String(dataSecc[i][6]).trim() === idUsuario) {
+        mapaSec[dataSecc[i][0]] = { nombre: dataSecc[i][2], idInst: dataSecc[i][1] };
+      }
+    }
+
+    const sheetMat = ss.getSheetByName("MATERIAS");
+    const dataMat = sheetMat ? sheetMat.getDataRange().getValues() : [];
+    let mapaMat = {};
+    for (let i = 1; i < dataMat.length; i++) mapaMat[dataMat[i][0]] = dataMat[i][2];
+
+    const sheet = ss.getSheetByName("CONF_HORARIO");
+    if (!sheet) return [];
+    const data = sheet.getDataRange().getValues();
+
+    let lista = [];
+    for (let i = 1; i < data.length; i++) {
+      const idSec = String(data[i][1]);
+      const sec = mapaSec[idSec];
+      if (!sec) continue; // no pertenece a este docente
+
+      lista.push({
+        id: data[i][0],
+        idSeccion: idSec,
+        nomSeccion: sec.nombre,
+        idInstitucion: sec.idInst,
+        nomInstitucion: mapaInst[sec.idInst] || "Desconocida",
+        idMateria: data[i][2],
+        nomMateria: mapaMat[data[i][2]] || "Materia Borrada",
+        ini: formatearFechaInput(data[i][3]),
+        fin: formatearFechaInput(data[i][4]),
+        dias: JSON.parse(data[i][5])
+      });
+    }
+    return lista;
+  } catch (e) { return { error: e.toString() }; }
 }
 
 function obtenerMatrizAsistencia(idSeccion, idMateria, fechaDesde, fechaHasta) {
