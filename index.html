@@ -1753,7 +1753,7 @@ enterApp: async () => {
                 body.innerHTML = kpis.map((k, idx) => {
                     const clickable = k.detalles && k.detalles.length > 0;
                     return `
-                    <div class="rounded-xl border p-4 transition ${clickable ? 'cursor-pointer hover:shadow-md' : ''} ${k.alert ? 'border-red-100 bg-red-50' : 'border-slate-100 bg-slate-50'}"
+                    <div class="rounded-xl border p-4 transition ${clickable ? 'cursor-pointer hover:shadow-md hover:-translate-y-1' : ''} ${k.alert ? 'border-red-100 bg-red-50' : 'border-slate-100 bg-slate-50'}"
                          ${clickable ? `data-kpi-idx="${idx}"` : ''}>
                         <div class="flex items-center gap-4">
                             <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style="background:${k.bg}">
@@ -4711,7 +4711,7 @@ fillMaxScore: () => {
                     </div>` : '';
 
                 div.innerHTML += `
-                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-${color}-500 hover:shadow-md transition relative group">
+                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-${color}-500 hover:shadow-md hover:-translate-y-1 transition-all relative group">
                     <div class="flex justify-between items-start mb-2">
                         <div>
                             <span class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">${l.fecha} | ${l.materia}</span>
