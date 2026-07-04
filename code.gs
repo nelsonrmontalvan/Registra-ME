@@ -90,6 +90,7 @@ function doPost(e) {
     if(action === "getLessons") return response(obtenerLeccionesDocente(data.email));
     if(action === "pdfLesson") return response(generarPdfLeccion(data.id));
     if(action === "deleteLesson") return response(eliminarLeccion(data.id));
+    if(action === "shareLesson") return response(compartirLeccionPorCorreo(data));
 
     // --- NUEVOS REPORTES ---
     if(action === "getStudentReport") return response(obtenerBoletaEstudiante(data.id));
@@ -1378,6 +1379,79 @@ function eliminarLeccion(id) {
     }
   }
   return { success: false, message: "No se encontró el ID." };
+}
+
+function compartirLeccionPorCorreo(data) {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const dataAula = ss.getSheetByName("MIAULA").getDataRange().getValues();
+
+  let leccion = null;
+  for (let i = 1; i < dataAula.length; i++) {
+    if (String(dataAula[i][0]).trim() === String(data.id).trim()) {
+      leccion = {
+        idMateria: dataAula[i][1],
+        titulo: dataAula[i][2],
+        desc: dataAula[i][3],
+        fileUrl: dataAula[i][4],
+        link: dataAula[i][5],
+        tipo: dataAula[i][9] ? String(dataAula[i][9]) : "Clase"
+      };
+      break;
+    }
+  }
+  if (!leccion) return { success: false, message: "No se encontró el contenido." };
+
+  const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+  let idSeccion = "", nombreMateria = "General";
+  for (let i = 1; i < dataMat.length; i++) {
+    if (String(dataMat[i][0]).trim() === String(leccion.idMateria).trim()) {
+      idSeccion = dataMat[i][1];
+      nombreMateria = dataMat[i][2];
+      break;
+    }
+  }
+
+  let estudiantes = obtenerEstudiantes(idSeccion);
+  if (data.ids && data.ids.length > 0) {
+    const idsSet = new Set(data.ids.map(x => String(x).trim()));
+    estudiantes = estudiantes.filter(e => idsSet.has(String(e.id).trim()));
+  }
+  const nombreProfe = data.nombreDocente || "Docente a cargo";
+  const emailProfe = data.emailDocente || Session.getActiveUser().getEmail();
+  const nombreRemitente = nombreProfe + " - RegistraME";
+
+  const tipoTexto = leccion.tipo === "Tarea" ? "una nueva tarea" : "nuevo material de clase";
+  let cuerpo = `Estimada familia:\n\n${data.mensaje ? data.mensaje + "\n\n" : ""}` +
+    `Se ha publicado ${tipoTexto} en ${nombreMateria}:\n\n"${leccion.titulo}"\n${leccion.desc || ""}\n`;
+  if (leccion.fileUrl) cuerpo += `\nArchivo: ${leccion.fileUrl}\n`;
+  if (leccion.link) cuerpo += `\nEnlace: ${leccion.link}\n`;
+  cuerpo += `\nAtentamente,\n${nombreProfe}`;
+
+  const asunto = (leccion.tipo === "Tarea" ? "Nueva Tarea" : "Nuevo Material") + " - " + leccion.titulo;
+
+  let enviados = 0, fallidos = 0, erroresDetallados = [];
+
+  estudiantes.forEach(e => {
+    if (e.eximido) return;
+    try {
+      const email = e.emailEnc;
+      if (!email || !String(email).includes("@")) throw new Error("Correo inválido o vacío.");
+
+      GmailApp.sendEmail(email, asunto, cuerpo, {
+        name: nombreRemitente,
+        replyTo: emailProfe
+      });
+      enviados++;
+    } catch (err) {
+      fallidos++;
+      erroresDetallados.push(`• ${e.nombre}: ${err.message}`);
+    }
+  });
+
+  let mensajeFinal = `Proceso finalizado. Enviados: ${enviados}`;
+  if (fallidos > 0) mensajeFinal += ` | Fallidos: ${fallidos}\n${erroresDetallados.join("\n")}`;
+
+  return { success: true, message: mensajeFinal, enviados: enviados, fallidos: fallidos };
 }
 
 // --- TRASLADOS ---

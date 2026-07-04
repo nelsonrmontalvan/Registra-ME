@@ -4674,7 +4674,7 @@ fillMaxScore: () => {
         // A. CARGAR LISTA
         loadLecciones: async () => {
             const div = document.getElementById('aula-list');
-            div.innerHTML = '<div class="col-span-2 text-center py-10"><i class="fas fa-spinner fa-spin text-teal-600 text-2xl"></i></div>';
+            div.innerHTML = '<div class="col-span-full text-center py-10"><i class="fas fa-spinner fa-spin text-teal-600 text-2xl"></i></div>';
             
             const lista = await app.api({ action: 'getLessons' });
             app.data.lecciones = lista || [];
@@ -4685,7 +4685,7 @@ fillMaxScore: () => {
             const div = document.getElementById('aula-list');
             div.innerHTML = '';
             if(!lista || lista.length === 0) {
-                div.innerHTML = `<div class="col-span-2 text-center py-10 text-gray-400">No hay contenido publicado.</div>`;
+                div.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400">No hay contenido publicado.</div>`;
                 return;
             }
 
@@ -4724,6 +4724,7 @@ fillMaxScore: () => {
                             ${vencBadge}
                             <!-- Menú acciones (Siempre visible en touch, hover en desktop) -->
                             <div class="flex gap-2 md:opacity-0 md:group-hover:opacity-100 transition">
+                                <button onclick="app.shareAula('${l.id}')" class="text-gray-400 hover:text-teal-600" title="Compartir por correo"><i class="fas fa-share"></i></button>
                                 <button onclick="app.editAula('${l.id}')" class="text-gray-400 hover:text-blue-600" title="Editar"><i class="fas fa-pen"></i></button>
                                 <button onclick="app.deleteAula('${l.id}')" class="text-gray-400 hover:text-red-600" title="Eliminar"><i class="fas fa-trash"></i></button>
                             </div>
@@ -4751,6 +4752,74 @@ fillMaxScore: () => {
             if (fechaStr < hoyStr) return `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">Vencida</span>`;
             if (fechaStr === hoyStr) return `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">Vence hoy</span>`;
             return '';
+        },
+
+        // Comparte una lección/tarea por correo con los encargados de estudiantes puntuales (ej. ausentes por enfermedad)
+        shareAula: async (id) => {
+            const l = app.data.lecciones.find(x => String(x.id) === String(id));
+            if (!l) return;
+
+            Swal.fire({ title: 'Cargando estudiantes...', didOpen: () => Swal.showLoading() });
+            const estudiantes = await app.api({ action: 'getStudents', idSeccion: l.idSeccion });
+            Swal.close();
+
+            if (!estudiantes || estudiantes.length === 0) return Swal.fire('Aviso', 'No hay estudiantes en esta sección.', 'info');
+
+            let listaHtml = `<div class="max-h-60 overflow-y-auto border border-slate-200 rounded-lg bg-slate-50 text-left text-sm">
+                <div class="sticky top-0 bg-slate-200 p-2.5 border-b border-slate-300 font-bold text-slate-700 shadow-sm z-10">
+                    Selecciona a quién enviar
+                </div>
+                <div class="divide-y divide-slate-200">`;
+
+            estudiantes.forEach(e => {
+                const tieneEmail = e.emailEnc && String(e.emailEnc).includes('@');
+                const aviso = tieneEmail ? `<span class="text-emerald-600 text-[10px] ml-2 font-mono">(${e.emailEnc})</span>` : `<span class="text-rose-500 text-[10px] ml-2 font-bold">(Sin correo)</span>`;
+                const disabled = !tieneEmail ? 'disabled' : '';
+
+                listaHtml += `
+                <div class="p-2.5 bg-white hover:bg-teal-50 flex items-center gap-3 transition">
+                    <input type="checkbox" class="chk-share-student w-4 h-4 accent-teal-600 cursor-pointer" value="${e.id}" ${disabled}>
+                    <div>
+                        <span class="font-bold text-slate-700 text-xs">${e.nombre}</span>
+                        ${aviso}
+                    </div>
+                </div>`;
+            });
+            listaHtml += `</div></div>`;
+
+            const { value: ids } = await Swal.fire({
+                title: 'Compartir por correo',
+                width: '550px',
+                html: `<p class="text-sm text-gray-500 text-left mb-2">Enviar "<b>${l.titulo}</b>" a los encargados de estudiantes específicos (ej. ausentes o enfermos).</p>${listaHtml}`,
+                showCancelButton: true,
+                confirmButtonText: '<i class="fas fa-paper-plane mr-1"></i> Enviar',
+                confirmButtonColor: '#0d9488',
+                cancelButtonText: 'Cancelar',
+                preConfirm: () => {
+                    const seleccionados = Array.from(document.querySelectorAll('.chk-share-student:checked')).map(c => c.value);
+                    if (seleccionados.length === 0) return Swal.showValidationMessage('Selecciona al menos un estudiante');
+                    return seleccionados;
+                }
+            });
+
+            if (!ids) return;
+
+            let nombreDocente = "Docente";
+            const spanUser = document.getElementById('user-name').innerText;
+            if (spanUser.includes(',')) nombreDocente = spanUser.split(',')[1].trim();
+
+            Swal.fire({ title: 'Enviando correos...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            const res = await app.api({
+                action: 'shareLesson',
+                id: l.id,
+                ids: ids,
+                nombreDocente: "Prof. " + nombreDocente,
+                emailDocente: app.user.email
+            });
+
+            if (res && res.success) Swal.fire({ icon: 'success', title: 'Enviado', text: res.message, timer: 2500, showConfirmButton: false });
+            else Swal.fire('Error', (res && res.message) || 'Hubo un problema al enviar.', 'error');
         },
 
         filterAula: (tipo) => {
@@ -5890,7 +5959,7 @@ loadAuditoriaData: async () => {
                     <button onclick="app.filterAula('Tarea')" class="px-4 py-1 rounded-full bg-orange-100 text-orange-700 text-sm font-bold hover:bg-orange-200">Tareas</button>
                 </div>
 
-                <div id="aula-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                <div id="aula-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
             </div>`;
 
 // 3. VISTA CONFIGURACIÓN (LIMPIA Y CORREGIDA)
