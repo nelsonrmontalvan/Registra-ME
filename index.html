@@ -4694,9 +4694,21 @@ fillMaxScore: () => {
                 const isTarea = l.tipo === 'Tarea';
                 const color = isTarea ? 'orange' : 'teal';
                 const icon = isTarea ? 'fa-tasks' : 'fa-book';
-                const badge = isTarea 
+                const badge = isTarea
                     ? `<span class="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-bold border border-orange-200"><i class="fas fa-link mr-1"></i> ${l.nombreIndicador}</span>`
                     : `<span class="bg-teal-50 text-teal-700 px-2 py-1 rounded text-xs font-bold border border-teal-100">Material de Clase</span>`;
+
+                const vencBadge = isTarea ? app.getVencimientoBadge(l.fecha) : '';
+                const progreso = (isTarea && l.totalEstudiantes > 0)
+                    ? `<div class="bg-gray-50 rounded-lg p-2 mb-3">
+                        <div class="flex justify-between text-xs text-gray-500 mb-1">
+                            <span>Entregado</span>
+                            <span class="font-bold text-gray-700">${l.entregados} / ${l.totalEstudiantes}</span>
+                        </div>
+                        <div class="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                            <div class="h-full bg-orange-500" style="width:${Math.round((l.entregados / l.totalEstudiantes) * 100)}%"></div>
+                        </div>
+                    </div>` : '';
 
                 div.innerHTML += `
                 <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-${color}-500 hover:shadow-md transition relative group">
@@ -4707,16 +4719,21 @@ fillMaxScore: () => {
                                 <i class="fas ${icon} text-${color}-500"></i> ${l.titulo}
                             </h4>
                         </div>
-                        
-                        <!-- Menú acciones (Solo visible al pasar mouse) -->
-                        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition">
-                            <button onclick="app.editAula('${l.id}')" class="text-gray-400 hover:text-blue-600" title="Editar"><i class="fas fa-pen"></i></button>
-                            <button onclick="app.deleteAula('${l.id}')" class="text-gray-400 hover:text-red-600" title="Eliminar"><i class="fas fa-trash"></i></button>
+
+                        <div class="flex items-center gap-2">
+                            ${vencBadge}
+                            <!-- Menú acciones (Siempre visible en touch, hover en desktop) -->
+                            <div class="flex gap-2 md:opacity-0 md:group-hover:opacity-100 transition">
+                                <button onclick="app.editAula('${l.id}')" class="text-gray-400 hover:text-blue-600" title="Editar"><i class="fas fa-pen"></i></button>
+                                <button onclick="app.deleteAula('${l.id}')" class="text-gray-400 hover:text-red-600" title="Eliminar"><i class="fas fa-trash"></i></button>
+                            </div>
                         </div>
                     </div>
-                    
+
                     <p class="text-sm text-gray-600 mb-3 line-clamp-2">${l.desc}</p>
-                    
+
+                    ${progreso}
+
                     <div class="flex flex-wrap gap-2 mb-3">
                         ${badge}
                         ${l.fileUrl ? `<a href="${l.fileUrl}" target="_blank" class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-gray-700 flex items-center"><i class="fas fa-paperclip mr-1"></i> Ver Archivo</a>` : ''}
@@ -4724,6 +4741,16 @@ fillMaxScore: () => {
                     </div>
                 </div>`;
             });
+        },
+
+        // Devuelve el badge de vencimiento (Vencida / Vence hoy) para una Tarea, según su fecha
+        getVencimientoBadge: (fechaStr) => {
+            if (!fechaStr) return '';
+            const hoy = new Date();
+            const hoyStr = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
+            if (fechaStr < hoyStr) return `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">Vencida</span>`;
+            if (fechaStr === hoyStr) return `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">Vence hoy</span>`;
+            return '';
         },
 
         filterAula: (tipo) => {

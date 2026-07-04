@@ -1295,6 +1295,8 @@ function obtenerLeccionesDocente(email) {
     const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
     const dataSec = ss.getSheetByName("SECCIONES").getDataRange().getValues();
     const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
+    const dataEst = ss.getSheetByName("ESTUDIANTES").getDataRange().getValues();
+    const dataNotas = ss.getSheetByName("NOTAS").getDataRange().getValues();
 
     let mapMatName = {};
     let mapMatToSec = {};
@@ -1306,6 +1308,28 @@ function obtenerLeccionesDocente(email) {
     let mapInd = {};
     dataInd.forEach(r => mapInd[r[0]] = r[3] + " (" + r[2] + ")");
 
+    // Total de estudiantes activos (no eximidos) por sección, para calcular entregas
+    let mapEstudiantesPorSeccion = {};
+    for (let i = 1; i < dataEst.length; i++) {
+      const sec = String(dataEst[i][1]).trim();
+      const esEximido = String(dataEst[i][11]).toUpperCase().trim() === "TRUE";
+      if (!esEximido) mapEstudiantesPorSeccion[sec] = (mapEstudiantesPorSeccion[sec] || 0) + 1;
+    }
+
+    // Estudiantes con nota registrada por indicador, para saber cuántos "entregaron" una Tarea
+    let mapEntregasPorIndicador = {};
+    for (let i = 1; i < dataNotas.length; i++) {
+      const idInd = String(dataNotas[i][1]).trim();
+      const idEst = String(dataNotas[i][2]).trim();
+      const nota = dataNotas[i][3];
+      const nivel = dataNotas[i][5];
+      const tieneNota = (nota !== "" && nota !== null && nota !== undefined) || (nivel !== "" && nivel !== null && nivel !== undefined);
+      if (tieneNota) {
+        if (!mapEntregasPorIndicador[idInd]) mapEntregasPorIndicador[idInd] = new Set();
+        mapEntregasPorIndicador[idInd].add(idEst);
+      }
+    }
+
     let lista = [];
     for(let i=1; i<data.length; i++){
       if(String(data[i][7]) == String(idUsuario)){
@@ -1314,6 +1338,9 @@ function obtenerLeccionesDocente(email) {
 
          let tipo = data[i][9] ? String(data[i][9]) : "Clase";
          let idInd = data[i][10] ? String(data[i][10]) : "";
+
+         let totalEstudiantes = mapEstudiantesPorSeccion[String(idSec).trim()] || 0;
+         let entregados = (tipo === "Tarea" && idInd && mapEntregasPorIndicador[idInd]) ? mapEntregasPorIndicador[idInd].size : 0;
 
          lista.push({
            id: data[i][0],
@@ -1329,7 +1356,9 @@ function obtenerLeccionesDocente(email) {
            fileName: data[i][8],
            tipo: tipo,
            idIndicador: idInd,
-           nombreIndicador: mapInd[idInd] || "Sin vincular"
+           nombreIndicador: mapInd[idInd] || "Sin vincular",
+           entregados: entregados,
+           totalEstudiantes: totalEstudiantes
          });
       }
     }
