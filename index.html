@@ -6329,5 +6329,67 @@ loadAuditoriaData: async () => {
     </div>
 </div>
 
+<!-- ===================== MODAL DE MANTENIMIENTO — RegistraME ===================== -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    Swal.fire({
+        width: '900px',
+        padding: '0',
+        showConfirmButton: false,
+        showCloseButton: false,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        customClass: { popup: 'overflow-hidden rounded-2xl' },
+        html: `
+            <div class="flex flex-col lg:flex-row h-full text-left">
+
+                <!-- Lado Izquierdo: Imagen / Branding -->
+                <div class="lg:w-4/12 bg-slate-900 p-8 text-white flex flex-col justify-center items-center text-center relative overflow-hidden">
+                    <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=800&auto=format&fit=crop')] opacity-20 bg-cover bg-center"></div>
+
+                    <div class="relative z-10">
+                        <div class="w-20 h-20 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-500/50">
+                            <i class="fas fa-tools text-4xl"></i>
+                        </div>
+                        <h2 class="text-3xl font-extrabold tracking-tight mb-2">RegistraME <span class="text-indigo-400">V-Pro</span></h2>
+                        <p class="text-sm text-slate-300 font-medium leading-relaxed">Estamos preparando una mejor experiencia para el II Periodo.</p>
+                    </div>
+                </div>
+
+                <!-- Lado Derecho: Mensaje de Mantenimiento -->
+                <div class="lg:w-8/12 p-8 lg:p-10 bg-white flex flex-col justify-center">
+                    <h3 class="text-2xl font-bold text-slate-800 mb-2">Estamos en mantenimiento 🛠️</h3>
+                    <p class="text-sm text-slate-500 mb-6 leading-relaxed">
+                        Esta versión de RegistraME no está disponible por ahora. Estamos trabajando en ajustes y mejoras pensadas para el <strong class="text-slate-700">II Periodo</strong>, con base en todo lo que ustedes nos compartieron durante el I Periodo.
+                    </p>
+
+                    <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-8 flex gap-3 items-start">
+                        <i class="fas fa-circle-info text-indigo-500 mt-0.5"></i>
+                        <p class="text-[13px] text-indigo-800 leading-relaxed">
+                            Por favor no registres información nueva aquí — muy pronto vas a tener acceso a la nueva versión con todos tus datos listos para continuar.
+                        </p>
+                    </div>
+
+                    <!-- Botón de contacto -->
+                    <div class="flex flex-col sm:flex-row gap-3 mt-auto">
+                        <a href="https://wa.me/50671023115?text=Hola,%20tengo%20una%20consulta%20sobre%20RegistraME%20V-Pro" target="_blank" rel="noopener" class="flex-1 bg-emerald-500 text-white py-3 rounded-xl font-bold hover:bg-emerald-600 transition shadow-md shadow-emerald-200 flex items-center justify-center gap-2">
+                            <i class="fab fa-whatsapp text-lg"></i> Escribir por WhatsApp
+                        </a>
+                        <a href="mailto:nelson.rmontalvan@gmail.com" class="flex-1 bg-slate-100 text-slate-700 py-3 rounded-xl font-bold hover:bg-slate-200 transition shadow-sm border border-slate-200 flex items-center justify-center gap-2">
+                            <i class="fas fa-envelope"></i> Escribir por correo
+                        </a>
+                    </div>
+
+                    <p class="text-[11px] text-slate-400 mt-6 text-center sm:text-left">
+                        RegistraME V-Pro &middot; Desarrollado por Ing. Nelson Rodríguez M.
+                    </p>
+                </div>
+            </div>
+        `
+    });
+});
+</script>
+<!-- ===================== FIN MODAL DE MANTENIMIENTO ===================== -->
+
 </body>
 </html>
