@@ -49,7 +49,8 @@ function doPost(e) {
     // --- EVALUACIÓN ---
     if(action === "getIndicators") return response(obtenerIndicadores(data.idMateria, data.categoria, data.periodo));
     if(action === "saveIndicator") return response(guardarIndicador(data));
-    if(action === "clonarIndicadores") return response(clonarIndicadores(data.idMateria, data.periodoOrigen, data.periodoDestino));
+    if(action === "clonarIndicadores") return response(clonarIndicadores(data.idMateria, data.periodoOrigen, data.periodoDestino, data.idsIndicadores));
+    if(action === "recalcularPesoCotidiano") return response(recalcularPesoCotidiano(data.idMateria, data.periodo));
     if(action === "deleteIndicator") return response(eliminarIndicador(data.id));
     if(action === "getEvaluationData") return response(obtenerDatosEvaluacion(data.idSeccion, data.idIndicador));
     if(action === "saveGrades") return response(guardarCalificaciones(data));
@@ -63,6 +64,7 @@ function doPost(e) {
     if(action === "delConfigHorario") return response(eliminarConfigHorario(data.id));
     if(action === "getMatrixAttendance") return response(obtenerMatrizAsistencia(data.idSeccion, data.idMateria, data.fIni, data.fFin));
     if(action === "saveMark") return response(guardarMarcaAsistencia(data));
+    if(action === "saveMarkBatch") return response(guardarMarcaAsistenciaBatch(data));
     if(action === "getPendingAttendanceAlerts") return response(obtenerAlertasAsistenciaPendiente(data.email, data.hoy));
     if(action === "saveNonSchoolDay") return response(guardarDiaNoLectivo(data));
     if(action === "deleteNonSchoolDay") return response(eliminarDiaNoLectivo(data.idMateria, data.fecha));
@@ -116,6 +118,15 @@ function doPost(e) {
 
     // --- KPIs POR SECCIÓN ---
     if(action === "getSectionKPIs") return response(getSectionKPIs(data.idSeccion));
+    if(action === "getMateriaKPIs") return response(getMateriaKPIs(data.id));
+
+    // --- AMPLIACIÓN (EXAMEN EXTRAORDINARIO) ---
+    if(action === "saveAmpliacion") return response(guardarAmpliacion(data));
+    if(action === "pdfAmpliaciones") return response(generarPdfAmpliaciones(data.id, data.soloConAmpliacion));
+
+    // --- BITACORA DE CAMBIOS (Notas + Asistencia) ---
+    if(action === "getBitacoraCambios") return response(obtenerBitacoraCambios(data.idMateria));
+    if(action === "pdfBitacoraCambios") return response(generarPdfBitacoraCambios(data.id));
 
     return response({status: "error", msg: "Acción desconocida: " + action});
 
@@ -536,7 +547,13 @@ function guardarIndicador(form) {
     }
   }
 
-  const periodo = determinarPeriodoVigente(ss, form.idMateria);
+  // Si el profe tiene un periodo especifico elegido en el selector "Ver periodo"
+  // del frontend, se respeta eso (permite preparar indicadores del periodo
+  // siguiente durante vacaciones, antes de que llegue su fecha de inicio).
+  // Si no hay filtro activo (esta en "Todos"), se infiere por fecha como antes.
+  const periodo = (form.periodo !== undefined && form.periodo !== null && form.periodo !== '')
+    ? form.periodo
+    : determinarPeriodoVigente(ss, form.idMateria);
 
   sheet.appendRow([
     "IND-"+Date.now(),
@@ -605,8 +622,11 @@ function obtenerIndicadores(idMateria, categoria, periodo) {
 // materia. Nunca copia NOTAS -- el indicador clonado nace sin calificar.
 // Si un indicador con la misma categoria+descripcion ya existe en el periodo
 // destino, se omite (evita duplicar si se corre dos veces por error).
+// idsIndicadores (opcional): lista puntual de IDs a clonar, para cuando el
+// profe elige solo algunos en vez de todo el periodo de origen. Si se omite o
+// viene vacia, se clona el periodo de origen completo (comportamiento previo).
 // ==========================================
-function clonarIndicadores(idMateria, periodoOrigen, periodoDestino) {
+function clonarIndicadores(idMateria, periodoOrigen, periodoDestino, idsIndicadores) {
   try {
     if (String(periodoOrigen) === String(periodoDestino)) {
       return { error: "El periodo de origen y destino no pueden ser el mismo" };
@@ -616,6 +636,10 @@ function clonarIndicadores(idMateria, periodoOrigen, periodoDestino) {
     const sheet = ss.getSheetByName("INDICADORES");
     const data = sheet.getDataRange().getValues();
 
+    const filtroIds = Array.isArray(idsIndicadores) && idsIndicadores.length > 0
+      ? new Set(idsIndicadores.map(id => String(id).trim()))
+      : null;
+
     const existentesDestino = new Set();
     const origen = [];
     for (let i = 1; i < data.length; i++) {
@@ -624,7 +648,8 @@ function clonarIndicadores(idMateria, periodoOrigen, periodoDestino) {
       if (periodoFila === String(periodoDestino)) {
         existentesDestino.add(data[i][2] + "|" + data[i][3]);
       } else if (periodoFila === String(periodoOrigen)) {
-        origen.push(data[i]);
+        const idFila = String(data[i][0]).trim();
+        if (!filtroIds || filtroIds.has(idFila)) origen.push(data[i]);
       }
     }
 
@@ -634,11 +659,12 @@ function clonarIndicadores(idMateria, periodoOrigen, periodoDestino) {
 
     let clonados = 0, omitidos = 0;
     const nuevasFilas = [];
+    const baseId = Date.now(); // una sola vez para todo el lote -- combinado con el indice de abajo alcanza para que no choquen, sin necesitar un UUID larguisimo
     origen.forEach((row, idx) => {
       const key = row[2] + "|" + row[3];
       if (existentesDestino.has(key)) { omitidos++; return; }
       nuevasFilas.push([
-        "IND-" + Date.now() + "-" + idx,
+        "IND-" + baseId + "-" + idx,
         idMateria,
         row[2],              // categoria
         row[3],              // descripcion
@@ -651,10 +677,70 @@ function clonarIndicadores(idMateria, periodoOrigen, periodoDestino) {
     });
 
     if (nuevasFilas.length > 0) {
-      sheet.getRange(sheet.getLastRow() + 1, 1, nuevasFilas.length, nuevasFilas[0].length).setValues(nuevasFilas);
+      const filaInicio = sheet.getLastRow() + 1;
+      const rango = sheet.getRange(filaInicio, 1, nuevasFilas.length, nuevasFilas[0].length);
+      rango.setValues(nuevasFilas);
+      // setValues() en un rango nuevo no hereda el formato de fecha/hora de las filas
+      // de arriba (a diferencia de appendRow) -- se fija explicito para que se vea
+      // igual que el resto de la columna FECHA. Costa Rica usa dia/mes/año, no
+      // mes/dia/año (formato que se habia puesto por error la primera vez).
+      sheet.getRange(filaInicio, 6, nuevasFilas.length, 1).setNumberFormat("d/M/yyyy H:mm:ss");
     }
 
     return { success: true, clonados: clonados, omitidos: omitidos };
+  } catch (e) { return { error: e.toString() }; }
+}
+
+// ==========================================
+// MOTOR V2 (Opcion B): RECALCULAR PESOS DE COTIDIANO (accion explicita, bajo demanda)
+// Congela de nuevo el %_OBTENIDO de TODAS las notas de Cotidiano YA calificadas de
+// esta materia+periodo, usando el peso vigente actual (segun cuantos indicadores
+// de Cotidiano existen HOY en ese periodo). Es la pieza que faltaba: sin esto, si
+// el profe califica el indicador #1 (unico, pesa 40%) y despues agrega el #2
+// (ahora pesan 20% c/u), el #1 se queda congelado en 40% para siempre y el total
+// termina en 60% en vez de 40%. Se puede correr las veces que haga falta --
+// siempre re-congela todo con el peso de HOY, es seguro repetirlo.
+// ==========================================
+function recalcularPesoCotidiano(idMateria, periodo) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const peso = calcularPesoCotidianoVigente(ss, idMateria, periodo);
+
+    const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
+    const idsCotidianoPeriodo = new Set();
+    for (let i = 1; i < dataInd.length; i++) {
+      if (String(dataInd[i][1]).trim() === String(idMateria).trim()
+          && String(dataInd[i][2]).trim() === "TRAB_COT"
+          && String(dataInd[i][7]) === String(periodo)) {
+        idsCotidianoPeriodo.add(String(dataInd[i][0]).trim());
+      }
+    }
+
+    if (idsCotidianoPeriodo.size === 0) {
+      return { error: "No hay indicadores de Cotidiano en ese periodo para esta materia" };
+    }
+
+    const sheet = ss.getSheetByName("NOTAS");
+    const data = sheet.getDataRange().getValues();
+    let actualizadas = 0;
+
+    for (let i = 1; i < data.length; i++) {
+      const idInd = String(data[i][1]).trim();
+      if (!idsCotidianoPeriodo.has(idInd)) continue;
+
+      const nivelRaw = parseFloat(data[i][5]);
+      const nivel = isFinite(nivelRaw) ? nivelRaw : 0;
+      const nuevoPorc = parseFloat(((nivel / 3) * peso).toFixed(2));
+
+      data[i][3] = nuevoPorc;
+      actualizadas++;
+    }
+
+    if (actualizadas > 0) {
+      sheet.getRange(1, 1, data.length, data[0].length).setValues(data);
+    }
+
+    return { success: true, actualizadas: actualizadas, pesoNuevo: parseFloat(peso.toFixed(2)) };
   } catch (e) { return { error: e.toString() }; }
 }
 
@@ -744,7 +830,12 @@ function obtenerDatosEvaluacion(idSeccion, idIndicador) {
 // se califique de ahi en adelante usa el peso nuevo (recalcular el pasado es una
 // migracion explicita, ver migrarNotasAMotorV2).
 // ==========================================
-function calcularPesoCotidianoVigente(ss, idMateria) {
+// periodo: OBLIGATORIO desde que existen periodos -- el peso de Cotidiano de un
+// indicador solo se reparte entre los indicadores DE SU MISMO periodo, nunca
+// contando los de otros periodos de la misma materia (ese conteo mezclado fue
+// el bug que infló a la mitad las notas de I Periodo al existir indicadores de
+// II Periodo ya creados).
+function calcularPesoCotidianoVigente(ss, idMateria, periodo) {
   const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
   let totalCot = 0;
   for (let i = 1; i < dataMat.length; i++) {
@@ -754,9 +845,160 @@ function calcularPesoCotidianoVigente(ss, idMateria) {
   const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
   let cantidad = 0;
   for (let i = 1; i < dataInd.length; i++) {
-    if (String(dataInd[i][1]).trim() === String(idMateria).trim() && String(dataInd[i][2]).trim() === "TRAB_COT") cantidad++;
+    if (String(dataInd[i][1]).trim() === String(idMateria).trim()
+        && String(dataInd[i][2]).trim() === "TRAB_COT"
+        && String(dataInd[i][7]) === String(periodo)) cantidad++;
   }
   return cantidad > 0 ? totalCot / cantidad : 0;
+}
+
+// ==========================================
+// BITACORA DE CAMBIOS (soporte real a reclamos tipo "pase lista y no se guardo"
+// o "cambie esta nota y no se refleja"). Enfocada SOLO en los dos puntos calientes
+// -- Notas y Asistencia -- no en todo el sistema, para no llenar el Sheets de
+// ruido que nadie va a revisar. Cada guardado de nota o marca de asistencia deja
+// un rastro: quien, cuando, y el valor anterior -> nuevo. Se puede consultar
+// despues con obtenerBitacoraCambios(idMateria).
+// ==========================================
+function registrarBitacoraCambio(ss, tipo, referencia, valorAnterior, valorNuevo, usuario) {
+  try {
+    let sheet = ss.getSheetByName("BITACORA_CAMBIOS");
+    if (!sheet) {
+      sheet = ss.insertSheet("BITACORA_CAMBIOS");
+      sheet.appendRow(["ID", "FECHA_HORA", "USUARIO", "TIPO", "REFERENCIA", "VALOR_ANTERIOR", "VALOR_NUEVO"]);
+    }
+    sheet.appendRow([
+      "BIT-" + Date.now() + Math.floor(Math.random() * 1000),
+      new Date(),
+      usuario || "desconocido",
+      tipo,
+      referencia,
+      valorAnterior === undefined || valorAnterior === null ? "" : valorAnterior,
+      valorNuevo === undefined || valorNuevo === null ? "" : valorNuevo
+    ]);
+  } catch (e) {
+    // La bitacora nunca debe romper el guardado real -- si falla, solo se pierde el rastro, no la nota/asistencia.
+    Logger.log("Error registrando bitacora: " + e.toString());
+  }
+}
+
+// Historial completo (Notas + Asistencia) de una materia, mas reciente primero.
+// idMateria se usa para filtrar NOTAS (via el indicador) y ASISTENCIA directo.
+function obtenerBitacoraCambios(idMateria) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName("BITACORA_CAMBIOS");
+    if (!sheet) return { success: true, lista: [] };
+
+    const data = sheet.getDataRange().getValues();
+
+    // Mapas de apoyo para mostrar nombres en vez de solo IDs
+    const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
+    let mapIndDesc = {}, mapIndMateria = {};
+    for (let i = 1; i < dataInd.length; i++) {
+      const idInd = String(dataInd[i][0]).trim();
+      mapIndDesc[idInd] = dataInd[i][3];
+      mapIndMateria[idInd] = String(dataInd[i][1]).trim();
+    }
+    const dataEst = ss.getSheetByName("ESTUDIANTES").getDataRange().getValues();
+    let mapEstNombre = {};
+    for (let i = 1; i < dataEst.length; i++) mapEstNombre[String(dataEst[i][0]).trim()] = dataEst[i][3];
+
+    let lista = [];
+    for (let i = 1; i < data.length; i++) {
+      const tipo = data[i][3];
+      const referencia = String(data[i][4]);
+      let coincide = false, detalle = "";
+
+      if (tipo === "NOTA") {
+        const [idInd, idEst] = referencia.split("|");
+        if (mapIndMateria[idInd] === String(idMateria).trim()) {
+          coincide = true;
+          detalle = `${mapIndDesc[idInd] || idInd} — ${mapEstNombre[idEst] || idEst}`;
+        }
+      } else if (tipo === "ASISTENCIA") {
+        const [idMat, idEst, fecha] = referencia.split("|");
+        if (String(idMat).trim() === String(idMateria).trim()) {
+          coincide = true;
+          detalle = `Asistencia ${fecha} — ${mapEstNombre[idEst] || idEst}`;
+        }
+      }
+
+      if (coincide) {
+        lista.push({
+          fecha: Utilities.formatDate(new Date(data[i][1]), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss"),
+          usuario: data[i][2],
+          tipo: tipo,
+          detalle: detalle,
+          anterior: data[i][5],
+          nuevo: data[i][6]
+        });
+      }
+    }
+
+    lista.reverse(); // mas reciente primero
+    return { success: true, lista: lista };
+  } catch (e) { return { error: e.toString() }; }
+}
+
+function generarPdfBitacoraCambios(idMateria) {
+  try {
+    const datos = obtenerBitacoraCambios(idMateria);
+    if (datos.error) return { success: false, message: datos.error };
+
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+    let nombreMateria = idMateria;
+    for (let i = 1; i < dataMat.length; i++) {
+      if (String(dataMat[i][0]) === String(idMateria)) { nombreMateria = dataMat[i][2]; break; }
+    }
+
+    const ETIQUETA_TIPO = { NOTA: "Nota", ASISTENCIA: "Asistencia" };
+
+    let filas = "";
+    datos.lista.forEach(h => {
+      const anteriorTxt = (h.anterior === "" || h.anterior === null || h.anterior === undefined) ? "— (nuevo)" : h.anterior;
+      filas += `
+      <tr>
+        <td style="border:1px solid #ddd; padding:5px; font-size:10px; white-space:nowrap;">${h.fecha}</td>
+        <td style="border:1px solid #ddd; padding:5px; font-size:10px;">${h.usuario}</td>
+        <td style="border:1px solid #ddd; padding:5px; font-size:10px; text-align:center;">${ETIQUETA_TIPO[h.tipo] || h.tipo}</td>
+        <td style="border:1px solid #ddd; padding:5px; font-size:10px;">${h.detalle}</td>
+        <td style="border:1px solid #ddd; padding:5px; font-size:10px; text-align:center;">${anteriorTxt} → <b>${h.nuevo}</b></td>
+      </tr>`;
+    });
+
+    if (datos.lista.length === 0) {
+      filas = `<tr><td colspan="5" style="border:1px solid #ddd; padding:10px; font-size:10px; text-align:center; color:#999;">Sin cambios registrados.</td></tr>`;
+    }
+
+    let html = `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+         <h3 style="text-align:center; color:#004E64; margin-bottom:5px;">HISTORIAL DE CAMBIOS</h3>
+         <h4 style="text-align:center; margin-top:0; color:#555;">${nombreMateria}</h4>
+
+         <table style="width:100%; border-collapse:collapse; margin-top:20px;">
+            <thead>
+                <tr style="background-color:#004E64; color:white; font-size:11px;">
+                   <th style="padding:5px; text-align:left;">FECHA/HORA</th>
+                   <th style="padding:5px; text-align:left;">USUARIO</th>
+                   <th style="padding:5px;">TIPO</th>
+                   <th style="padding:5px; text-align:left;">DETALLE</th>
+                   <th style="padding:5px;">CAMBIO</th>
+                </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+         </table>
+      </div>
+    `;
+
+    const blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
+    blob.setName(`Historial_${nombreMateria}.pdf`);
+    return { success: true, base64: Utilities.base64Encode(blob.getBytes()), nombre: blob.getName() };
+
+  } catch (e) {
+    return { success: false, message: e.toString() };
+  }
 }
 
 function guardarCalificaciones(data) {
@@ -767,13 +1009,14 @@ function guardarCalificaciones(data) {
 
   // Leer indicador desde Sheets para calcular % con datos autoritativos
   const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
-  let puntajeInd = 0, puntosTotalesInd = 100, esCotidianoInd = false, idMateriaInd = null;
+  let puntajeInd = 0, puntosTotalesInd = 100, esCotidianoInd = false, idMateriaInd = null, periodoInd = null;
   for (let k = 1; k < dataInd.length; k++) {
     if (String(dataInd[k][0]).trim() === indId) {
       esCotidianoInd = String(dataInd[k][2]).trim() === "TRAB_COT";
       puntajeInd     = parseFloat(dataInd[k][4]) || 0;
       puntosTotalesInd = parseFloat(dataInd[k][6]) || 100;
       idMateriaInd = String(dataInd[k][1]).trim();
+      periodoInd = dataInd[k][7];
       break;
     }
   }
@@ -781,7 +1024,8 @@ function guardarCalificaciones(data) {
   // MOTOR V2 (Opcion B): para Cotidiano, el peso NO se toma del campo "puntaje"
   // guardado en el indicador (puede quedar desactualizado si se agregan mas
   // indicadores despues) -- se recalcula el peso vigente UNA vez aqui y se congela.
-  const pesoCotFijo = esCotidianoInd ? calcularPesoCotidianoVigente(ss, idMateriaInd) : 0;
+  // Se reparte SOLO entre los indicadores del MISMO periodo (ver calcularPesoCotidianoVigente).
+  const pesoCotFijo = esCotidianoInd ? calcularPesoCotidianoVigente(ss, idMateriaInd, periodoInd) : 0;
 
   const dataNotas = sheet.getDataRange().getValues();
 
@@ -798,9 +1042,11 @@ function guardarCalificaciones(data) {
       porcObtenido = parseFloat(((nivelBruto / puntosTotalesInd) * puntajeInd).toFixed(2));
     }
 
+    let nivelAnterior = null;
     for(let r = 1; r < dataNotas.length; r++) {
       if(String(dataNotas[r][1]).trim() === indId && String(dataNotas[r][2]).trim() === estId) {
         fila = r + 1;
+        nivelAnterior = dataNotas[r][5];
         break;
       }
     }
@@ -811,6 +1057,12 @@ function guardarCalificaciones(data) {
       sheet.getRange(fila, 4).setNumberFormat('0.00').setValue(porcObtenido);
       sheet.getRange(fila, 5).setValue(fechaActual);
       sheet.getRange(fila, 6).setNumberFormat('0.00').setValue(nivelBruto);
+
+      // BITACORA: solo si el nivel realmente cambio -- vuelve a guardar el mismo
+      // valor (re-abrir y confirmar sin tocar nada) no genera ruido.
+      if (String(nivelAnterior) !== String(nivelBruto)) {
+        registrarBitacoraCambio(ss, "NOTA", indId + "|" + estId, nivelAnterior, nivelBruto, data.email);
+      }
     } else {
       sheet.appendRow([
         "NOTE-" + Date.now() + Math.floor(Math.random() * 1000),
@@ -820,6 +1072,7 @@ function guardarCalificaciones(data) {
         fechaActual,
         nivelBruto
       ]);
+      registrarBitacoraCambio(ss, "NOTA", indId + "|" + estId, "", nivelBruto, data.email);
 
       const filaNueva = sheet.getLastRow();
       sheet.getRange(filaNueva, 4).setNumberFormat('0.00');
@@ -1169,14 +1422,22 @@ function guardarMarcaAsistencia(payload) {
       }
     }
 
+    const referenciaBit = payload.idMateria + "|" + payload.idEst + "|" + fechaInput;
+
     if(filasEncontradas.length > 0) {
+      const estadoAnterior = data[filasEncontradas[0] - 1][4];
       sheet.getRange(filasEncontradas[0], 5).setValue(payload.estado);
 
       for(let k = filasEncontradas.length - 1; k >= 1; k--) {
         sheet.deleteRow(filasEncontradas[k]);
       }
+
+      if (String(estadoAnterior) !== String(payload.estado)) {
+        registrarBitacoraCambio(ss, "ASISTENCIA", referenciaBit, estadoAnterior, payload.estado, payload.email);
+      }
     } else {
       sheet.appendRow(["AS-" + Date.now(), payload.fecha, payload.idEst, payload.idMateria, payload.estado, idUser]);
+      registrarBitacoraCambio(ss, "ASISTENCIA", referenciaBit, "", payload.estado, payload.email);
     }
 
     return { success: true };
@@ -1211,12 +1472,19 @@ function guardarMarcaAsistenciaBatch(payload) {
           filasEncontradas.push(i + 1);
         }
       }
+      const referenciaBit = m.idMateria + "|" + m.idEst + "|" + fechaInput;
+
       if(filasEncontradas.length > 0) {
+        const estadoAnterior = data[filasEncontradas[0] - 1][4];
         sheet.getRange(filasEncontradas[0], 5).setValue(m.estado);
+        if (String(estadoAnterior) !== String(m.estado)) {
+          registrarBitacoraCambio(ss, "ASISTENCIA", referenciaBit, estadoAnterior, m.estado, payload.email);
+        }
       } else {
         const newRow = ["AS-" + Date.now() + Math.random(), m.fecha, m.idEst, m.idMateria, m.estado, payload.email];
         sheet.appendRow(newRow);
         data.push(newRow); // Actualizar copia local para próximas iteraciones
+        registrarBitacoraCambio(ss, "ASISTENCIA", referenciaBit, "", m.estado, payload.email);
       }
     });
 
@@ -1803,14 +2071,19 @@ function extraerPorcentaje(valor) {
 // ==========================================
 // ASISTENCIA POR ESTUDIANTE Y MATERIA
 // ==========================================
+// NOTA: el porcentaje ya NO se calcula aqui con una formula propia (antes era
+// un simple P/total que ni siquiera contaba las justificadas -- buscaba la
+// clave "AJ", que el registro real nunca guarda, solo guarda "J"). Ahora
+// reutiliza calcularAsistenciaMap, la misma funcion autoritativa que usan la
+// Matriz y los reportes, para que los 3 lugares del sistema digan lo mismo.
 function obtenerAsistenciaEstudiante(idEstudiante, idMateria) {
   try {
     const ss = SpreadsheetApp.openById(SHEET_ID);
     const sheetAsis = ss.getSheetByName("ASISTENCIA_DATA");
-    if(!sheetAsis) return { success: true, conteo: { P:0, AI:0, T:0, AJ:0, E:0 }, total: 0 };
+    if(!sheetAsis) return { success: true, conteo: { P:0, AI:0, T:0, J:0, E:0 }, total: 0, porcentaje: 100 };
 
     const data = sheetAsis.getDataRange().getValues();
-    let conteo = { P:0, AI:0, T:0, AJ:0, E:0 };
+    let conteo = { P:0, AI:0, T:0, J:0, E:0 };
 
     for(let i=1; i<data.length; i++) {
       if(String(data[i][2]).trim() === String(idEstudiante).trim() &&
@@ -1820,8 +2093,15 @@ function obtenerAsistenciaEstudiante(idEstudiante, idMateria) {
       }
     }
 
-    let total = conteo.P + conteo.AI + conteo.T + conteo.AJ + conteo.E;
-    let porcentaje = total > 0 ? Math.round((conteo.P / total) * 100) : 100;
+    let total = conteo.P + conteo.AI + conteo.T + conteo.J + conteo.E;
+
+    const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+    let valorAsist = 0;
+    for (let i = 1; i < dataMat.length; i++) {
+      if (String(dataMat[i][0]).trim() === String(idMateria).trim()) { valorAsist = Number(dataMat[i][7]) || 0; break; }
+    }
+    const mapa = calcularAsistenciaMap(idMateria, valorAsist);
+    const porcentaje = mapa[String(idEstudiante).trim()] !== undefined ? mapa[String(idEstudiante).trim()] : valorAsist;
 
     return { success: true, conteo: conteo, total: total, porcentaje: porcentaje };
   } catch(e) { return { error: e.toString() }; }
@@ -2608,8 +2888,17 @@ function calcularAsistenciaMap(idMateria, valorTotalAsist) {
    let dataAsis = sheetAsis.getDataRange().getValues();
    let perdidas = {};
 
+   // Peso de cada estado sobre las lecciones perdidas ese día:
+   // AI (ausencia injustificada) = 1 leccion completa perdida.
+   // T (tardia, 0-10 min desde el inicio) = media leccion perdida -- una tardia
+   // pasados los 10 min ya se marca directo como AI, no como T.
+   // E (escapada) y J (justificada) NO restan puntos (igual que "Presente").
+   const PESO_ESTADO = { 'AI': 1, 'T': 0.5 };
+
    for(let i=1; i<dataAsis.length; i++) {
-     if(String(dataAsis[i][3]).trim() === String(idMateria).trim() && dataAsis[i][4] === 'AI') {
+     const estado = dataAsis[i][4];
+     const peso = PESO_ESTADO[estado];
+     if(String(dataAsis[i][3]).trim() === String(idMateria).trim() && peso) {
         let idEst = String(dataAsis[i][2]).trim();
         let fecha = new Date(dataAsis[i][1]);
         let dName = diasMap[fecha.getDay()];
@@ -2617,7 +2906,7 @@ function calcularAsistenciaMap(idMateria, valorTotalAsist) {
         let ptsPerdidos = 0;
         configs.forEach(cfg => {
            if(fecha >= cfg.ini && fecha <= cfg.fin && cfg.dias[dName]) {
-              ptsPerdidos = Number(cfg.dias[dName]);
+              ptsPerdidos = Number(cfg.dias[dName]) * peso;
            }
         });
 
@@ -2733,6 +3022,110 @@ function generarPdfListaEstudiantes(idSeccion) {
   const blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
   blob.setName(`Lista_${nombreSeccion}.pdf`);
   return { success: true, base64: Utilities.base64Encode(blob.getBytes()), nombre: blob.getName() };
+}
+
+// ==========================================
+// KPIs POR MATERIA (panel al entrar a una asignatura)
+// Reutiliza funciones ya existentes y confiables (obtenerCuadroMateria,
+// calcularAsistenciaMap) en vez de recalcular todo de cero -- misma logica que
+// ya usan Cuadro/Boleta/SEA, para no crear una cuarta fuente de verdad.
+// ==========================================
+function getMateriaKPIs(idMateria) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+
+    const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+    let materia = null;
+    for (let i = 1; i < dataMat.length; i++) {
+      if (String(dataMat[i][0]).trim() === String(idMateria).trim()) {
+        materia = {
+          id: dataMat[i][0], nombre: dataMat[i][2],
+          asistencia: Number(dataMat[i][7]) || 0,
+          notaMinima: Number(dataMat[i][8]) || 65
+        };
+        break;
+      }
+    }
+    if (!materia) return { error: "Materia no encontrada" };
+
+    // 1. Promedio, distribucion y estudiantes en riesgo (a partir del Cuadro ya existente)
+    const cuadro = obtenerCuadroMateria(idMateria);
+    if (cuadro.error) return { error: cuadro.error };
+
+    // Ampliación: la nota de cada estudiante se topa/ajusta antes de clasificar
+    // aprobado/reprobado, para que "en riesgo" y el promedio reflejen la
+    // realidad una vez aplicado el examen extraordinario (ver aplicarTopeAmpliacion).
+    const ampliaciones = obtenerAmpliacionesPorMateria(ss, idMateria);
+
+    let sumaTotal = 0;
+    const distribucion = { excelente: 0, aprobado: 0, reprobado: 0 };
+    const enRiesgo = [];
+
+    cuadro.lista.forEach(e => {
+      const intentosEst = ampliaciones[e.id];
+      const resultado = aplicarTopeAmpliacion(e.total, materia.notaMinima, intentosEst);
+      const totalAjustado = resultado.notaFinal;
+
+      sumaTotal += totalAjustado;
+      if (totalAjustado >= 90) distribucion.excelente++;
+      else if (totalAjustado >= materia.notaMinima) distribucion.aprobado++;
+      else distribucion.reprobado++;
+
+      if (totalAjustado < materia.notaMinima) {
+        enRiesgo.push({
+          id: e.id,
+          nombre: e.nombre,
+          total: totalAjustado,
+          totalOriginal: e.total,
+          ampliacion: resultado.ampliacion,
+          intentosRestantes: Math.max(0, 2 - (intentosEst ? intentosEst.length : 0))
+        });
+      }
+    });
+    enRiesgo.sort((a, b) => a.total - b.total);
+
+    const totalEst = cuadro.lista.length;
+    const promedio = totalEst > 0 ? parseFloat((sumaTotal / totalEst).toFixed(1)) : 0;
+
+    // 2. Avance de calificacion por rubro (cuantos indicadores de cada categoria ya tienen al menos 1 nota)
+    const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
+    const dataNotas = ss.getSheetByName("NOTAS").getDataRange().getValues();
+    const indConNota = new Set();
+    for (let i = 1; i < dataNotas.length; i++) indConNota.add(String(dataNotas[i][1]).trim());
+
+    const CAT_LABEL = { TRAB_COT: 'Cotidiano', TAREAS: 'Tareas', PRUEBAS: 'Pruebas', PROYECTOS: 'Proyectos' };
+    const avancePorRubro = {};
+    Object.keys(CAT_LABEL).forEach(c => avancePorRubro[c] = { label: CAT_LABEL[c], total: 0, calificados: 0 });
+
+    for (let i = 1; i < dataInd.length; i++) {
+      if (String(dataInd[i][1]).trim() !== String(idMateria).trim()) continue;
+      const cat = String(dataInd[i][2]).trim();
+      if (!avancePorRubro[cat]) continue;
+      avancePorRubro[cat].total++;
+      if (indConNota.has(String(dataInd[i][0]).trim())) avancePorRubro[cat].calificados++;
+    }
+
+    // 3. Asistencia promedio de la materia (mismo motor que Cuadro/Boleta/SEA)
+    const mapAsist = calcularAsistenciaMap(idMateria, materia.asistencia);
+    let sumaAsist = 0;
+    cuadro.lista.forEach(e => {
+      sumaAsist += (mapAsist[e.id] !== undefined ? mapAsist[e.id] : materia.asistencia);
+    });
+    const asistenciaPromedio = totalEst > 0 ? parseFloat((sumaAsist / totalEst).toFixed(1)) : materia.asistencia;
+
+    return {
+      success: true,
+      materia: materia.nombre,
+      notaMinima: materia.notaMinima,
+      totalEstudiantes: totalEst,
+      promedio: promedio,
+      distribucion: distribucion,
+      enRiesgo: enRiesgo,
+      avancePorRubro: Object.values(avancePorRubro),
+      asistenciaPromedio: asistenciaPromedio,
+      valorAsistTotal: materia.asistencia
+    };
+  } catch (e) { return { error: e.toString() }; }
 }
 
 // ==========================================
@@ -2894,6 +3287,35 @@ function limpiarDuplicadosNotas() {
 }
 
 // ==========================================
+// MOTOR V2: MIGRACION UNICA (INDICADORES SIN PERIODO)
+// Los indicadores creados ANTES de agregar el campo PERIODO tienen esa columna
+// vacia. Sin este backfill, el filtro "Ver periodo" y "Clonar a Periodo 2" no
+// encuentran nada para esas materias, porque comparan contra un periodo
+// especifico (1, 2...) y la fila vieja no coincide con ninguno.
+// Se asume que todo indicador sin periodo pertenece al I Periodo (es lo que ya
+// existia cuando el sistema todavia no distinguia periodos). Correr UNA vez,
+// desde el editor de Apps Script (Run -> migrarIndicadoresAPeriodo1), antes de
+// usar el filtro de periodo o el clonado por primera vez en un Sheets existente.
+// ==========================================
+function migrarIndicadoresAPeriodo1() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName("INDICADORES");
+  const data = sheet.getDataRange().getValues();
+
+  let actualizados = 0;
+  for (let i = 1; i < data.length; i++) {
+    const periodoActual = data[i][7];
+    if (periodoActual === "" || periodoActual === undefined || periodoActual === null) {
+      sheet.getRange(i + 1, 8).setValue(1);
+      actualizados++;
+    }
+  }
+
+  Logger.log("Indicadores migrados a Periodo 1: " + actualizados);
+  return { success: true, actualizados: actualizados };
+}
+
+// ==========================================
 // MOTOR V2: MIGRACION UNICA
 // Recalcula el %_OBTENIDO de todas las notas TRAB_COT existentes usando el
 // peso vigente ACTUAL de su materia (Opcion B), y lo congela. Correr UNA vez,
@@ -2907,14 +3329,19 @@ function migrarNotasAMotorV2() {
   const data = sheet.getDataRange().getValues();
 
   const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
-  let mapIndCat = {}, mapIndMateria = {};
+  let mapIndCat = {}, mapIndMateria = {}, mapIndPeriodo = {};
   for (let i = 1; i < dataInd.length; i++) {
     const idInd = String(dataInd[i][0]).trim();
     mapIndCat[idInd] = dataInd[i][2];
     mapIndMateria[idInd] = String(dataInd[i][1]).trim();
+    mapIndPeriodo[idInd] = dataInd[i][7];
   }
 
-  const pesoPorMateria = {}; // cache: 1 sola vuelta por materia, no una por nota
+  // cache: 1 sola vuelta por combinacion materia+periodo, no una por nota. Antes
+  // se cacheaba solo por materia, lo que mezclaba el conteo de indicadores de
+  // varios periodos y arruinaba el peso (ej. 4 indicadores de 2 periodos
+  // distintos contados como si fueran del mismo rubro).
+  const pesoPorMateriaPeriodo = {};
   let actualizadas = 0;
 
   for (let i = 1; i < data.length; i++) {
@@ -2922,10 +3349,12 @@ function migrarNotasAMotorV2() {
     if (mapIndCat[idInd] !== 'TRAB_COT') continue;
 
     const idMateria = mapIndMateria[idInd];
-    if (pesoPorMateria[idMateria] === undefined) {
-      pesoPorMateria[idMateria] = calcularPesoCotidianoVigente(ss, idMateria);
+    const periodo = mapIndPeriodo[idInd];
+    const clave = idMateria + "|" + periodo;
+    if (pesoPorMateriaPeriodo[clave] === undefined) {
+      pesoPorMateriaPeriodo[clave] = calcularPesoCotidianoVigente(ss, idMateria, periodo);
     }
-    const peso = pesoPorMateria[idMateria];
+    const peso = pesoPorMateriaPeriodo[clave];
 
     const nivelRaw = parseFloat(data[i][5]);
     const nivel = isFinite(nivelRaw) ? nivelRaw : 0;
@@ -2950,6 +3379,14 @@ function migrarNotasAMotorV2() {
 // ==========================================
 function obtenerNotaFinalAnual(idMateria) {
   try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+    let notaMinima = 65;
+    for (let i = 1; i < dataMat.length; i++) {
+      if (String(dataMat[i][0]).trim() === String(idMateria).trim()) { notaMinima = Number(dataMat[i][8]) || 65; break; }
+    }
+    const ampliaciones = obtenerAmpliacionesPorMateria(ss, idMateria);
+
     const p1 = obtenerCuadroMateria(idMateria, 1);
     if (p1.error) return p1;
     const p2 = obtenerCuadroMateria(idMateria, 2);
@@ -2960,15 +3397,172 @@ function obtenerNotaFinalAnual(idMateria) {
     const lista = p1.lista.map(eP1 => {
       const eP2 = mapP2[eP1.id];
       const tieneP2 = eP2 !== undefined;
+      const notaFinalBase = tieneP2 ? Math.round((eP1.total + eP2.total) / 2) : "Pendiente";
+      const resultado = aplicarTopeAmpliacion(notaFinalBase, notaMinima, ampliaciones[eP1.id]);
+
       return {
         id: eP1.id,
         nombre: eP1.nombre,
         notaPeriodo1: eP1.total,
         notaPeriodo2: tieneP2 ? eP2.total : null,
-        notaFinal: tieneP2 ? Math.round((eP1.total + eP2.total) / 2) : "Pendiente"
+        notaFinal: resultado.notaFinal,
+        notaFinalOriginal: notaFinalBase,
+        ampliacion: resultado.ampliacion
       };
     });
 
     return { success: true, materia: p1.materia, lista: lista };
   } catch (e) { return { error: e.toString() }; }
+}
+
+// ==========================================
+// MOTOR V2: AMPLIACIÓN (EXAMEN EXTRAORDINARIO)
+// Reglas confirmadas con Nelson:
+// - Aplica solo si la nota final (base) no alcanza notaMinima de la materia.
+// - Máximo 2 intentos por estudiante+materia.
+// - La nota final ajustada = MAX(notaBase, intento1, intento2).
+//   Si ese máximo alcanza notaMinima, la nota final se topa exactamente en
+//   notaMinima (no en la nota real de la ampliación, que igual queda
+//   registrada para trazabilidad). Si ninguno alcanza, se muestra ese
+//   máximo tal cual (aunque siga reprobado, refleja la mejor nota real).
+// - No se usa en el Informe SEA (confirmado, no aplica ahí).
+// Hoja AMPLIACIONES se autocrea en el primer registro (mismo patrón que
+// BITACORA_CAMBIOS) para no depender de que alguien la arme a mano en Sheets.
+// ==========================================
+
+function obtenerAmpliacionesPorMateria(ss, idMateria) {
+  const sheet = ss.getSheetByName("AMPLIACIONES");
+  const map = {}; // idEst -> [{intento, nota, fecha}]
+  if (!sheet) return map;
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][1]).trim() !== String(idMateria).trim()) continue;
+    const idEst = String(data[i][2]).trim();
+    if (!map[idEst]) map[idEst] = [];
+    map[idEst].push({ intento: data[i][3], nota: Number(data[i][4]) || 0, fecha: data[i][5] });
+  }
+  return map;
+}
+
+function aplicarTopeAmpliacion(notaBase, notaMinima, intentos) {
+  if (notaBase === null || notaBase === undefined || notaBase === "Pendiente") {
+    return { notaFinal: notaBase, ampliacion: null };
+  }
+  if (!intentos || intentos.length === 0 || notaBase >= notaMinima) {
+    return { notaFinal: notaBase, ampliacion: null };
+  }
+
+  let mejor = notaBase;
+  let mejorIntento = null;
+  intentos.forEach(it => {
+    if (it.nota > mejor) { mejor = it.nota; mejorIntento = it; }
+  });
+
+  if (!mejorIntento) return { notaFinal: notaBase, ampliacion: null }; // ningún intento superó la nota original
+
+  if (mejor >= notaMinima) {
+    return { notaFinal: notaMinima, ampliacion: { notaObtenida: mejor, intento: mejorIntento.intento, aprobo: true } };
+  }
+  return { notaFinal: mejor, ampliacion: { notaObtenida: mejor, intento: mejorIntento.intento, aprobo: false } };
+}
+
+function guardarAmpliacion(form) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    let sheet = ss.getSheetByName("AMPLIACIONES");
+    if (!sheet) {
+      sheet = ss.insertSheet("AMPLIACIONES");
+      sheet.appendRow(["ID", "ID_MATERIA", "ID_EST", "INTENTO", "NOTA", "FECHA", "ID_USUARIO", "FECHA_REGISTRO"]);
+    }
+
+    const data = sheet.getDataRange().getValues();
+    let intentosPrevios = 0;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][1]).trim() === String(form.idMateria).trim() && String(data[i][2]).trim() === String(form.idEst).trim()) {
+        intentosPrevios++;
+      }
+    }
+    if (intentosPrevios >= 2) {
+      return { success: false, message: "Ya se registraron los 2 intentos permitidos de ampliación para este estudiante en esta materia." };
+    }
+
+    const idUsuario = obtenerIdUsuarioPorEmail(form.email);
+    const intento = intentosPrevios + 1;
+    sheet.appendRow([
+      "AMP-" + Date.now(),
+      form.idMateria,
+      form.idEst,
+      intento,
+      Number(form.nota) || 0,
+      form.fecha || new Date(),
+      idUsuario,
+      new Date() // FECHA_REGISTRO: timestamp real del guardado, no editable -- para medir cuanto tarda el docente en registrar la ampliacion despues del examen.
+    ]);
+    return { success: true, intento: intento };
+  } catch (e) { return { success: false, message: e.toString() }; }
+}
+
+// Reporte imprimible de Ampliaciones por materia -- reutiliza obtenerNotaFinalAnual
+// (misma fuente de verdad que la pantalla "Nota Final Anual") en vez de recalcular.
+// soloConAmpliacion=true filtra solo estudiantes que efectivamente hicieron algun intento.
+function generarPdfAmpliaciones(idMateria, soloConAmpliacion) {
+  try {
+    const datos = obtenerNotaFinalAnual(idMateria);
+    if (datos.error) return { success: false, message: datos.error };
+
+    let lista = datos.lista;
+    if (soloConAmpliacion) lista = lista.filter(e => e.ampliacion);
+
+    if (lista.length === 0) {
+      return { success: false, message: "No hay estudiantes que cumplan con el filtro seleccionado." };
+    }
+
+    let filas = "";
+    lista.forEach((e, idx) => {
+      const tieneAmp = !!e.ampliacion;
+      const detalle = tieneAmp
+        ? `Intento ${e.ampliacion.intento}: ${e.ampliacion.notaObtenida}% (original ${e.notaFinalOriginal}%)`
+        : "—";
+      const color = e.notaFinal === "Pendiente" ? "#999" : (e.notaFinal >= 65 ? "green" : "red");
+      filas += `
+      <tr>
+        <td style="border:1px solid #ddd; padding:5px; font-size:10px; text-align:center;">${idx + 1}</td>
+        <td style="border:1px solid #ddd; padding:5px; font-size:10px;">${e.nombre}</td>
+        <td style="border:1px solid #ddd; padding:5px; font-size:10px; text-align:center;">${e.notaPeriodo1}</td>
+        <td style="border:1px solid #ddd; padding:5px; font-size:10px; text-align:center;">${e.notaPeriodo2 !== null ? e.notaPeriodo2 : '—'}</td>
+        <td style="border:1px solid #ddd; padding:5px; font-size:10px; text-align:center; font-weight:bold; background-color:#f0f0f0; color:${color};">${e.notaFinal}</td>
+        <td style="border:1px solid #ddd; padding:5px; font-size:10px;">${detalle}</td>
+      </tr>`;
+    });
+
+    const subtitulo = soloConAmpliacion ? "Solo estudiantes con Ampliación" : "Todos los estudiantes";
+    let html = `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+         <h3 style="text-align:center; color:#004E64; margin-bottom:5px;">REPORTE DE AMPLIACIONES</h3>
+         <h4 style="text-align:center; margin-top:0; color:#555;">${datos.materia}</h4>
+         <p style="text-align:center; font-size:11px; color:#888; margin-top:0;">${subtitulo}</p>
+
+         <table style="width:100%; border-collapse:collapse; margin-top:20px;">
+            <thead>
+                <tr style="background-color:#004E64; color:white; font-size:11px;">
+                   <th style="padding:5px;">#</th>
+                   <th style="padding:5px; text-align:left;">ESTUDIANTE</th>
+                   <th style="padding:5px;">I PERIODO</th>
+                   <th style="padding:5px;">II PERIODO</th>
+                   <th style="padding:5px;">FINAL</th>
+                   <th style="padding:5px; text-align:left;">DETALLE AMPLIACIÓN</th>
+                </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+         </table>
+      </div>
+    `;
+
+    const blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
+    blob.setName(`Ampliaciones_${datos.materia}.pdf`);
+    return { success: true, base64: Utilities.base64Encode(blob.getBytes()), nombre: blob.getName() };
+
+  } catch (e) {
+    return { success: false, message: e.toString() };
+  }
 }

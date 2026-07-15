@@ -79,6 +79,26 @@
         min-height: 44px;
     }
 
+    /* --- MENÚ LATERAL: fondo claro y cálido (#FBF9F5), consistente con la
+       paleta real de la app -- el token "indigo" de Tailwind esta remapeado
+       a la terracota de marca (ver tailwind.config: indigo-600 = #C96442),
+       la misma que usa el botón "Acceder" del login. Antes el riel era
+       oscuro (slate-900) con texto pensado para fondo blanco, casi invisible;
+       ahora es claro de origen, así que reutiliza directamente esos tonos. --- */
+    .sb-label { color: #94a3b8; } /* slate-400: eyebrow, un punto más discreto que los items */
+    .sb-item  { color: #475569; } /* slate-600: mismo tono de texto que el resto de la app */
+    .sb-icon  { color: #94a3b8; } /* slate-400 */
+
+    .sb-item:hover { background: #FDF5F1; color: #AE5235; } /* indigo-50 / indigo-700 */
+    .sb-item:hover .sb-icon { color: #C96442; } /* indigo-600 */
+
+    .sb-item.sb-active {
+        background: #FAEAE1; /* indigo-100 */
+        color: #AE5235;      /* indigo-700 */
+        border-right: 3px solid #C96442; /* indigo-600 */
+    }
+    .sb-item.sb-active .sb-icon { color: #C96442; }
+
     /* Inputs más cómodos en mobile */
     @media (max-width: 767px) {
         select, input[type="date"], input[type="text"], input[type="email"], input[type="password"] {
@@ -333,79 +353,78 @@
     <!-- 2. SIDEBAR (MENÚ LATERAL) -->
     <!-- ========================================== -->
     <!-- Se muestra solo si está logueado -->
-    <aside id="sidebar" class="w-64 bg-slate-900 border-r border-slate-800 hidden flex-col z-40 transition-all duration-300 transform md:translate-x-0 -translate-x-full fixed md:relative h-full text-slate-300">
+    <aside id="sidebar" class="w-64 bg-[#FBF9F5] border-r border-[#E8E4DA] hidden flex-col z-40 transition-all duration-300 transform md:translate-x-0 -translate-x-full fixed md:relative h-full text-slate-600">
         <!-- Logo -->
-     <div class="p-6 border-b border-slate-800 flex items-center gap-3">
-            
-            <!-- Icono: Lo ponemos blanco o en un contenedor suave -->
-            <div class="bg-white/10 p-2 rounded-lg flex items-center justify-center">
-                <i class="fas fa-graduation-cap text-2xl text-indigo-400"></i>
+     <div class="p-6 border-b border-[#E8E4DA] flex items-center gap-3">
+
+            <!-- Icono: mismo tratamiento que el logo de la pantalla de login (bg-indigo-50 = crema terracota) -->
+            <div class="bg-indigo-50 p-2 rounded-lg flex items-center justify-center">
+                <i class="fas fa-graduation-cap text-2xl text-indigo-600"></i>
             </div>
-            
+
             <div>
-                <!-- AQUÍ EL CAMBIO: text-white para que resalte -->
-                <h1 class="font-bold text-xl text-white tracking-tight">RegistraME</h1>
-                
+                <h1 class="font-bold text-xl text-slate-800 tracking-tight">RegistraME</h1>
+
                 <!-- Badge PRO ajustado -->
-                <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold shadow-lg shadow-indigo-900/50">PRO</span>
+                <span class="text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full font-bold shadow-sm">PRO</span>
             </div>
         </div>
 
         <!-- Menú Scrolleable -->
         <nav class="flex-1 overflow-y-auto p-4 space-y-1">
-            
+
             <!-- SECCIÓN DOCENTE -->
             <div id="menu-docente" class="space-y-1">
-                <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-2">Principal</p>
-                
+                <p class="sb-label px-3 text-xs font-bold uppercase tracking-wider mb-2 mt-2">Principal</p>
+
               <!-- Fíjate en el onclick: cambiamos app.nav por app.loadDashboardData -->
-                <a onclick="app.loadDashboardData()" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
-                    <i class="fas fa-home w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
+                <a onclick="app.loadDashboardData()" class="menu-item sb-item flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition group">
+                    <i class="fas fa-home w-6 sb-icon transition"></i>
                     <span class="font-medium text-sm">Dashboard</span>
                 </a>
-                
-                <a onclick="app.nav('asistencia')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
-                    <i class="fas fa-calendar-check w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
+
+                <a onclick="app.nav('asistencia')" class="menu-item sb-item flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition group">
+                    <i class="fas fa-calendar-check w-6 sb-icon transition"></i>
                     <span class="font-medium text-sm">Asistencia</span>
-                </a>              
+                </a>
 
-                <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-6">Académico</p>
+                <p class="sb-label px-3 text-xs font-bold uppercase tracking-wider mb-2 mt-6">Académico</p>
 
-                <a onclick="app.nav('planeamientos')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
-                    <i class="fas fa-clipboard-list w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
+                <a onclick="app.nav('planeamientos')" class="menu-item sb-item flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition group">
+                    <i class="fas fa-clipboard-list w-6 sb-icon transition"></i>
                     <span class="font-medium text-sm">Planeamiento</span>
                 </a>
 
-                <a onclick="app.nav('bitacoras')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
-                    <i class="fas fa-book-open w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
+                <a onclick="app.nav('bitacoras')" class="menu-item sb-item flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition group">
+                    <i class="fas fa-book-open w-6 sb-icon transition"></i>
                     <span class="font-medium text-sm">Bitácora</span>
                 </a>
 
-                <a onclick="app.nav('sea')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
-                    <i class="fas fa-file-excel w-6 text-green-600 group-hover:text-green-700 transition"></i>
+                <a onclick="app.nav('sea')" class="menu-item sb-item flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition group">
+                    <i class="fas fa-file-excel w-6 text-emerald-600 group-hover:text-emerald-700 transition"></i>
                     <span class="font-medium text-sm">Informe SEA</span>
                 </a>
 
-                <a onclick="app.nav('miaula')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
-                    <i class="fas fa-cloud-upload-alt w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
+                <a onclick="app.nav('miaula')" class="menu-item sb-item flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition group">
+                    <i class="fas fa-cloud-upload-alt w-6 sb-icon transition"></i>
                     <span class="font-medium text-sm">Mi Aula</span>
                 </a>
 
-                <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-6">Gestión</p>
+                <p class="sb-label px-3 text-xs font-bold uppercase tracking-wider mb-2 mt-6">Gestión</p>
 
-                <a onclick="app.nav('config')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
-                    <i class="fas fa-cog w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
+                <a onclick="app.nav('config')" class="menu-item sb-item flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition group">
+                    <i class="fas fa-cog w-6 sb-icon transition"></i>
                     <span class="font-medium text-sm">Configuración</span>
                 </a>
 
-                 <a onclick="app.nav('horarios')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
-                    <i class="fas fa-clock w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
+                 <a onclick="app.nav('horarios')" class="menu-item sb-item flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition group">
+                    <i class="fas fa-clock w-6 sb-icon transition"></i>
                     <span class="font-medium text-sm">Horarios</span>
                 </a>
 
                 <!-- NUEVO BOTÓN: AYUDA Y SOPORTE -->
-                <a onclick="app.nav('ayuda')" class="menu-item flex items-center px-3 py-2.5 text-slate-400 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group mt-6 border-t border-slate-800/50 pt-4">
-                    <i class="fas fa-life-ring w-6 text-slate-400 group-hover:text-indigo-500 transition"></i>
+                <a onclick="app.nav('ayuda')" class="menu-item sb-item flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition group mt-6 border-t border-[#E8E4DA] pt-4">
+                    <i class="fas fa-life-ring w-6 sb-icon transition"></i>
                     <span class="font-medium text-sm">Ayuda y Soporte</span>
                 </a>
 
@@ -413,9 +432,9 @@
 
             <!-- SECCIÓN ADMIN (Oculta por defecto) -->
             <div id="menu-admin" class="hidden space-y-1">
-                <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Administración</p>
-                <a onclick="app.nav('admin-users')" class="menu-item flex items-center px-3 py-2.5 text-gray-600 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer transition group">
-                    <i class="fas fa-users-cog w-6 text-gray-400 group-hover:text-indigo-500 transition"></i>
+                <p class="sb-label px-3 text-xs font-bold uppercase tracking-wider mb-2">Administración</p>
+                <a onclick="app.nav('admin-users')" class="menu-item sb-item flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition group">
+                    <i class="fas fa-users-cog w-6 sb-icon transition"></i>
                     <span class="font-medium text-sm">Usuarios</span>
                 </a>
             </div>
@@ -425,7 +444,7 @@
         </nav>
 
         <!-- Botón Salir -->
-        <div class="p-4 border-t border-gray-100">
+        <div class="p-4 border-t border-[#E8E4DA]">
             <button onclick="app.logout()" class="w-full flex items-center justify-center px-4 py-2 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition">
                 <i class="fas fa-sign-out-alt mr-2"></i> Cerrar Sesión
             </button>
@@ -545,6 +564,9 @@
                         <tbody id="table-materias-body" class="divide-y divide-gray-100 text-sm"></tbody>
                     </table>
                 </div>
+
+                <!-- PANEL DE KPIs: aparece al hacer clic en el nombre de una materia -->
+                <div id="materia-kpis-container" class="mt-6"></div>
             </div>
 
  <!-- VISTA: CONFIGURACIÓN DE HORARIO (REDISEÑADA) -->
@@ -1313,30 +1335,23 @@ enterApp: async () => {
             }
 
             // ----------------------------------------------------
-            // MAGIA UX: INDICADOR DE MENÚ ACTIVO (NUEVO)
+            // MAGIA UX: INDICADOR DE MENÚ ACTIVO
             // ----------------------------------------------------
-            // A. Resetear todos los botones del menú (volverlos grises)
+            // A. Apagar todos los botones del menú (vuelven al reposo sb-item)
             document.querySelectorAll('.menu-item').forEach(btn => {
-                // Quitamos las clases de "encendido"
-                btn.classList.remove('bg-indigo-50', 'text-indigo-600', 'border-r-4', 'border-indigo-600');
-                // Devolvemos el texto a gris
-                btn.classList.add('text-gray-600'); 
+                btn.classList.remove('sb-active');
             });
-            
+
             // B. Buscar el botón que corresponde a la vista actual
             let activeBtn = document.querySelector(`.menu-item[onclick*="nav('${viewId}')"]`);
-            
+
             // Caso especial: El Dashboard no usa app.nav() directo, usa loadDashboardData()
             if (viewId === 'dashboard') {
                 activeBtn = document.querySelector(`.menu-item[onclick*="loadDashboardData"]`);
             }
-            
+
             // C. Encender el botón encontrado
-            if (activeBtn) {
-                activeBtn.classList.remove('text-gray-600');
-                // Le ponemos fondo azul, texto azul y una rayita a la derecha
-                activeBtn.classList.add('bg-indigo-50', 'text-indigo-600', 'border-r-4', 'border-indigo-600');
-            }
+            if (activeBtn) activeBtn.classList.add('sb-active');
 
             // ----------------------------------------------------
             // 3. Actualizar Título del Header (Intacto)
@@ -1376,17 +1391,17 @@ enterApp: async () => {
         // FUNCIÓN UNIVERSAL DE DESCARGA PDF
         // ==========================================
 
-        downloadPdf: async (action, id) => {
+        downloadPdf: async (action, id, extra = {}) => {
             // 1. Feedback visual
-            Swal.fire({ 
-                title: 'Generando PDF...', 
+            Swal.fire({
+                title: 'Generando PDF...',
                 text: 'Esto puede tardar unos segundos.',
-                didOpen: () => Swal.showLoading() 
+                didOpen: () => Swal.showLoading()
             });
 
             // 2. Petición al Servidor
             // Nota: Enviamos 'id' genérico, el servidor sabrá si es idEstudiante o idMateria según la 'action'
-            const res = await app.api({ action: action, id: id });
+            const res = await app.api({ action: action, id: id, ...extra });
 
             // 3. Procesar Respuesta
             if(res && res.success) {
@@ -1472,6 +1487,78 @@ enterApp: async () => {
             } catch (e) {
                 return '';
             }
+        },
+
+        // Mismo criterio que getCurrentPeriodLabel, pero devuelve el numero de periodo
+        // (o null si estamos en vacaciones/fuera de rango) para usarlo como default
+        // del selector de periodo en Indicadores, en vez de solo mostrar un badge.
+        getPeriodoActivoNumero: (jsonFechas) => {
+            if (!jsonFechas) return null;
+            try {
+                const periodos = JSON.parse(jsonFechas);
+                const hoy = new Date();
+                hoy.setHours(0,0,0,0);
+                for (let p of periodos) {
+                    let inicio = new Date(p.inicio.replace(/-/g, '\/'));
+                    let fin = new Date(p.fin.replace(/-/g, '\/'));
+                    if (hoy >= inicio && hoy <= fin) return p.p;
+                }
+                return null;
+            } catch (e) {
+                return null;
+            }
+        },
+
+        // Cuantos periodos tiene configurada una sección (SECCIONES.periodos viene como
+        // texto "2 Periodos" desde el backend). Se usa para no ofrecer "III Periodo" en
+        // ningún selector si la sección solo tiene 2 -- que "Ver periodo" muestre siempre
+        // exactamente lo que existe, ni uno más.
+        getCantPeriodosSeccion: (idSec) => {
+            const sec = (app.data.secciones || []).find(s => String(s.id) === String(idSec));
+            const cant = sec ? parseInt(sec.periodos) : NaN;
+            return isFinite(cant) && cant > 0 ? cant : 3; // 3 = fallback si la sección es vieja/no tiene el dato
+        },
+
+        LABEL_PERIODO: { 1: 'I', 2: 'II', 3: 'III' },
+
+        // Arma un literal string 'seguro' para meter dentro de un atributo HTML
+        // delimitado con comillas dobles (onclick="...", onchange="..."). NUNCA usar
+        // JSON.stringify() ahi -- JSON.stringify tambien devuelve comillas dobles, que
+        // cortan el atributo a la mitad y el navegador descarta el handler en silencio
+        // (asi se rompio el selector de periodo en Boleta/Cuadro: parecia que "no pasaba
+        // nada" al elegir un periodo, pero en realidad el onchange nunca se registraba).
+        jsStr: (str) => `'${String(str).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`,
+
+        // Confirmación visible y con hora de que algo SI se guardó -- soporte real
+        // contra reclamos de "no se guardó": un toast que no bloquea, pero que le
+        // da al profe una prueba concreta (hora exacta) de que la accion se registro.
+        toast: (icon, titulo) => {
+            const hora = new Date().toLocaleTimeString('es-CR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2500 })
+                .fire({ icon, title: `${titulo} — ${hora}` });
+        },
+
+        // Arma las <option> de un selector de periodo (1..cantPeriodos), marcando la
+        // seleccionada. incluirTodos agrega la opción "Todos" al inicio (con value "").
+        buildPeriodoOptions: (cantPeriodos, seleccionado, incluirTodos) => {
+            let html = incluirTodos ? `<option value="" ${String(seleccionado) === '' ? 'selected' : ''}>Todos</option>` : '';
+            for (let p = 1; p <= cantPeriodos; p++) {
+                html += `<option value="${p}" ${String(seleccionado) === String(p) ? 'selected' : ''}>${app.LABEL_PERIODO[p] || p} Periodo</option>`;
+            }
+            return html;
+        },
+
+        // Titulo legible para encabezar cualquier reporte (Boleta/Cuadro/SEA): "I Periodo 2026"
+        // o "Todos los Periodos 2026" -- para que siempre quede claro de que periodo son los
+        // datos que se estan viendo/descargando, ahora que una sección puede tener varios.
+        getPeriodoReporteLabel: (periodo, idSec) => {
+            const sec = (app.data.secciones || []).find(s => String(s.id) === String(idSec));
+            const anio = sec ? sec.anio : '';
+            if (periodo === undefined || periodo === null || periodo === '') {
+                return `Todos los Periodos ${anio}`.trim();
+            }
+            const label = app.LABEL_PERIODO[String(periodo)] || periodo;
+            return `${label} Periodo ${anio}`.trim();
         },
 
         // 2. RENDER DASHBOARD (ACTUALIZADO COMPLETO)
@@ -2490,7 +2577,8 @@ openStudents: async (idSec, nombreSec) => {
             app.state.currentSecName = nombreSec;
             app.nav('materias');
             document.getElementById('page-title').innerText = `Asignaturas: ${nombreSec}`;
-            
+            document.getElementById('materia-kpis-container').innerHTML = '';
+
             const tbody = document.getElementById('table-materias-body');
             
             // Spinner moderno
@@ -2541,7 +2629,7 @@ openStudents: async (idSec, nombreSec) => {
                 tbody.innerHTML += `
                 <tr class="fade-in-up hover:bg-indigo-50/50 group border-b border-slate-100 transition-all hover:shadow-[inset_3px_0_0_0_#6366f1]" style="animation-delay: ${delay}s">
                     <td class="p-4">
-                        <span class="font-bold text-slate-700">${m.nombre}</span>
+                        <span class="font-bold text-slate-700 cursor-pointer hover:text-indigo-600 hover:underline" onclick="app.verKPIsMateria('${m.id}', ${app.jsStr(m.nombre)})" title="Ver KPIs de esta materia">${m.nombre}</span>
                         ${minBadge}
                     </td>
                     <td class="p-4 text-center text-xs text-slate-500">
@@ -2571,7 +2659,12 @@ openStudents: async (idSec, nombreSec) => {
                             <button onclick="app.verNotasMateria('${m.id}', '${m.nombre}')" class="h-8 w-8 rounded bg-emerald-50 text-emerald-500 hover:bg-emerald-100 hover:text-emerald-600 hover:scale-110 transition flex items-center justify-center" title="Cuadro de Notas">
                                 <i class="fas fa-table text-xs"></i>
                             </button>
-                            
+
+                            <!-- HISTORIAL DE CAMBIOS (Notas + Asistencia) -->
+                            <button onclick="app.verBitacoraCambios('${m.id}', '${m.nombre}')" class="h-8 w-8 rounded bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700 hover:scale-110 transition flex items-center justify-center" title="Historial de Cambios">
+                                <i class="fas fa-history text-xs"></i>
+                            </button>
+
                             <!-- ELIMINAR -->
                             <button onclick="app.deleteMateria('${m.id}')" class="h-8 w-8 rounded bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-500 hover:scale-110 transition flex items-center justify-center" title="Eliminar">
                                 <i class="fas fa-trash text-xs"></i>
@@ -3119,7 +3212,7 @@ saveScheduleConfig: async () => {
         },
 
         // ABRIR / CERRAR EL MODAL DE CREAR-EDITAR BLOQUE DE HORARIO
-        abrirModalNuevoHorario: (isEdit) => {
+        abrirModalNuevoHorario: async (isEdit) => {
             document.getElementById('modal-nuevo-horario').classList.remove('hidden');
             document.getElementById('modal-horario-titulo').innerHTML = isEdit
                 ? '<i class="fas fa-pen text-emerald-600 mr-2"></i>Editar Bloque de Horario'
@@ -3131,6 +3224,20 @@ saveScheduleConfig: async () => {
                 document.getElementById('hc-inst').value = '';
                 document.getElementById('hc-sec').innerHTML = '<option value="">Sección...</option>';
                 document.getElementById('hc-mat').innerHTML = '<option value="">Materia...</option>';
+
+                // Heredar Institución/Sección del filtro de arriba si ya estaban elegidas --
+                // evita pedirle al profe el mismo dato dos veces (una en el filtro, otra
+                // acá) cada vez que quiere agregar un horario nuevo.
+                const fInst = document.getElementById('hf-inst').value;
+                const fSec = document.getElementById('hf-sec').value;
+                if (fInst) {
+                    document.getElementById('hc-inst').value = fInst;
+                    app.loadSecHorarioConfig();
+                    if (fSec) {
+                        document.getElementById('hc-sec').value = fSec;
+                        await app.loadMatHorarioConfig();
+                    }
+                }
             }
         },
 
@@ -3175,12 +3282,16 @@ saveScheduleConfig: async () => {
 
             const list = await app.api({ action: 'getAllConfigHorarios', email: app.user.email });
             app.data.tempScheduleList = list || [];
-            app.populateHorarioFilters();
+            await app.populateHorarioFilters();
             app.renderScheduleList();
         },
 
-        // Repuebla los selects de Sección/Materia del filtro según lo que ya está cargado
-        populateHorarioFilters: () => {
+        // Repuebla los selects de Sección/Materia del filtro según lo que ya está cargado.
+        // El de Materia, cuando hay una sección elegida, se llena con las materias REALES
+        // de esa sección (via getSubjects) -- antes se armaba solo con las materias que ya
+        // tenían algún horario creado, así que una materia recién agregada (sin horarios
+        // todavía) nunca aparecía, aunque sí se hubiera guardado bien.
+        populateHorarioFilters: async () => {
             const selSec = document.getElementById('hf-sec');
             const selMat = document.getElementById('hf-mat');
             const fInst = document.getElementById('hf-inst').value;
@@ -3191,27 +3302,35 @@ saveScheduleConfig: async () => {
             selSec.innerHTML = '<option value="">Todas las secciones</option>' + seccionesFiltradas.map(s => `<option value="${s.id}">${s.nombre}</option>`).join('');
             if (seccionesFiltradas.some(s => String(s.id) === String(prevSec))) selSec.value = prevSec;
 
-            const materiasUnicas = {};
-            (app.data.tempScheduleList || []).forEach(c => {
-                if ((!fInst || String(c.idInstitucion) === String(fInst)) && (!fSec || String(c.idSeccion) === String(fSec))) {
-                    materiasUnicas[c.idMateria] = c.nomMateria;
-                }
-            });
             const prevMat = selMat.value;
-            selMat.innerHTML = '<option value="">Todas las materias</option>' + Object.entries(materiasUnicas).map(([mid, nom]) => `<option value="${mid}">${nom}</option>`).join('');
-            if (materiasUnicas[prevMat]) selMat.value = prevMat;
+
+            if (fSec) {
+                selMat.innerHTML = '<option value="">Cargando...</option>';
+                const mats = await app.api({ action: 'getSubjects', idSeccion: fSec }) || [];
+                selMat.innerHTML = '<option value="">Todas las materias</option>' + mats.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
+                if (mats.some(m => String(m.id) === String(prevMat))) selMat.value = prevMat;
+            } else {
+                // Sin una sección puntual elegida: mostramos las materias que ya tienen
+                // algún horario (no hay otra forma de acotar sin pedir todas las secciones).
+                const materiasUnicas = {};
+                (app.data.tempScheduleList || []).forEach(c => {
+                    if (!fInst || String(c.idInstitucion) === String(fInst)) materiasUnicas[c.idMateria] = c.nomMateria;
+                });
+                selMat.innerHTML = '<option value="">Todas las materias</option>' + Object.entries(materiasUnicas).map(([mid, nom]) => `<option value="${mid}">${nom}</option>`).join('');
+                if (materiasUnicas[prevMat]) selMat.value = prevMat;
+            }
         },
 
-        onHorarioFilterInstChange: () => {
+        onHorarioFilterInstChange: async () => {
             document.getElementById('hf-sec').value = '';
             document.getElementById('hf-mat').value = '';
-            app.populateHorarioFilters();
+            await app.populateHorarioFilters();
             app.renderScheduleList();
         },
 
-        onHorarioFilterSecChange: () => {
+        onHorarioFilterSecChange: async () => {
             document.getElementById('hf-mat').value = '';
-            app.populateHorarioFilters();
+            await app.populateHorarioFilters();
             app.renderScheduleList();
         },
 
@@ -3471,18 +3590,22 @@ renderScheduleList: () => {
                             const motivo = mapaNoLectivos[d.dateStr] || '';
                             if (esNoLectivo) {
                                 return `<th class="p-2 border min-w-[50px] text-center bg-slate-100 select-none" title="Sin clases: ${motivo}">
-                                    <div class="flex flex-col items-center gap-0.5">
+                                    <div class="flex flex-col items-center gap-1">
                                         <span class="text-slate-400">${d.label}</span>
-                                        <i class="fas fa-ban text-slate-400 text-xs"></i>
-                                        <button onclick="app.toggleDiaNoLectivo('${d.dateStr}', '${idMat}', true)" class="text-[8px] text-slate-400 hover:text-indigo-600 font-normal normal-case" title="Quitar marca de sin clases">Quitar</button>
+                                        <i class="fas fa-ban text-slate-400 text-sm"></i>
+                                        <button onclick="app.toggleDiaNoLectivo('${d.dateStr}', '${idMat}', true)" class="flex items-center gap-1 text-[10px] font-bold text-indigo-500 hover:text-indigo-700 bg-white border border-indigo-200 rounded-full px-2 py-0.5 shadow-sm transition" title="Quitar marca de sin clases">
+                                            <i class="fas fa-rotate-left text-[9px]"></i> Quitar
+                                        </button>
                                     </div>
                                 </th>`;
                             }
-                            return `<th class="p-2 border min-w-[50px] text-center bg-white select-none group">
-                                <div class="flex flex-col items-center gap-0.5">
-                                    <span class="cursor-pointer hover:text-green-700" onclick="app.markAllPresent('${d.dateStr}', '${idMat}', this)" title="Click para marcar todos Presentes\n${d.lessons} Lecciones">${d.label}</span>
-                                    <i class="fas fa-check-circle text-gray-300 text-xs mark-all-icon cursor-pointer" onclick="app.markAllPresent('${d.dateStr}', '${idMat}', this)"></i>
-                                    <button onclick="app.toggleDiaNoLectivo('${d.dateStr}', '${idMat}', false)" class="text-[8px] text-slate-300 hover:text-rose-500 font-normal normal-case opacity-0 group-hover:opacity-100 transition" title="Marcar día sin clases (feriado/evento)">Sin clases</button>
+                            return `<th class="p-2 border min-w-[50px] text-center bg-white select-none">
+                                <div class="flex flex-col items-center gap-1">
+                                    <span class="font-bold">${d.label}</span>
+                                    <div class="flex items-center gap-1.5">
+                                        <i class="fas fa-check-circle text-gray-300 hover:text-green-600 text-sm mark-all-icon cursor-pointer transition" onclick="app.markAllPresent('${d.dateStr}', '${idMat}', this)" title="Marcar todos Presentes (${d.lessons} lecciones)"></i>
+                                        <i class="fas fa-calendar-xmark text-gray-300 hover:text-rose-500 text-sm cursor-pointer transition" onclick="app.toggleDiaNoLectivo('${d.dateStr}', '${idMat}', false)" title="Marcar día sin clases (feriado/evento)"></i>
+                                    </div>
                                 </div>
                             </th>`;
                         }).join('')}
@@ -3503,11 +3626,14 @@ renderScheduleList: () => {
                     let key = est.id + "|" + d.dateStr;
                     let val = res.marcas[key] || ""; // Estado actual (P, AI, T, E, J) o vacío
 
-                    // Cálculos
-                    if(val === 'AI') { sumAI++; perdidas += Number(d.lessons); } // Pierde toda la lección
-                    if(val === 'T')  { sumT++;  perdidas += 0; } // MEP: Tardía no resta puntos directos, suma a conducta o 3T=1A (Regla simple aquí)
-                    if(val === 'E')  { sumE++;  perdidas += 0; }
-                    if(val === 'J')  { sumJ++; } // Justificada no resta
+                    // Cálculos -- misma regla que calcularAsistenciaMap (backend):
+                    // AI pierde la lección completa; T (tardía, 0-10 min) pierde media
+                    // lección (pasados los 10 min ya se marca AI directo, no T);
+                    // E y J no restan puntos.
+                    if(val === 'AI') { sumAI++; perdidas += Number(d.lessons); }
+                    if(val === 'T')  { sumT++;  perdidas += Number(d.lessons) * 0.5; }
+                    if(val === 'E')  { sumE++; }
+                    if(val === 'J')  { sumJ++; }
 
                     // Color celda
                     let bg = val==='P'?'bg-green-100': val==='AI'?'bg-red-100': val==='T'?'bg-yellow-100': val==='E'?'bg-orange-100': val==='J'?'bg-blue-100':'';
@@ -3601,13 +3727,14 @@ renderScheduleList: () => {
             }, { silent: true });
         },
 
-        markAllPresent: (fecha, idMat, thEl) => {
+        markAllPresent: async (fecha, idMat, thEl) => {
             const cells = document.querySelectorAll(`td[data-fecha="${fecha}"]`);
             if(!cells.length) return;
 
             // Si todos ya son P → limpiar; si no → marcar todos P
             const allP = [...cells].every(c => c.innerText.trim() === 'P');
             const next = allP ? '' : 'P';
+            const estadoPrevio = [...cells].map(c => c.innerText.trim());
 
             const marcas = [];
             cells.forEach(cell => {
@@ -3617,14 +3744,33 @@ renderScheduleList: () => {
                 marcas.push({ idEst: cell.dataset.est, idMateria: idMat, fecha, estado: next });
             });
 
-            // Una sola llamada batch — evita race conditions con LockService
-            app.api({ action: 'saveMarkBatch', email: app.user.email, marcas }, { silent: true });
-
-            // Actualizar ícono del encabezado
+            // Actualizar ícono del encabezado (optimista)
             const icon = thEl.querySelector('.mark-all-icon');
-            if(icon) {
-                icon.className = `fas fa-check-circle text-xs mark-all-icon ${next === 'P' ? 'text-green-500' : 'text-gray-300'}`;
+            if(icon) icon.className = `fas fa-check-circle text-xs mark-all-icon ${next === 'P' ? 'text-green-500' : 'text-gray-300'}`;
+
+            // Una sola llamada batch — evita race conditions con LockService.
+            // Antes esto se disparaba con {silent:true} y sin esperar la respuesta:
+            // si fallaba (como pasó con la ruta rota de saveMarkBatch), la pantalla
+            // quedaba en verde pero nada se guardaba, sin ningun aviso -- exactamente
+            // el reclamo de "pasé lista y no se guardó". Ahora se espera la respuesta
+            // real y, si falla, se revierte la pantalla y se avisa.
+            const res = await app.api({ action: 'saveMarkBatch', email: app.user.email, marcas });
+
+            if (!res || !res.success) {
+                cells.forEach((cell, idx) => {
+                    cell.innerText = estadoPrevio[idx];
+                    cell.className = cell.className.replace(/bg-\w+-100/g, '');
+                    if(estadoPrevio[idx]==='P') cell.classList.add('bg-green-100');
+                    if(estadoPrevio[idx]==='AI') cell.classList.add('bg-red-100');
+                    if(estadoPrevio[idx]==='T') cell.classList.add('bg-yellow-100');
+                    if(estadoPrevio[idx]==='E') cell.classList.add('bg-orange-100');
+                    if(estadoPrevio[idx]==='J') cell.classList.add('bg-blue-100');
+                });
+                if(icon) icon.className = 'fas fa-check-circle text-xs mark-all-icon text-gray-300';
+                return Swal.fire('No se guardó', 'No se pudo registrar la asistencia de este día. Intentá de nuevo.', 'error');
             }
+
+            app.toast('success', `Asistencia del ${fecha} guardada`);
         },
 
         // ==========================================
@@ -3639,21 +3785,70 @@ renderScheduleList: () => {
         openIndicadores: async (idMat, nomMat) => {
             app.state.currentMatId = idMat;
             app.state.currentMatName = nomMat;
-            app.state.currentCat = 'TRAB_COT'; 
+            app.state.currentCat = 'TRAB_COT';
             app.state.currentCatLabel = 'Cotidiano';
-            
+
+            // Arrancar en el periodo activo de la SECCION (mismo criterio que el badge
+            // "P2 Activo" del Dashboard), no siempre en "Todos" -- asi el profe entra
+            // directo a lo que le corresponde calificar hoy.
+            const sec = (app.data.secciones || []).find(s => String(s.id) === String(app.state.currentSecId));
+            const periodoActivo = sec ? app.getPeriodoActivoNumero(sec.fechas) : null;
+            app.state.currentPeriodoFiltro = periodoActivo ? String(periodoActivo) : '';
+            app.state.currentCantPeriodos = app.getCantPeriodosSeccion(app.state.currentSecId);
+
             app.nav('indicadores');
             document.getElementById('ind-title').innerText = `Evaluación: ${nomMat}`;
-            
+            // El selector "Ver periodo" solo ofrece los periodos que esta sección
+            // realmente tiene configurados (2, 3...), nunca uno de más.
+            const selPeriodo = document.getElementById('ind-periodo-filtro');
+            if (selPeriodo) selPeriodo.innerHTML = app.buildPeriodoOptions(app.state.currentCantPeriodos, app.state.currentPeriodoFiltro, true);
+
             // 1. Mostrar cargando en las pestañas
             document.getElementById('dynamic-tabs-container').innerHTML = '<span class="text-xs text-slate-400"><i class="fas fa-spinner fa-spin"></i> Calculando rubros...</span>';
-            
-            // 2. Traer TODOS los indicadores de esta materia de un solo golpe
-            app.state.allIndicators = await app.api({ action: 'getIndicators', idMateria: idMat, categoria: 'ALL' });
-            
+
+            // 2. Traer los indicadores de esta materia (respetando el filtro de periodo activo)
+            app.state.allIndicators = await app.api({ action: 'getIndicators', idMateria: idMat, categoria: 'ALL', periodo: app.state.currentPeriodoFiltro });
+
             // 3. Dibujar Pestañas y Tabla
             app.renderDynamicTabs();
             app.loadIndicadores();
+            app.checkPeriodoVacio();
+        },
+
+        // Cambiar el filtro de periodo en la pantalla de Indicadores (util sobre todo
+        // despues de "Clonar a Periodo 2", para revisar solo los del periodo nuevo).
+        setPeriodoFiltro: async (periodo) => {
+            app.state.currentPeriodoFiltro = periodo;
+            app.state.allIndicators = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: 'ALL', periodo: periodo });
+            app.renderDynamicTabs();
+            app.loadIndicadores();
+            app.checkPeriodoVacio();
+        },
+
+        // Si el periodo seleccionado es un numero (no "Todos") y esta materia no tiene
+        // NINGUN indicador ahi todavia, ofrecemos clonar la estructura del periodo anterior
+        // en vez de dejar al profe con la tabla en blanco sin explicacion.
+        checkPeriodoVacio: () => {
+            const banner = document.getElementById('ind-periodo-vacio-banner');
+            if (!banner) return;
+
+            const periodo = app.state.currentPeriodoFiltro;
+            const periodoNum = parseInt(periodo);
+            const vacio = !app.state.allIndicators || app.state.allIndicators.length === 0;
+
+            if (periodo && periodoNum > 1 && vacio) {
+                // Un solo camino para clonar (el botón fijo del header) -- el banner
+                // solo avisa y señala hacia ese botón, no duplica la acción.
+                banner.classList.remove('hidden');
+                banner.innerHTML = `
+                    <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-3 mb-3 flex items-center gap-2 text-sm">
+                        <i class="fas fa-circle-info"></i>
+                        <span>Este periodo todavía no tiene indicadores para <b>${app.state.currentMatName}</b>. Usá <b>"Clonar a Periodo 2"</b> arriba ↑ para traer los del periodo anterior.</span>
+                    </div>`;
+            } else {
+                banner.classList.add('hidden');
+                banner.innerHTML = '';
+            }
         },
 
         setCategory: (catCode, catLabel) => {
@@ -3663,31 +3858,70 @@ renderScheduleList: () => {
             app.loadIndicadores();
         },
 
+        // Etiqueta legible por categoria, usada solo para el checklist del modal de clonado.
+        CAT_LABEL_CLONAR: { TRAB_COT: 'Cotidiano', TAREAS: 'Tareas', PRUEBAS: 'Pruebas', PROYECTOS: 'Proyectos', ASIST: 'Asistencia' },
+
+        // Trae los indicadores del periodo de origen y arma el checklist (todos marcados
+        // por defecto) dentro del modal de clonado ya abierto.
+        _refrescarChecklistClonar: async (periodo) => {
+            const cont = document.getElementById('swal-clonar-lista');
+            if (!cont) return;
+            cont.innerHTML = '<p class="text-xs text-gray-400 text-center py-2"><i class="fas fa-spinner fa-spin"></i> Cargando indicadores...</p>';
+
+            const list = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: 'ALL', periodo: periodo }, { silent: true });
+
+            if (!list || list.length === 0) {
+                cont.innerHTML = '<p class="text-xs text-rose-500 text-center py-2">Este periodo no tiene indicadores para clonar.</p>';
+                return;
+            }
+
+            cont.innerHTML = list.map(i => `
+                <label class="flex items-center gap-2 py-1 px-1 text-xs hover:bg-slate-50 rounded cursor-pointer">
+                    <input type="checkbox" class="swal-clon-check" value="${i.id}" checked>
+                    <span class="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0">${app.CAT_LABEL_CLONAR[i.categoria] || i.categoria}</span>
+                    <span class="truncate">${i.descripcion}</span>
+                </label>`).join('');
+        },
+
         // CLONAR ESTRUCTURA DE INDICADORES DE UN PERIODO A OTRO (sin arrastrar notas)
-        confirmarClonarIndicadores: async () => {
+        // origenSugerido/destinoSugerido: opcionales, para preseleccionar el modal cuando
+        // se abre desde el aviso de "periodo vacío" (ya sabemos cuál es el mas probable).
+        confirmarClonarIndicadores: async (origenSugerido, destinoSugerido) => {
+            const cantPeriodos = app.state.currentCantPeriodos || app.getCantPeriodosSeccion(app.state.currentSecId);
+            const origenDefault = origenSugerido || '1';
+            const destinoDefault = destinoSugerido || (cantPeriodos >= 2 ? '2' : '1');
+
             const { value: form } = await Swal.fire({
                 title: 'Clonar Indicadores',
+                width: '520px',
                 html: `
-                    <p class="text-xs text-gray-500 mb-3 text-left">Copia la estructura de indicadores (categoría, descripción, puntaje) de un periodo a otro para <b>${app.state.currentMatName}</b>. No se copian las notas ya registradas.</p>
-                    <div class="text-left mb-2">
-                        <label class="text-xs font-bold text-gray-500">Periodo de origen</label>
-                        <select id="swal-periodo-origen" class="swal2-select" style="display:block;width:100%;margin:0;">
-                            <option value="1" selected>I Periodo</option>
-                            <option value="2">II Periodo</option>
-                            <option value="3">III Periodo</option>
-                        </select>
+                    <p class="text-xs text-gray-500 mb-3 text-left">Elegí qué indicadores copiar de un periodo a otro para <b>${app.state.currentMatName}</b>. No se copian las notas ya registradas.</p>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div class="text-left">
+                            <label class="text-xs font-bold text-gray-500">Periodo de origen</label>
+                            <select id="swal-periodo-origen" class="swal2-select" style="display:block;width:100%;margin:0;" onchange="app._refrescarChecklistClonar(this.value)">
+                                ${app.buildPeriodoOptions(cantPeriodos, origenDefault, false)}
+                            </select>
+                        </div>
+                        <div class="text-left">
+                            <label class="text-xs font-bold text-gray-500">Periodo de destino</label>
+                            <select id="swal-periodo-destino" class="swal2-select" style="display:block;width:100%;margin:0;">
+                                ${app.buildPeriodoOptions(cantPeriodos, destinoDefault, false)}
+                            </select>
+                        </div>
                     </div>
-                    <div class="text-left">
-                        <label class="text-xs font-bold text-gray-500">Periodo de destino</label>
-                        <select id="swal-periodo-destino" class="swal2-select" style="display:block;width:100%;margin:0;">
-                            <option value="1">I Periodo</option>
-                            <option value="2" selected>II Periodo</option>
-                            <option value="3">III Periodo</option>
-                        </select>
-                    </div>`,
+                    <div class="text-left flex items-center justify-between mb-1">
+                        <label class="text-xs font-bold text-gray-500">Indicadores a clonar</label>
+                        <div class="flex gap-2 text-[10px]">
+                            <button type="button" onclick="document.querySelectorAll('.swal-clon-check').forEach(c=>c.checked=true)" class="text-indigo-600 font-bold hover:underline">Todos</button>
+                            <button type="button" onclick="document.querySelectorAll('.swal-clon-check').forEach(c=>c.checked=false)" class="text-gray-400 font-bold hover:underline">Ninguno</button>
+                        </div>
+                    </div>
+                    <div id="swal-clonar-lista" class="text-left border rounded-lg p-2 max-h-[220px] overflow-y-auto bg-slate-50"></div>`,
                 showCancelButton: true,
                 confirmButtonText: 'Clonar',
                 confirmButtonColor: '#f59e0b',
+                didOpen: () => app._refrescarChecklistClonar(origenDefault),
                 preConfirm: () => {
                     const origen = document.getElementById('swal-periodo-origen').value;
                     const destino = document.getElementById('swal-periodo-destino').value;
@@ -3695,7 +3929,12 @@ renderScheduleList: () => {
                         Swal.showValidationMessage('El periodo de origen y destino no pueden ser el mismo');
                         return false;
                     }
-                    return { origen, destino };
+                    const ids = Array.from(document.querySelectorAll('.swal-clon-check:checked')).map(c => c.value);
+                    if(ids.length === 0) {
+                        Swal.showValidationMessage('Seleccioná al menos un indicador para clonar');
+                        return false;
+                    }
+                    return { origen, destino, ids };
                 }
             });
 
@@ -3706,7 +3945,8 @@ renderScheduleList: () => {
                 action: 'clonarIndicadores',
                 idMateria: app.state.currentMatId,
                 periodoOrigen: form.origen,
-                periodoDestino: form.destino
+                periodoDestino: form.destino,
+                idsIndicadores: form.ids
             });
 
             if(!res || res.error) {
@@ -3716,18 +3956,129 @@ renderScheduleList: () => {
             await Swal.fire({
                 icon: 'success',
                 title: 'Indicadores clonados',
-                text: `${res.clonados} indicador(es) copiado(s)${res.omitidos ? `, ${res.omitidos} ya existían y se omitieron` : ''}.`
+                text: `${res.clonados} indicador(es) copiado(s)${res.omitidos ? `, ${res.omitidos} ya existían y se omitieron` : ''}. Cambiando la vista al periodo destino para que los revises.`
             });
 
-            app.state.allIndicators = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: 'ALL' });
+            // Saltamos directo al periodo destino: asi se ve de inmediato que los indicadores
+            // clonados existen y estan sin calificar (0 notas), sin mezclarlos con los del origen.
+            app.state.currentPeriodoFiltro = form.destino;
+            const selPeriodo = document.getElementById('ind-periodo-filtro');
+            if (selPeriodo) selPeriodo.value = form.destino;
+
+            app.state.allIndicators = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: 'ALL', periodo: form.destino });
             app.renderDynamicTabs();
             app.loadIndicadores();
+            app.checkPeriodoVacio();
+        },
+
+        // RECALCULAR PESOS DE COTIDIANO: congela de nuevo las notas ya calificadas de
+        // este rubro con el peso vigente actual. Hace falta correrlo cada vez que se
+        // agrega un indicador de Cotidiano DESPUES de ya haber calificado otros del
+        // mismo periodo -- si no, el/los ya calificados se quedan con el peso viejo
+        // (mas alto) y el total del rubro termina sumando de mas.
+        confirmarRecalcularPesos: async () => {
+            const periodo = app.state.currentPeriodoFiltro;
+            if (!periodo) {
+                return Swal.fire('Elegí un periodo', 'El recalculo es por periodo -- seleccioná uno específico en "Ver periodo" antes de recalcular.', 'warning');
+            }
+            const labelPeriodo = app.LABEL_PERIODO[String(periodo)] || periodo;
+
+            const confirm = await Swal.fire({
+                icon: 'question',
+                title: 'Recalcular Pesos de Cotidiano',
+                html: `Esto va a volver a congelar <b>todas</b> las notas de Cotidiano ya calificadas de <b>${app.state.currentMatName}</b> en <b>${labelPeriodo} Periodo</b>, repartiendo el peso entre los indicadores que existen HOY. Usalo después de agregar un indicador nuevo a un rubro que ya tenía notas.`,
+                showCancelButton: true,
+                confirmButtonText: 'Recalcular',
+                confirmButtonColor: '#0284c7'
+            });
+            if (!confirm.isConfirmed) return;
+
+            Swal.fire({ title: 'Recalculando...', didOpen: () => Swal.showLoading() });
+            const res = await app.api({ action: 'recalcularPesoCotidiano', idMateria: app.state.currentMatId, periodo: periodo });
+
+            if (!res || res.error) {
+                return Swal.fire('Error', (res && res.error) || 'No se pudo recalcular', 'error');
+            }
+
+            await Swal.fire({
+                icon: 'success',
+                title: 'Pesos recalculados',
+                text: `${res.actualizadas} nota(s) actualizada(s) al peso vigente (${res.pesoNuevo}% por indicador).`
+            });
+
+            app.state.allIndicators = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: 'ALL', periodo: periodo });
+            app.renderDynamicTabs();
+            app.loadIndicadores();
+        },
+
+        // HISTORIAL DE CAMBIOS (Notas + Asistencia) de una materia completa.
+        // Soporte real a "pasé lista y no se guardó" / "cambié esta nota y no se
+        // refleja": en vez de discutir, se consulta quién cambió qué y cuándo.
+        // Vive en Materias (no en Indicadores) porque cubre TODA la materia --
+        // Notas y Asistencia -- no solo la categoría que esté abierta en ese momento.
+        verBitacoraCambios: async (idMat, nomMat) => {
+            Swal.fire({ title: 'Cargando historial...', didOpen: () => Swal.showLoading() });
+            const res = await app.api({ action: 'getBitacoraCambios', idMateria: idMat });
+            Swal.close();
+
+            if (!res || res.error) return Swal.fire('Error', (res && res.error) || 'No se pudo cargar el historial', 'error');
+
+            const ETIQUETA_TIPO = { NOTA: { label: 'Nota', color: 'bg-indigo-50 text-indigo-700 border-indigo-100' }, ASISTENCIA: { label: 'Asistencia', color: 'bg-sky-50 text-sky-700 border-sky-100' } };
+
+            let filasHtml;
+            if (!res.lista || res.lista.length === 0) {
+                filasHtml = `<tr><td colspan="5" class="p-6 text-center text-gray-400">Todavía no hay cambios registrados para ${nomMat}.</td></tr>`;
+            } else {
+                filasHtml = res.lista.map(h => {
+                    const et = ETIQUETA_TIPO[h.tipo] || { label: h.tipo, color: 'bg-gray-50 text-gray-600 border-gray-100' };
+                    const anteriorTxt = (h.anterior === '' || h.anterior === null || h.anterior === undefined) ? '<span class="text-gray-300">— (nuevo)</span>' : h.anterior;
+                    return `<tr class="border-b border-slate-100">
+                        <td class="p-2 text-xs text-slate-500 whitespace-nowrap">${h.fecha}</td>
+                        <td class="p-2 text-xs text-slate-600 whitespace-nowrap">${h.usuario}</td>
+                        <td class="p-2 text-center whitespace-nowrap"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${et.color}">${et.label}</span></td>
+                        <td class="p-2 text-xs text-slate-700">${h.detalle}</td>
+                        <td class="p-2 text-xs text-center whitespace-nowrap">${anteriorTxt} <i class="fas fa-arrow-right text-slate-300 mx-1"></i> <b>${h.nuevo}</b></td>
+                    </tr>`;
+                }).join('');
+            }
+
+            Swal.fire({
+                title: `Historial de Cambios — ${nomMat}`,
+                width: '950px',
+                showCloseButton: true,
+                showConfirmButton: false,
+                footer: `<button onclick="app.downloadPdf('pdfBitacoraCambios', '${idMat}')" class="bg-slate-600 text-white px-4 py-2 rounded font-bold shadow hover:bg-slate-700 w-full"><i class="fas fa-file-pdf mr-2"></i> Descargar Historial PDF</button>`,
+                html: `
+                    <div class="overflow-y-auto max-h-[420px] border rounded-lg text-left">
+                        <table class="w-full text-xs">
+                            <thead class="bg-gray-100 font-bold text-gray-600 border-b sticky top-0">
+                                <tr>
+                                    <th class="p-2 text-left">Fecha/Hora</th>
+                                    <th class="p-2 text-left">Usuario</th>
+                                    <th class="p-2">Tipo</th>
+                                    <th class="p-2 text-left">Detalle</th>
+                                    <th class="p-2 text-center">Cambio</th>
+                                </tr>
+                            </thead>
+                            <tbody>${filasHtml}</tbody>
+                        </table>
+                    </div>`
+            });
         },
 
         renderDynamicTabs: () => {
             // Obtener el valor original de los rubros para esta materia
             const mat = app.state.tempMaterias.find(m => String(m.id) === String(app.state.currentMatId));
             if(!mat) return;
+
+            // "Recalcular Pesos" solo tiene sentido en la pestaña Cotidiano (es el
+            // unico rubro cuyo peso se reparte dinamicamente entre indicadores).
+            const btnRecalc = document.getElementById('btn-recalcular-cot');
+            if (btnRecalc) {
+                const mostrar = app.state.currentCat === 'TRAB_COT';
+                btnRecalc.classList.toggle('hidden', !mostrar);
+                btnRecalc.classList.toggle('flex', mostrar);
+            }
 
             const categorias =[
                 { code: 'TRAB_COT', label: 'Cotidiano', max: parseFloat(mat.cotidiano), activeStyle: 'ring-2 ring-indigo-500 bg-indigo-50 border-transparent text-indigo-700' },
@@ -3759,15 +4110,26 @@ renderScheduleList: () => {
                     });
                 }
 
-                if(cat.code === 'TRAB_COT') suma = cat.max;
+                // Cotidiano se auto-reparte entre los indicadores que existan, PERO solo
+                // si existe al menos uno -- si el rubro esta vacio (0 indicadores, ej. un
+                // periodo recien clonado/nuevo) no se puede fingir que ya suma el 100%.
+                if(cat.code === 'TRAB_COT') suma = tieneIndicadores ? cat.max : 0;
+                // Asistencia SI se calcula siempre sola (no depende de que exista un
+                // indicador "ASIST" manual), por eso aqui si se fuerza al máximo.
                 if(cat.code === 'ASIST') suma = cat.max;
 
                 const isSelected = app.state.currentCat === cat.code;
                 const isPerfect = suma === cat.max;
+                // Rubro con 0% asignado en la materia: no hay nada que repartir todavia,
+                // no tiene sentido pintarlo como "cumplido" -- se ve inactivo/gris hasta
+                // que se le asigne un % desde Editar Materia.
+                const rubroInactivo = cat.max === 0;
 
-                // Badge: verde si perfecto y todos completos, ámbar si parcial, rojo si falta %
+                // Badge: verde si perfecto y todos completos, ámbar si parcial, rojo si falta %, gris si inactivo
                 let badgeColor;
-                if(!isPerfect) {
+                if (rubroInactivo) {
+                    badgeColor = 'text-slate-400 bg-slate-100';
+                } else if(!isPerfect) {
                     badgeColor = 'text-rose-600 bg-rose-100';
                 } else if(cat.code === 'TRAB_COT' || cat.code === 'ASIST') {
                     badgeColor = 'text-emerald-600 bg-emerald-100';
@@ -3777,16 +4139,17 @@ renderScheduleList: () => {
                     badgeColor = 'text-emerald-600 bg-emerald-100';
                 }
 
-                const tabStyle = isSelected
-                    ? cat.activeStyle
-                    : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50';
+                const tabStyle = rubroInactivo
+                    ? 'bg-slate-50 border-slate-200 text-slate-300 hover:bg-slate-100'
+                    : (isSelected ? cat.activeStyle : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50');
 
                 const warningIcon = (isPerfect && tieneParcial && cat.code !== 'TRAB_COT' && cat.code !== 'ASIST')
                     ? '<i class="fas fa-exclamation-triangle text-[9px] mr-0.5"></i>' : '';
 
                 htmlTabs += `
                 <button onclick="app.setCategory('${cat.code}', '${cat.label}')"
-                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border transition ${tabStyle}">
+                        class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold border transition ${tabStyle}"
+                        ${rubroInactivo ? `title="${cat.label} tiene 0% asignado en esta materia. Editá la materia para darle un %."` : ''}>
                     ${cat.label}
                     <span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold ${badgeColor}">
                         ${warningIcon}${suma}% / ${cat.max}%
@@ -3827,33 +4190,46 @@ loadIndicadores: async () => {
             if (header) {
                 header.innerHTML = `
                     <th class="p-2 md:p-4">DESCRIPCIÓN / ACTIVIDAD</th>
+                    <th class="p-2 md:p-4 text-center">PERIODO</th>
                     <th class="p-2 md:p-4 text-center">VALOR (%)</th>
                     <th class="p-2 md:p-4 text-right">ACCIONES</th>
                 `;
             }
 
-            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin text-indigo-500 text-xl"></i><br><span class="text-slate-400 text-xs">Cargando...</span></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center"><i class="fas fa-spinner fa-spin text-indigo-500 text-xl"></i><br><span class="text-slate-400 text-xs">Cargando...</span></td></tr>';
 
-            const list = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: app.state.currentCat });
+            const list = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: app.state.currentCat, periodo: app.state.currentPeriodoFiltro });
             
             // SACAR EL TOTAL DEL COTIDIANO DE LA MATERIA
             const materiaActual = app.state.tempMaterias.find(m => String(m.id) === String(app.state.currentMatId));
             const totalCot = materiaActual ? parseFloat(materiaActual.cotidiano) : 30;
             const isCotidiano = app.state.currentCat === 'TRAB_COT';
 
-            // DIVISIÓN MÁGICA
-            const valorDinamico = (isCotidiano && list.length > 0) ? (totalCot / list.length) : 0;
+            // DIVISIÓN MÁGICA -- por periodo, no por el total de la lista visible.
+            // Con "Ver periodo" en "Todos" la lista mezcla varios periodos; si se
+            // dividiera por list.length se subestima el peso real de cada indicador
+            // (ej. 2 en I + 1 en II Periodo mostraría 50%/3 para los tres, cuando en
+            // realidad I Periodo pesa 25% c/u y II Periodo 50% -- son rubros independientes).
+            const cantPorPeriodo = {};
+            if (isCotidiano) {
+                list.forEach(ind => {
+                    const key = String(ind.periodo);
+                    cantPorPeriodo[key] = (cantPorPeriodo[key] || 0) + 1;
+                });
+            }
 
             tbody.innerHTML = '';
             if(!list || list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-gray-400">No hay actividades. ¡Crea la primera!</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" class="p-8 text-center text-gray-400">No hay actividades. ¡Crea la primera!</td></tr>';
                 return;
             }
 
 list.forEach(i => {
+    const valorDinamico = isCotidiano ? (totalCot / (cantPorPeriodo[String(i.periodo)] || 1)) : 0;
     const finalPts = isCotidiano ? valorDinamico : parseFloat(i.puntaje);
     const iconoAuto = isCotidiano ? '<i class="fas fa-robot mr-1 text-[9px]"></i>' : '';
     const badgeLabel = `${iconoAuto}${finalPts.toFixed(2)}%`;
+    const periodoLabel = app.LABEL_PERIODO[String(i.periodo)] ? `${app.LABEL_PERIODO[String(i.periodo)]} Periodo` : '—';
 
     // LÓGICA DE COLOR PARA EL BOTÓN (3 estados)
     const _nc = i.notasCount || 0;
@@ -3878,6 +4254,9 @@ list.forEach(i => {
     tbody.innerHTML += `
     <tr class="fade-in-up hover:bg-slate-50 group transition border-b border-slate-100">
         <td class="p-2 md:p-4 font-bold text-slate-700 text-xs md:text-sm">${i.descripcion}</td>
+        <td class="p-2 md:p-4 text-center">
+            <span class="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-[10px] font-bold border border-slate-200">${periodoLabel}</span>
+        </td>
         <td class="p-2 md:p-4 text-center">
             <span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-bold border border-indigo-100">${badgeLabel}</span>
         </td>
@@ -3952,11 +4331,21 @@ list.forEach(i => {
             if(form) {
                 if(!form.descripcion) return;
                 Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
-                await app.api({ action: 'saveIndicator', idIndicador: id, idMateria: app.state.currentMatId, categoria: app.state.currentCat, ...form });
+                // periodo: el filtro "Ver periodo" activo (si esta en "Todos", queda vacio
+                // y el backend infiere por fecha; si el profe eligio un periodo puntual,
+                // el indicador nuevo se crea ahi -- util para preparar el periodo siguiente
+                // antes de que arranque su fecha, ej. durante vacaciones).
+                const res = await app.api({ action: 'saveIndicator', idIndicador: id, idMateria: app.state.currentMatId, categoria: app.state.currentCat, periodo: app.state.currentPeriodoFiltro, ...form });
+                // Si el guardado falló, app.api ya mostró el error -- no seguimos como si
+                // hubiera guardado (antes esto recargaba igual, dejando la tabla vacía sin
+                // explicación y cerrando el aviso de error casi al instante).
+                if (!res || !res.success) return;
+
                 // Recargamos TODO para que los TABS se actualicen
-                app.state.allIndicators = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: 'ALL' });
+                app.state.allIndicators = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: 'ALL', periodo: app.state.currentPeriodoFiltro });
                 app.renderDynamicTabs();
                 app.loadIndicadores();
+                app.checkPeriodoVacio();
                 Swal.close();
             }
         },
@@ -4143,7 +4532,7 @@ saveGrades: async () => {
     btnSave.innerHTML = '<i class="fas fa-save mr-2"></i> Guardar Notas';
 
     if(res && res.success) {
-        Swal.fire({ icon: 'success', title: 'Guardado', text: 'Notas registradas correctamente.', timer: 1500, showConfirmButton: false });
+        app.toast('success', 'Notas guardadas');
         app.openEvaluation(app.state.currentIndId, document.getElementById('eval-title').innerText, maxPts, ptsTotales);
     } else {
         Swal.fire('Error', 'No se pudieron guardar las notas', 'error');
@@ -4540,6 +4929,12 @@ fillMaxScore: () => {
             const mats = await app.api({ action: 'getSubjects', idSeccion: idSec });
             sel.innerHTML = '<option value="">Seleccione...</option>';
             if(mats) mats.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.nombre}</option>`);
+
+            // El selector de periodo depende de cuántos periodos tiene ESTA sección
+            // (no siempre I/II/III fijo), y nunca ofrece "Todos" -- un reporte SEA
+            // siempre es de UN periodo puntual, nunca mezclado.
+            const selPeriodo = document.getElementById('sea-periodo');
+            if (selPeriodo) selPeriodo.innerHTML = `<option value="" selected disabled>-- Elegí un periodo --</option>${app.buildPeriodoOptions(app.getCantPeriodosSeccion(idSec), '', false)}`;
         },
 
         // 2. GENERAR Y DESCARGAR EXCEL
@@ -4547,6 +4942,7 @@ fillMaxScore: () => {
             const idMat = document.getElementById('sea-mat').value;
             if(!idMat) return Swal.fire('Faltan datos', 'Selecciona una asignatura', 'warning');
             const periodo = document.getElementById('sea-periodo').value;
+            if(!periodo) return Swal.fire('Falta el periodo', 'Elegí de qué periodo querés el reporte SEA', 'warning');
 
             Swal.fire({ title: 'Procesando datos...', didOpen: () => Swal.showLoading() });
 
@@ -4570,6 +4966,9 @@ fillMaxScore: () => {
                     <td class="p-3 text-center">${r.Asistencia}</td>
                 </tr>`;
             });
+            const idSecSea = document.getElementById('sea-sec').value;
+            const tituloPeriodoSea = app.getPeriodoReporteLabel(periodo, idSecSea);
+            document.getElementById('sea-preview-periodo').innerText = tituloPeriodoSea;
             document.getElementById('sea-preview').classList.remove('hidden');
             Swal.close();
 
@@ -4612,7 +5011,7 @@ fillMaxScore: () => {
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
             // Nombre del archivo: SEA_Matemáticas_8-2.xls
-            link.download = `SEA_${res.materia.replace(/\s+/g, '_')}.xls`; 
+            link.download = `SEA_${res.materia.replace(/\s+/g, '_')}_${tituloPeriodoSea.replace(/\s+/g, '_')}.xls`; 
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -5271,29 +5670,47 @@ adminLoadUsers: async () => {
         // ==========================================
 
         // 1. VER NOTAS DEL ESTUDIANTE (MODAL OJO)
+        // Arranca SIEMPRE pidiendo elegir un periodo primero (sin cargar ni mostrar
+        // datos todavia) -- nunca mezcla periodos, y nunca asume uno por defecto
+        // (ej. durante vacaciones no hay "periodo activo" claro para asumir).
         verNotasEstudiante: async (idEst, nombreEst, periodo) => {
-            periodo = periodo || '';
+            const cantPeriodos = app.getCantPeriodosSeccion(app.state.currentSecId);
+            const selectorHtml = `
+                <div class="inline-block">
+                    <label class="text-[10px] font-bold text-gray-500 block">Periodo</label>
+                    <select class="p-1.5 border-2 border-indigo-300 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 shadow-sm cursor-pointer hover:bg-indigo-100 transition" onchange="app.verNotasEstudiante('${idEst}', ${app.jsStr(nombreEst)}, this.value)">
+                        <option value="" ${!periodo ? 'selected' : ''} disabled>-- Elegí un periodo --</option>
+                        ${app.buildPeriodoOptions(cantPeriodos, periodo || '', false)}
+                    </select>
+                </div>`;
+
+            if (!periodo) {
+                Swal.fire({
+                    title: nombreEst,
+                    html: `
+                        <div class="text-left pr-6">
+                            <p class="text-xs text-gray-500 mb-2">Elegí el periodo que querés revisar.</p>
+                            ${selectorHtml}
+                        </div>`,
+                    showCloseButton: true,
+                    showConfirmButton: false
+                });
+                return;
+            }
+
             Swal.fire({ title: 'Cargando Boleta...', didOpen: () => Swal.showLoading() });
             const res = await app.api({ action: 'getStudentReport', id: idEst, periodo: periodo });
             Swal.close();
 
             if(!res || res.error) return Swal.fire('Error', 'No hay datos', 'error');
 
+            const tituloPeriodo = app.getPeriodoReporteLabel(periodo, app.state.currentSecId);
+
             let html = `
-            <div class="text-left mb-3 flex items-center justify-between gap-3">
-                <div>
-                    <h4 class="font-bold text-gray-700">${nombreEst}</h4>
-                    <p class="text-xs text-gray-500">Resumen de Calificaciones</p>
-                </div>
-                <div>
-                    <label class="text-[10px] font-bold text-gray-500 block">Periodo</label>
-                    <select class="p-1 border rounded text-xs bg-white" onchange="app.verNotasEstudiante('${idEst}', ${JSON.stringify(nombreEst)}, this.value)">
-                        <option value="" ${periodo==='' ? 'selected' : ''}>Todos</option>
-                        <option value="1" ${String(periodo)==='1' ? 'selected' : ''}>I Periodo</option>
-                        <option value="2" ${String(periodo)==='2' ? 'selected' : ''}>II Periodo</option>
-                        <option value="3" ${String(periodo)==='3' ? 'selected' : ''}>III Periodo</option>
-                    </select>
-                </div>
+            <div class="text-left mb-3 pr-6">
+                <h4 class="font-bold text-gray-700">${nombreEst}</h4>
+                <p class="text-xs text-gray-500 mb-2">Resumen de Calificaciones — ${tituloPeriodo}</p>
+                ${selectorHtml}
             </div>
             <div class="overflow-x-auto border rounded-lg">
                 <table class="w-full text-xs text-left">
@@ -5396,8 +5813,8 @@ adminLoadUsers: async () => {
                         <span class="text-[10px] font-bold text-amber-500 mt-1">Tardías</span>
                     </div>
                     <div class="flex flex-col items-center bg-blue-50 border border-blue-100 rounded-xl p-3">
-                        <span class="text-2xl font-extrabold text-blue-600">${c.AJ||0}</span>
-                        <span class="text-[10px] font-bold text-blue-500 mt-1">Aus. Just.</span>
+                        <span class="text-2xl font-extrabold text-blue-600">${c.J||0}</span>
+                        <span class="text-[10px] font-bold text-blue-500 mt-1">Justificadas</span>
                     </div>
                     <div class="flex flex-col items-center bg-purple-50 border border-purple-100 rounded-xl p-3">
                         <span class="text-2xl font-extrabold text-purple-600">${c.E||0}</span>
@@ -5437,8 +5854,10 @@ adminLoadUsers: async () => {
             let sumAI = 0, sumT = 0, sumE = 0, sumJ = 0, perdidas = 0;
             const filas = m.dateCols.map(d => {
                 const val = m.marcas[idEst + "|" + d.dateStr] || '';
+                // Misma regla que calcularAsistenciaMap (backend) y loadAttendanceMatrix:
+                // AI pierde la lección completa, T (tardía 0-10 min) pierde media lección.
                 if(val === 'AI') { sumAI++; perdidas += Number(d.lessons); }
-                if(val === 'T') sumT++;
+                if(val === 'T') { sumT++; perdidas += Number(d.lessons) * 0.5; }
                 if(val === 'E') sumE++;
                 if(val === 'J') sumJ++;
                 return { ...d, val };
@@ -5542,30 +5961,242 @@ adminLoadUsers: async () => {
             window.print();
         },
 
+        // PANEL DE KPIs DE LA MATERIA (promedio, riesgo, avance por rubro, asistencia)
+        // Se abre al hacer clic en el nombre de la materia, dentro de la lista de Materias.
+        verKPIsMateria: async (idMat, nomMat) => {
+            const cont = document.getElementById('materia-kpis-container');
+            cont.innerHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-slate-400">
+                    <i class="fas fa-spinner fa-spin text-xl"></i><br>
+                    <span class="text-xs">Calculando KPIs de ${nomMat}...</span>
+                </div>`;
+
+            const res = await app.api({ action: 'getMateriaKPIs', id: idMat });
+            if (!res || res.error) {
+                cont.innerHTML = `<div class="bg-white rounded-xl shadow-sm border border-rose-200 p-6 text-center text-rose-500 text-sm">${(res && res.error) || 'No se pudieron cargar los KPIs'}</div>`;
+                return;
+            }
+
+            if (res.totalEstudiantes === 0) {
+                cont.innerHTML = `<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-slate-400 text-sm">Todavía no hay estudiantes en esta sección para calcular KPIs de <b>${nomMat}</b>.</div>`;
+                return;
+            }
+
+            const colorProm = res.promedio >= 90 ? 'text-emerald-600' : res.promedio >= res.notaMinima ? 'text-indigo-600' : 'text-rose-600';
+            const colorAsist = res.asistenciaPromedio >= res.valorAsistTotal * 0.9 ? 'text-emerald-600' : res.asistenciaPromedio >= res.valorAsistTotal * 0.7 ? 'text-amber-600' : 'text-rose-600';
+
+            const totalIndAll = res.avancePorRubro.reduce((s, r) => s + r.total, 0);
+            const califIndAll = res.avancePorRubro.reduce((s, r) => s + r.calificados, 0);
+            const avanceGlobal = totalIndAll > 0 ? Math.round((califIndAll / totalIndAll) * 100) : 0;
+
+            const barrasRubro = res.avancePorRubro.map(r => {
+                const pct = r.total > 0 ? Math.round((r.calificados / r.total) * 100) : 0;
+                const color = r.total === 0 ? 'bg-slate-200' : pct === 100 ? 'bg-emerald-500' : pct > 0 ? 'bg-amber-400' : 'bg-rose-400';
+                return `
+                    <div class="mb-2.5">
+                        <div class="flex justify-between text-[11px] font-bold text-slate-500 mb-0.5">
+                            <span>${r.label}</span>
+                            <span>${r.total > 0 ? `${r.calificados}/${r.total} calificados` : 'Sin indicadores'}</span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                            <div class="${color} h-2 rounded-full transition-all" style="width:${r.total > 0 ? pct : 0}%"></div>
+                        </div>
+                    </div>`;
+            }).join('');
+
+            const listaRiesgo = res.enRiesgo.length === 0
+                ? `<p class="text-xs text-emerald-600 font-bold flex items-center gap-1"><i class="fas fa-circle-check"></i> Nadie está bajo el mínimo (${res.notaMinima}%).</p>`
+                : res.enRiesgo.slice(0, 6).map(e => {
+                    const badgeAmpliacion = e.ampliacion
+                        ? `<span class="text-[10px] text-slate-400 block mt-0.5">Ampliación intento ${e.ampliacion.intento}: ${e.ampliacion.notaObtenida}% (nota original ${e.totalOriginal}%)</span>`
+                        : '';
+                    const botonAmpliacion = e.intentosRestantes > 0
+                        ? `<button onclick="app.abrirModalAmpliacion('${idMat}','${nomMat.replace(/'/g, "\\'")}','${e.id}','${e.nombre.replace(/'/g, "\\'")}',${res.notaMinima},${e.intentosRestantes})" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-full transition whitespace-nowrap ml-2">
+                            <i class="fas fa-plus"></i> Ampliación
+                          </button>`
+                        : `<span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full whitespace-nowrap ml-2">2/2 intentos</span>`;
+                    return `
+                    <div class="flex justify-between items-center text-xs py-1.5 border-b border-slate-50 last:border-0">
+                        <span class="text-slate-600 truncate">
+                            ${e.nombre}
+                            ${badgeAmpliacion}
+                        </span>
+                        <span class="flex items-center shrink-0">
+                            <span class="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">${e.total}%</span>
+                            ${botonAmpliacion}
+                        </span>
+                    </div>`;
+                }).join('');
+
+            cont.innerHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 md:p-6 fade-in">
+                    <div class="flex items-center justify-between mb-4">
+                        <h4 class="font-bold text-slate-700 flex items-center gap-2"><i class="fas fa-chart-pie text-indigo-400"></i> KPIs — ${nomMat}</h4>
+                        <button onclick="app.cerrarKPIsMateria()" class="h-7 w-7 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition flex items-center justify-center" title="Ocultar">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                            <div class="text-2xl font-extrabold ${colorProm}">${res.promedio}%</div>
+                            <div class="text-[10px] font-bold text-slate-400 mt-1 uppercase">Promedio General</div>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                            <div class="text-2xl font-extrabold ${res.enRiesgo.length > 0 ? 'text-rose-600' : 'text-emerald-600'}">${res.enRiesgo.length}</div>
+                            <div class="text-[10px] font-bold text-slate-400 mt-1 uppercase">Estudiantes en Riesgo</div>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                            <div class="text-2xl font-extrabold ${colorAsist}">${res.asistenciaPromedio}%</div>
+                            <div class="text-[10px] font-bold text-slate-400 mt-1 uppercase">Asistencia Promedio</div>
+                        </div>
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                            <div class="text-2xl font-extrabold text-indigo-600">${avanceGlobal}%</div>
+                            <div class="text-[10px] font-bold text-slate-400 mt-1 uppercase">Avance de Calificación</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="flex flex-col items-center justify-center">
+                            <canvas id="chart-materia-kpi" width="220" height="220"></canvas>
+                            <p class="text-[10px] text-slate-400 mt-2">${res.totalEstudiantes} estudiante(s) · mínimo ${res.notaMinima}%</p>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-slate-500 uppercase mb-2">Avance por Rubro</p>
+                            ${barrasRubro}
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-slate-500 uppercase mb-2">Estudiantes en Riesgo</p>
+                            ${listaRiesgo}
+                        </div>
+                    </div>
+                </div>`;
+
+            // Chart.js no permite reusar un canvas sin destruir la instancia anterior primero
+            if (app.state.chartMateriaKpi) app.state.chartMateriaKpi.destroy();
+            const ctx = document.getElementById('chart-materia-kpi');
+            app.state.chartMateriaKpi = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Excelente (90-100%)', `Aprobado (${res.notaMinima}-89%)`, `Reprobado (<${res.notaMinima}%)`],
+                    datasets: [{
+                        data: [res.distribucion.excelente, res.distribucion.aprobado, res.distribucion.reprobado],
+                        backgroundColor: ['#10b981', '#6366f1', '#f43f5e'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
+                    }
+                }
+            });
+        },
+
+        // MODAL: Registrar nota de Ampliación (examen extraordinario) para un
+        // estudiante puntual de una materia. Máximo 2 intentos (validado también
+        // en el backend). Al guardar, refresca el panel de KPIs para reflejar
+        // el nuevo estado de "en riesgo" con la nota topada en notaMinima.
+        abrirModalAmpliacion: async (idMat, nomMat, idEst, nombreEst, notaMinima, intentosRestantes) => {
+            const numeroIntento = intentosRestantes === 2 ? 1 : 2;
+            const hoy = new Date().toISOString().split('T')[0];
+
+            const { value: formValues } = await Swal.fire({
+                title: `Ampliación — Intento ${numeroIntento}`,
+                html: `
+                    <p class="text-sm text-slate-500 mb-3 text-left">${nombreEst}<br><span class="text-xs">${nomMat} · nota mínima ${notaMinima}%</span></p>
+                    <label class="block text-xs font-bold text-slate-500 mb-1 text-left">Nota obtenida en el examen de ampliación</label>
+                    <input id="amp-nota" type="number" min="0" max="100" step="1" class="swal2-input" style="margin:0 0 12px;">
+                    <label class="block text-xs font-bold text-slate-500 mb-1 text-left">Fecha en que se hizo el examen</label>
+                    <input id="amp-fecha" type="date" value="${hoy}" max="${hoy}" class="swal2-input" style="margin:0;">
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#4f46e5',
+                focusConfirm: false,
+                preConfirm: () => {
+                    const nota = document.getElementById('amp-nota').value;
+                    const fecha = document.getElementById('amp-fecha').value;
+                    const n = Number(nota);
+                    if (nota === '' || isNaN(n) || n < 0 || n > 100) {
+                        Swal.showValidationMessage('Ingresá una nota válida entre 0 y 100');
+                        return false;
+                    }
+                    if (!fecha) {
+                        Swal.showValidationMessage('Ingresá la fecha del examen');
+                        return false;
+                    }
+                    return { nota: n, fecha };
+                }
+            });
+
+            if (!formValues) return; // canceló
+
+            const res = await app.api({
+                action: 'saveAmpliacion',
+                idMateria: idMat,
+                idEst: idEst,
+                nota: formValues.nota,
+                fecha: formValues.fecha
+            });
+
+            if (!res || !res.success) {
+                Swal.fire('Error', (res && res.message) || 'No se pudo registrar la ampliación', 'error');
+                return;
+            }
+
+            Swal.fire({ icon: 'success', title: 'Ampliación registrada', timer: 1400, showConfirmButton: false });
+            app.verKPIsMateria(idMat, nomMat);
+        },
+
+        cerrarKPIsMateria: () => {
+            if (app.state.chartMateriaKpi) { app.state.chartMateriaKpi.destroy(); app.state.chartMateriaKpi = null; }
+            document.getElementById('materia-kpis-container').innerHTML = '';
+        },
+
         // 3. VER NOTAS DE MATERIA (MODAL TABLA)
+        // Igual que verNotasEstudiante: arranca pidiendo elegir periodo, nunca mezcla.
         verNotasMateria: async (idMat, nomMat, periodo) => {
-            periodo = periodo || '';
+            const cantPeriodosMat = app.getCantPeriodosSeccion(app.state.currentSecId);
+            const selectorHtmlMat = `
+                <div class="inline-block">
+                    <label class="text-[10px] font-bold text-gray-500 block">Periodo</label>
+                    <select class="p-1.5 border-2 border-indigo-300 rounded-lg text-xs font-bold text-indigo-700 bg-indigo-50 shadow-sm cursor-pointer hover:bg-indigo-100 transition" onchange="app.verNotasMateria('${idMat}', ${app.jsStr(nomMat)}, this.value)">
+                        <option value="" ${!periodo ? 'selected' : ''} disabled>-- Elegí un periodo --</option>
+                        ${app.buildPeriodoOptions(cantPeriodosMat, periodo || '', false)}
+                    </select>
+                </div>`;
+
+            if (!periodo) {
+                Swal.fire({
+                    title: nomMat,
+                    html: `
+                        <div class="text-left pr-6">
+                            <p class="text-xs text-gray-500 mb-2">Elegí el periodo que querés revisar.</p>
+                            ${selectorHtmlMat}
+                        </div>`,
+                    showCloseButton: true,
+                    showConfirmButton: false
+                });
+                return;
+            }
+
             Swal.fire({ title: 'Generando Cuadro...', didOpen: () => Swal.showLoading() });
             const res = await app.api({ action: 'getSubjectReport', id: idMat, periodo: periodo });
             Swal.close();
 
             if(!res || res.error) return Swal.fire('Error', 'No hay datos', 'error');
 
+            const tituloPeriodoMat = app.getPeriodoReporteLabel(periodo, app.state.currentSecId);
+
             let html = `
-            <div class="text-left mb-3 flex items-center justify-between gap-3">
-                <div>
-                    <h4 class="font-bold text-gray-700">${nomMat}</h4>
-                    <p class="text-xs text-gray-500">Cuadro General de Rendimiento</p>
-                </div>
-                <div>
-                    <label class="text-[10px] font-bold text-gray-500 block">Periodo</label>
-                    <select class="p-1 border rounded text-xs bg-white" onchange="app.verNotasMateria('${idMat}', ${JSON.stringify(nomMat)}, this.value)">
-                        <option value="" ${periodo==='' ? 'selected' : ''}>Todos</option>
-                        <option value="1" ${String(periodo)==='1' ? 'selected' : ''}>I Periodo</option>
-                        <option value="2" ${String(periodo)==='2' ? 'selected' : ''}>II Periodo</option>
-                        <option value="3" ${String(periodo)==='3' ? 'selected' : ''}>III Periodo</option>
-                    </select>
-                </div>
+            <div class="text-left mb-3 pr-6">
+                <h4 class="font-bold text-gray-700">${nomMat}</h4>
+                <p class="text-xs text-gray-500 mb-2">Cuadro General de Rendimiento — ${tituloPeriodoMat}</p>
+                ${selectorHtmlMat}
             </div>
             <div class="overflow-y-auto max-h-[400px] border rounded-lg">
                 <table class="w-full text-xs text-left">
@@ -5604,7 +6235,7 @@ adminLoadUsers: async () => {
                 footer: `
                     <div class="flex gap-2 w-full">
                         <button onclick="app.downloadPdf('pdfGrades', '${idMat}')" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold shadow hover:bg-indigo-700 flex-1"><i class="fas fa-file-pdf mr-2"></i> Descargar Cuadro PDF</button>
-                        <button onclick="app.verNotaFinalAnual('${idMat}', ${JSON.stringify(nomMat)})" class="bg-amber-500 text-white px-4 py-2 rounded font-bold shadow hover:bg-amber-600 flex-1"><i class="fas fa-calculator mr-2"></i> Nota Final Anual</button>
+                        <button onclick="app.verNotaFinalAnual('${idMat}', ${app.jsStr(nomMat)})" class="bg-amber-500 text-white px-4 py-2 rounded font-bold shadow hover:bg-amber-600 flex-1"><i class="fas fa-calculator mr-2"></i> Nota Final Anual</button>
                     </div>`
             });
         },
@@ -5617,12 +6248,15 @@ adminLoadUsers: async () => {
 
             if(!res || res.error) return Swal.fire('Error', res && res.error || 'No hay datos', 'error');
 
+            const sec = (app.data.secciones || []).find(s => String(s.id) === String(app.state.currentSecId));
+            const anioNotaFinal = sec ? sec.anio : '';
+
             let html = `
             <div class="text-left mb-3">
                 <h4 class="font-bold text-gray-700">${nomMat}</h4>
-                <p class="text-xs text-gray-500">Nota Final Anual (promedio I y II Periodo)</p>
+                <p class="text-xs text-gray-500">Nota Final Anual ${anioNotaFinal} (promedio I y II Periodo)</p>
             </div>
-            <div class="overflow-y-auto max-h-[400px] border rounded-lg">
+            <div class="overflow-y-auto max-h-[420px] border rounded-lg">
                 <table class="w-full text-xs text-left">
                     <thead class="bg-gray-100 font-bold text-gray-600 border-b sticky top-0">
                         <tr>
@@ -5630,6 +6264,7 @@ adminLoadUsers: async () => {
                             <th class="p-2 text-center">I Periodo</th>
                             <th class="p-2 text-center">II Periodo</th>
                             <th class="p-2 text-center bg-gray-200">FINAL</th>
+                            <th class="p-2">Detalles</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y">`;
@@ -5637,21 +6272,45 @@ adminLoadUsers: async () => {
             res.lista.forEach(e => {
                 const pendiente = e.notaFinal === 'Pendiente';
                 const color = pendiente ? 'text-gray-400' : (e.notaFinal >= 70 ? 'text-green-600' : 'text-red-600');
+                const detalle = e.ampliacion
+                    ? `<span class="text-[10px] font-medium text-indigo-500">Ampliación intento ${e.ampliacion.intento}: ${e.ampliacion.notaObtenida}% (nota original ${e.notaFinalOriginal}%)</span>`
+                    : `<span class="text-[10px] text-gray-300">—</span>`;
                 html += `<tr>
                     <td class="p-2 font-medium truncate max-w-[150px]">${e.nombre}</td>
                     <td class="p-2 text-center">${e.notaPeriodo1}</td>
                     <td class="p-2 text-center">${e.notaPeriodo2 !== null ? e.notaPeriodo2 : '—'}</td>
                     <td class="p-2 text-center font-bold bg-gray-50 ${color}">${e.notaFinal}</td>
+                    <td class="p-2">${detalle}</td>
                 </tr>`;
             });
             html += `</tbody></table></div>`;
 
             Swal.fire({
                 html: html,
-                width: '700px',
+                width: '900px',
                 showCloseButton: true,
-                showConfirmButton: false
+                showConfirmButton: false,
+                footer: `<button onclick="app.imprimirReporteAmpliaciones('${idMat}', ${app.jsStr(nomMat)})" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold shadow hover:bg-indigo-700 w-full"><i class="fas fa-file-pdf mr-2"></i> Imprimir Reporte de Ampliaciones</button>`
             });
+        },
+
+        // Antes de generar el PDF, deja elegir si va toda la materia o solo
+        // quienes hicieron ampliación (más usado, por eso queda preseleccionado).
+        imprimirReporteAmpliaciones: async (idMat, nomMat) => {
+            const { value: soloConAmpliacion } = await Swal.fire({
+                title: 'Reporte de Ampliaciones',
+                html: `<p class="text-sm text-slate-500 text-left">${nomMat}</p>`,
+                input: 'checkbox',
+                inputValue: 1,
+                inputPlaceholder: 'Incluir solo estudiantes que hicieron ampliación',
+                showCancelButton: true,
+                confirmButtonText: 'Generar PDF',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#4f46e5'
+            });
+
+            if (soloConAmpliacion === undefined) return; // canceló
+            app.downloadPdf('pdfAmpliaciones', idMat, { soloConAmpliacion: !!soloConAmpliacion });
         },
 
         // ==========================================
@@ -6049,8 +6708,8 @@ loadAuditoriaData: async () => {
                         </div>
                         <div>
                             <label class="text-xs font-bold text-gray-500">Periodo</label>
-                            <select id="sea-periodo" class="w-full p-2 border rounded-lg bg-white shadow-sm border-green-200">
-                                <option value="">Todos</option>
+                            <select id="sea-periodo" class="w-full p-2 border-2 rounded-lg font-bold text-green-700 bg-green-50 shadow-sm border-green-400 cursor-pointer hover:bg-green-100 transition">
+                                <option value="" selected disabled>-- Elegí un periodo --</option>
                                 <option value="1">I Periodo</option>
                                 <option value="2">II Periodo</option>
                                 <option value="3">III Periodo</option>
@@ -6067,7 +6726,8 @@ loadAuditoriaData: async () => {
                 
                 <!-- PREVISUALIZACIÓN -->
                 <div id="sea-preview" class="hidden">
-                    <h5 class="text-sm font-bold text-gray-500 mb-2">Previsualización de Datos</h5>
+                    <h5 class="text-sm font-bold text-gray-500 mb-1">Previsualización de Datos</h5>
+                    <p id="sea-preview-periodo" class="text-xs text-gray-400 mb-2"></p>
                     <div class="bg-white rounded-xl shadow border border-gray-200 overflow-x-auto">
                         <table class="w-full text-xs text-left">
                             <thead class="bg-gray-100 text-gray-600 border-b">
@@ -6185,11 +6845,24 @@ loadAuditoriaData: async () => {
                         <button onclick="app.openMaterias(app.state.currentSecId, app.state.currentSecName)" class="text-gray-500 hover:text-indigo-600 text-xs font-bold mb-1 flex items-center gap-1"><i class="fas fa-arrow-left"></i> VOLVER A MATERIAS</button>
                         <h3 class="text-base md:text-xl font-bold text-gray-800 leading-tight" id="ind-title">Evaluación</h3>
                     </div>
-                    <div class="flex gap-2 self-start sm:self-auto">
+                    <div class="flex gap-2 self-start sm:self-auto items-center">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 block">Ver periodo</label>
+                            <select id="ind-periodo-filtro" class="p-2 border-2 border-indigo-300 rounded-lg font-bold text-indigo-700 bg-indigo-50 text-sm shadow-sm cursor-pointer hover:bg-indigo-100 transition" onchange="app.setPeriodoFiltro(this.value)">
+                                <option value="">Todos</option>
+                                <option value="1">I Periodo</option>
+                                <option value="2">II Periodo</option>
+                                <option value="3">III Periodo</option>
+                            </select>
+                        </div>
+                        <button id="btn-recalcular-cot" onclick="app.confirmarRecalcularPesos()" class="hidden bg-sky-600 text-white px-4 py-2 rounded-lg shadow font-bold hover:bg-sky-700 text-sm items-center gap-2"><i class="fas fa-sync"></i> Recalcular Pesos</button>
                         <button onclick="app.confirmarClonarIndicadores()" class="bg-amber-500 text-white px-4 py-2 rounded-lg shadow font-bold hover:bg-amber-600 text-sm flex items-center gap-2"><i class="fas fa-copy"></i> Clonar a Periodo 2</button>
                         <button onclick="app.modalIndicador()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow font-bold hover:bg-indigo-700 text-sm flex items-center gap-2"><i class="fas fa-plus"></i> Nuevo Indicador</button>
                     </div>
                 </div>
+
+                <!-- AVISO: PERIODO SIN INDICADORES (sugerencia de clonado) -->
+                <div id="ind-periodo-vacio-banner" class="hidden"></div>
 
                 <!-- TABS DE CATEGORÍAS -->
                 <div id="dynamic-tabs-container" class="flex gap-2 mb-3 md:mb-6 overflow-x-auto pb-1">
@@ -6475,6 +7148,23 @@ loadAuditoriaData: async () => {
         </div>
     </div>
 </div>
+
+<!-- ===================== DISUASIVOS DE INSPECCIÓN (NO ES SEGURIDAD REAL) ===================== -->
+<style>
+    body { -webkit-user-select: none; -moz-user-select: none; user-select: none; }
+    input, textarea, [contenteditable="true"] { -webkit-user-select: text; -moz-user-select: text; user-select: text; }
+</style>
+<script>
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('keydown', e => {
+        const key = e.key.toUpperCase();
+        const blockDevtools = e.key === 'F12'
+            || (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(key))
+            || (e.ctrlKey && key === 'U');
+        if (blockDevtools) e.preventDefault();
+    });
+</script>
+<!-- ===================== FIN DISUASIVOS ===================== -->
 
 </body>
 </html>
