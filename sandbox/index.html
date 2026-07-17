@@ -4947,22 +4947,25 @@ fillMaxScore: () => {
         },
 
         // 2. GENERAR Y DESCARGAR EXCEL
-        downloadExcelSEA: async () => {
+        // Valida los filtros, trae los datos del reporte SEA y actualiza el preview en pantalla.
+        // Compartido por la descarga en Excel y en CSV para no repetir la misma logica dos veces.
+        obtenerYPrevisualizarSEA: async () => {
             const idMat = document.getElementById('sea-mat').value;
-            if(!idMat) return Swal.fire('Faltan datos', 'Selecciona una asignatura', 'warning');
+            if(!idMat) { Swal.fire('Faltan datos', 'Selecciona una asignatura', 'warning'); return null; }
             const periodo = document.getElementById('sea-periodo').value;
-            if(!periodo) return Swal.fire('Falta el periodo', 'Elegí de qué periodo querés el reporte SEA', 'warning');
+            if(!periodo) { Swal.fire('Falta el periodo', 'Elegí de qué periodo querés el reporte SEA', 'warning'); return null; }
 
             Swal.fire({ title: 'Procesando datos...', didOpen: () => Swal.showLoading() });
 
             const res = await app.api({ action: 'getSEAReport', id: idMat, periodo: periodo });
-            
+
             if(!res || res.error) {
                 Swal.close();
-                return Swal.fire('Error', res.error || 'No hay datos', 'error');
+                Swal.fire('Error', (res && res.error) || 'No hay datos', 'error');
+                return null;
             }
 
-            // A. MOSTRAR PREVIEW EN PANTALLA (Opcional, para que el profe vea)
+            // MOSTRAR PREVIEW EN PANTALLA (Opcional, para que el profe vea)
             const tbody = document.getElementById('sea-table-body');
             tbody.innerHTML = '';
             res.lista.forEach(r => {
@@ -4980,12 +4983,19 @@ fillMaxScore: () => {
             document.getElementById('sea-preview-periodo').innerText = tituloPeriodoSea;
             document.getElementById('sea-preview').classList.remove('hidden');
 
-            // B. GENERAR Y DESCARGAR EL .xlsx REAL
+            return { idMat, periodo, res };
+        },
+
+        downloadExcelSEA: async () => {
+            const datos = await app.obtenerYPrevisualizarSEA();
+            if (!datos) return;
+
+            // GENERAR Y DESCARGAR EL .xlsx REAL
             // El backend arma un Excel binario de verdad (no HTML disfrazado), por eso
             // plataformas externas ahora sí lo reconocen como Excel al subirlo.
             Swal.fire({ title: 'Generando archivo Excel...', text: 'Esto puede tardar unos segundos.', didOpen: () => Swal.showLoading() });
 
-            const resExcel = await app.api({ action: 'getSEAExcel', id: idMat, periodo: periodo });
+            const resExcel = await app.api({ action: 'getSEAExcel', id: datos.idMat, periodo: datos.periodo });
 
             if (!resExcel || !resExcel.success) {
                 Swal.fire('Error', (resExcel && resExcel.message) || 'No se pudo generar el archivo Excel', 'error');
@@ -5002,6 +5012,38 @@ fillMaxScore: () => {
             Swal.close();
             const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
             Toast.fire({ icon: 'success', title: 'Archivo SEA descargado' });
+        },
+
+        // CSV separado por comas -- se arma en el navegador (no necesita ir al backend,
+        // ya tenemos los datos de obtenerYPrevisualizarSEA). Lleva BOM UTF-8 para que
+        // Excel no rompa tildes/enes al abrirlo (mismo problema que tuvimos con el xlsx viejo).
+        downloadCsvSEA: async () => {
+            const datos = await app.obtenerYPrevisualizarSEA();
+            if (!datos) return;
+
+            const escaparCsv = (valor) => {
+                const texto = String(valor ?? '');
+                return /[",\n]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
+            };
+
+            const encabezados = ["Id", "Nombre", "Trabajo cotidiano", "Tareas", "Prueba", "Asistencia"];
+            const filas = datos.res.lista.map(r => [r.Id, r.Nombre, r.Cotidiano, r.Tareas, r.Prueba, r.Asistencia]);
+
+            const contenidoCsv = [encabezados, ...filas]
+                .map(fila => fila.map(escaparCsv).join(','))
+                .join('\r\n');
+
+            const nombreArchivo = `SEA_${datos.res.materia.replace(/\s+/g, '_')}.csv`;
+            const blob = new Blob(['﻿', contenidoCsv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = nombreArchivo;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+            Toast.fire({ icon: 'success', title: 'Archivo CSV descargado' });
         },
 
         // ==========================================
@@ -6701,8 +6743,11 @@ loadAuditoriaData: async () => {
                         </div>
                     </div>
                     
-                    <div class="mt-4 text-right">
-                        <button onclick="app.downloadExcelSEA()" class="bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow hover:bg-green-700 transition flex items-center gap-2 ml-auto">
+                    <div class="mt-4 flex justify-end gap-3">
+                        <button onclick="app.downloadCsvSEA()" class="bg-slate-600 text-white px-6 py-2 rounded-lg font-bold shadow hover:bg-slate-700 transition flex items-center gap-2">
+                            <i class="fas fa-file-csv"></i> Descargar CSV
+                        </button>
+                        <button onclick="app.downloadExcelSEA()" class="bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow hover:bg-green-700 transition flex items-center gap-2">
                             <i class="fas fa-download"></i> Descargar Plantilla Excel
                         </button>
                     </div>
