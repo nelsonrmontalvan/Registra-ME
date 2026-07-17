@@ -836,7 +836,7 @@
 
     // 👇👇👇  ¡¡PEGA AQUÍ TU URL DE GOOGLE APPS SCRIPT!! 👇👇👇
     
-    const API_URL = "https://script.google.com/macros/s/AKfycbzbzcAQztsPaVuw25GRj-gergklhZhTrycSrwl_w4zG9B6j2SXAnhkUyI3OC0OxALOvzw/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbzbzcAQztsPaVuw25GRj-gergklhZhTrycSrwl_w4zG9B6j2SXAnhkUyI3OC0OxALOvzw/exec"; // sandbox de pruebas
                     
                     
     const app = {
@@ -4979,52 +4979,27 @@ fillMaxScore: () => {
             const tituloPeriodoSea = app.getPeriodoReporteLabel(periodo, idSecSea);
             document.getElementById('sea-preview-periodo').innerText = tituloPeriodoSea;
             document.getElementById('sea-preview').classList.remove('hidden');
-            Swal.close();
 
-            // B. GENERAR ARCHIVO EXCEL (Truco HTML Table)
-            // Creamos una tabla HTML cruda que Excel entiende como hoja de cálculo
-            let excelContent = `
-                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-                <head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Reporte SEA</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head>
-                <body>
-                <table border="1">
-                    <thead>
-                        <tr style="background-color:#CCC;">
-                            <th>Id</th>
-                            <th>Nombre</th>
-                            <th>Trabajo cotidiano</th>
-                            <th>Tareas</th>
-                            <th>Prueba</th>
-                            <th>Asistencia</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-            
-            res.lista.forEach(r => {
-                // x:num fuerza a Excel a leer el valor como número real (formato invariante con punto),
-                // sin importar la configuración regional del Excel del usuario (evita que quede como texto alineado a la izquierda).
-                excelContent += `<tr>
-                    <td>${r.Id}</td>
-                    <td>${r.Nombre}</td>
-                    <td x:num="${r.Cotidiano}" align="right">${r.Cotidiano}</td>
-                    <td x:num="${r.Tareas}" align="right">${r.Tareas}</td>
-                    <td x:num="${r.Prueba}" align="right">${r.Prueba}</td>
-                    <td x:num="${r.Asistencia}" align="right">${r.Asistencia}</td>
-                </tr>`;
-            });
+            // B. GENERAR Y DESCARGAR EL .xlsx REAL
+            // El backend arma un Excel binario de verdad (no HTML disfrazado), por eso
+            // plataformas externas ahora sí lo reconocen como Excel al subirlo.
+            Swal.fire({ title: 'Generando archivo Excel...', text: 'Esto puede tardar unos segundos.', didOpen: () => Swal.showLoading() });
 
-            excelContent += `</tbody></table></body></html>`;
+            const resExcel = await app.api({ action: 'getSEAExcel', id: idMat, periodo: periodo });
 
-            // C. DESCARGAR
-            const blob = new Blob([excelContent], { type: 'application/vnd.ms-excel' });
+            if (!resExcel || !resExcel.success) {
+                Swal.fire('Error', (resExcel && resExcel.message) || 'No se pudo generar el archivo Excel', 'error');
+                return;
+            }
+
             const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            // Nombre del archivo: SEA_Matemáticas_8-2.xls
-            link.download = `SEA_${res.materia.replace(/\s+/g, '_')}_${tituloPeriodoSea.replace(/\s+/g, '_')}.xls`; 
+            link.href = "data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64," + resExcel.base64;
+            link.download = resExcel.nombre;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            
+
+            Swal.close();
             const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
             Toast.fire({ icon: 'success', title: 'Archivo SEA descargado' });
         },

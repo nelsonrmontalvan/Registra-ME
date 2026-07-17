@@ -1,7 +1,7 @@
 // ==========================================
 // CONFIGURACIÓN GLOBAL
 // ==========================================
-const SHEET_ID = "16_qGdphmdL9lLkdnl6_ByN5wmcuZ3uI4xTa1dk0m5QQ";
+const SHEET_ID = "16_qGdphmdL9lLkdnl6_ByN5wmcuZ3uI4xTa1dk0m5QQ"; // <-- reemplazar antes de usar (ver sandbox/README.md)
 const DRIVE_FOLDER_ID = "1n4tTRrHTtg6cDaVT2rtZo7q-Y6LB3VJN";
 
 // ==========================================
@@ -111,6 +111,7 @@ function doPost(e) {
 
      // --- REPORTES SEA ---
     if(action === "getSEAReport") return response(obtenerDatosReporteSEA(data.id, data.periodo));
+    if(action === "getSEAExcel") return response(generarExcelReporteSEA(data.id, data.periodo));
 
 // --- INFORME AL HOGAR ---
     if(action === "bulkDownloadReport") return response(generarPdfMasivoBoletas(data));
@@ -2587,6 +2588,43 @@ function obtenerDatosReporteSEA(idMateria, periodo) {
 
     return { success: true, lista: reporte, materia: nombreMateria };
   } catch (e) { return { error: e.toString() }; }
+}
+
+// Genera un .xlsx REAL (no el truco de HTML-como-Excel que usaba el frontend antes,
+// que rompia tildes/enes y que otras plataformas rechazaban por no ser un Excel de verdad).
+// Crea una Hoja de Google temporal solo para exportarla como xlsx, y la borra enseguida.
+function generarExcelReporteSEA(idMateria, periodo) {
+  let tempId = null;
+  try {
+    const datos = obtenerDatosReporteSEA(idMateria, periodo);
+    if (datos.error) return { success: false, message: datos.error };
+
+    const tempSS = SpreadsheetApp.create("SEA_temp_" + Date.now());
+    tempId = tempSS.getId();
+    const sheet = tempSS.getSheets()[0];
+    sheet.setName("Reporte SEA");
+
+    const encabezados = ["Id", "Nombre", "Trabajo cotidiano", "Tareas", "Prueba", "Asistencia"];
+    sheet.getRange(1, 1, 1, encabezados.length).setValues([encabezados]);
+
+    const filas = datos.lista.map(r => [r.Id, r.Nombre, r.Cotidiano, r.Tareas, r.Prueba, r.Asistencia]);
+    if (filas.length > 0) sheet.getRange(2, 1, filas.length, encabezados.length).setValues(filas);
+    SpreadsheetApp.flush();
+
+    const url = "https://docs.google.com/spreadsheets/d/" + tempId + "/export?format=xlsx";
+    const token = ScriptApp.getOAuthToken();
+    const respuesta = UrlFetchApp.fetch(url, { headers: { Authorization: "Bearer " + token } });
+    const blob = respuesta.getBlob();
+
+    const nombreFinal = "SEA_" + String(datos.materia).replace(/\s+/g, "_") + ".xlsx";
+    return { success: true, base64: Utilities.base64Encode(blob.getBytes()), nombre: nombreFinal };
+
+  } catch (e) {
+    return { success: false, message: e.toString() };
+  } finally {
+    // Pase lo que pase (exito o error), el archivo temporal nunca debe quedar en el Drive.
+    if (tempId) { try { DriveApp.getFileById(tempId).setTrashed(true); } catch (e2) {} }
+  }
 }
 
 // ==========================================
