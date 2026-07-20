@@ -1505,6 +1505,7 @@ enterApp: async () => {
             if (!jsonFechas) return null;
             try {
                 const periodos = JSON.parse(jsonFechas);
+                if (!Array.isArray(periodos) || periodos.length === 0) return null;
                 const hoy = new Date();
                 hoy.setHours(0,0,0,0);
                 for (let p of periodos) {
@@ -1512,7 +1513,16 @@ enterApp: async () => {
                     let fin = new Date(p.fin.replace(/-/g, '\/'));
                     if (hoy >= inicio && hoy <= fin) return p.p;
                 }
-                return null;
+                // Hoy no cae exacto en ningun rango (ej. vacaciones entre periodos, o
+                // el fin de un periodo quedo mal cargado). Mismo criterio de respaldo
+                // que determinarPeriodoVigente en el backend: usar el ultimo periodo
+                // cuyo INICIO ya paso, en vez de caer en "Todos".
+                let vigente = periodos[0].p;
+                periodos.forEach(p => {
+                    let inicio = new Date(p.inicio.replace(/-/g, '\/'));
+                    if (hoy >= inicio) vigente = p.p;
+                });
+                return vigente;
             } catch (e) {
                 return null;
             }

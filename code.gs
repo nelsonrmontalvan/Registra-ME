@@ -566,6 +566,17 @@ function guardarIndicador(form) {
     form.puntosTotales || 100,
     periodo
   ]);
+
+  // Si el indicador nuevo es de Cotidiano, el peso de TODOS los indicadores de
+  // Cotidiano de este periodo cambio (se reparte entre uno mas). Antes esto
+  // requeria que el profe presionara "Recalcular Pesos" a mano -- ahora se
+  // recongela solo, en el momento, para que nunca quede una nota vieja con el
+  // peso desactualizado. Es seguro e idempotente (ver recalcularPesoCotidiano);
+  // si por algo fallara, no debe tumbar la creacion del indicador que ya se guardo.
+  if (form.categoria === 'TRAB_COT') {
+    try { recalcularPesoCotidiano(form.idMateria, periodo); } catch (e) {}
+  }
+
   return {success:true};
 }
 
