@@ -125,6 +125,14 @@ function doPost(e) {
     if(action === "saveAmpliacion") return response(guardarAmpliacion(data));
     if(action === "pdfAmpliaciones") return response(generarPdfAmpliaciones(data.id, data.soloConAmpliacion));
 
+    // --- ALERTAS TEMPRANAS ---
+    if(action === "getAlertasTempranas") return response(obtenerAlertasTempranas(data.idSeccion));
+    if(action === "pdfAlertasTempranas") return response(generarPdfAlertasTempranas(data.idSeccion));
+
+    // --- SEGUIMIENTO DE ALERTAS TEMPRANAS (Fase 2) ---
+    if(action === "saveAlertaTemprana") return response(guardarAlertaTemprana(data));
+    if(action === "getAlertasSeguimiento") return response(obtenerAlertasSeguimiento(data.idSeccion));
+
     // --- BITACORA DE CAMBIOS (Notas + Asistencia) ---
     if(action === "getBitacoraCambios") return response(obtenerBitacoraCambios(data.idMateria));
     if(action === "pdfBitacoraCambios") return response(generarPdfBitacoraCambios(data.id));
@@ -3614,4 +3622,312 @@ function generarPdfAmpliaciones(idMateria, soloConAmpliacion) {
   } catch (e) {
     return { success: false, message: e.toString() };
   }
+}
+
+// ==========================================
+// ALERTAS TEMPRANAS
+// Basado en el catalogo oficial del MEP (Guia de implementacion de la ruta de
+// alerta temprana, UPRE 2024 + Catalogo Alertas Tempranas UPRE 2023). Solo se
+// automatizan las 2 alertas de "Desempeño educativo" que se pueden calcular
+// con datos que ya existen en el sistema, con el criterio EXACTO del catalogo:
+//
+// - "Ausentismo a lecciones por materia en secundaria": se ausenta a la mitad
+//   (>=50%) de las lecciones de al menos una asignatura, EN LA SEMANA.
+// - "Bajo rendimiento academico": nota menor a la minima en AL MENOS 3
+//   materias, en el periodo vigente.
+//
+// Se suma ademas el conteo de "Escapadas" del mes (estado E en
+// ASISTENCIA_DATA) como señal extra -- no es una alerta del catalogo MEP,
+// pero ya existe el dato y Nelson pidio incluirla.
+//
+// El resto de las 81 alertas del catalogo (convivencia, salud, economico,
+// familiar, cultural, riesgo social...) son de observacion humana directa y
+// NO se intentan inferir aqui -- eso se registra a mano en Bitacora.
+// ==========================================
+// Nota: es un radar del momento actual (mismo criterio que el catalogo oficial
+// MEP: "durante la semana"), no un histórico -- por eso no recibe un mes a
+// elegir. Ausentismo siempre es de la semana en curso, Rendimiento del periodo
+// vigente ahora, y Escapadas siempre del mes calendario actual.
+function obtenerAlertasTempranas(idSeccion) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+
+    const dataEst = ss.getSheetByName("ESTUDIANTES").getDataRange().getValues();
+    const estudiantes = {}; // idEst -> nombre
+    for (let i = 1; i < dataEst.length; i++) {
+      if (String(dataEst[i][1]).trim() === String(idSeccion).trim()) {
+        estudiantes[String(dataEst[i][0]).trim()] = String(dataEst[i][3]).trim();
+      }
+    }
+
+    const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+    const materias = [];
+    for (let i = 1; i < dataMat.length; i++) {
+      if (String(dataMat[i][1]).trim() === String(idSeccion).trim()) {
+        materias.push({ id: String(dataMat[i][0]).trim(), nombre: dataMat[i][2], notaMinima: Number(dataMat[i][8]) || 65 });
+      }
+    }
+
+    // Ventana movil de "los ultimos 7 dias" (hoy incluido), en vez de semana
+    // calendario estricta (lunes-domingo). Con calendario estricto, una
+    // ausencia de hace 4-5 dias "desaparecia" del radar en cuanto arrancaba
+    // la semana siguiente -- la ventana movil evita ese hueco.
+    const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+    const inicioVentana = new Date(hoy); inicioVentana.setDate(hoy.getDate() - 6);
+    const finVentanaSemana = hoy;
+
+    // Mes calendario actual, para Escapadas
+    const anioMes = hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0");
+
+    const alertasPorEstudiante = {};
+    Object.keys(estudiantes).forEach(id => {
+      alertasPorEstudiante[id] = { id, nombre: estudiantes[id], ausentismo: [], bajoRendimiento: [], escapadas: 0 };
+    });
+
+    const diasMap = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const dataCfg = ss.getSheetByName("CONF_HORARIO").getDataRange().getValues();
+    const dataAsis = ss.getSheetByName("ASISTENCIA_DATA").getDataRange().getValues();
+
+    // 1. AUSENTISMO SEMANAL POR MATERIA (>=50% de lecciones de la materia, en los ultimos 7 dias)
+    materias.forEach(mat => {
+      let lecPorDia = {}; // 'YYYY-MM-DD' -> lecciones programadas ese dia
+      for (let i = 1; i < dataCfg.length; i++) {
+        if (String(dataCfg[i][2]).trim() !== mat.id) continue;
+        const ini = new Date(dataCfg[i][3]);
+        const fin = new Date(dataCfg[i][4]);
+        const dias = JSON.parse(dataCfg[i][5]);
+        let cur = new Date(Math.max(ini.getTime(), inicioVentana.getTime()));
+        const finRecorte = new Date(Math.min(fin.getTime(), finVentanaSemana.getTime()));
+        while (cur <= finRecorte) {
+          const dName = diasMap[cur.getDay()];
+          if (dias[dName]) {
+            const key = cur.toISOString().split('T')[0];
+            lecPorDia[key] = (lecPorDia[key] || 0) + Number(dias[dName]);
+          }
+          cur.setDate(cur.getDate() + 1);
+        }
+      }
+      const totalLecSemana = Object.values(lecPorDia).reduce((a, b) => a + b, 0);
+      if (totalLecSemana === 0) return; // sin lecciones programadas esta semana para esta materia
+
+      const perdidasPorEst = {};
+      for (let i = 1; i < dataAsis.length; i++) {
+        if (String(dataAsis[i][3]).trim() !== mat.id) continue;
+        const estado = dataAsis[i][4];
+        let peso = 0;
+        if (estado === 'AI') peso = 1;
+        else if (estado === 'T') peso = 0.5;
+        if (peso === 0) continue;
+
+        const fecha = new Date(dataAsis[i][1]);
+        if (fecha < inicioVentana || fecha > finVentanaSemana) continue;
+
+        const key = fecha.toISOString().split('T')[0];
+        const lecDia = lecPorDia[key] || 0;
+        if (lecDia === 0) continue;
+
+        const idEst = String(dataAsis[i][2]).trim();
+        perdidasPorEst[idEst] = (perdidasPorEst[idEst] || 0) + (lecDia * peso);
+      }
+
+      Object.keys(perdidasPorEst).forEach(idEst => {
+        if (!alertasPorEstudiante[idEst]) return;
+        const pct = perdidasPorEst[idEst] / totalLecSemana;
+        if (pct >= 0.5) {
+          alertasPorEstudiante[idEst].ausentismo.push({ materia: mat.nombre, pctPerdido: Math.round(pct * 100) });
+        }
+      });
+    });
+
+    // 2. BAJO RENDIMIENTO ACADEMICO (bajo la nota minima en >=3 materias, en el periodo vigente)
+    materias.forEach(mat => {
+      const periodo = determinarPeriodoVigente(ss, mat.id);
+      const cuadro = obtenerCuadroMateria(mat.id, periodo);
+      if (cuadro.error) return;
+      cuadro.lista.forEach(e => {
+        if (!alertasPorEstudiante[e.id]) return;
+        if (e.total < mat.notaMinima) {
+          alertasPorEstudiante[e.id].bajoRendimiento.push({ materia: mat.nombre, nota: e.total, notaMinima: mat.notaMinima });
+        }
+      });
+    });
+
+    // 3. ESCAPADAS DEL MES (señal extra, no es del catalogo MEP)
+    for (let i = 1; i < dataAsis.length; i++) {
+      if (dataAsis[i][4] !== 'E') continue;
+      const idEst = String(dataAsis[i][2]).trim();
+      if (!alertasPorEstudiante[idEst]) continue;
+      const fecha = new Date(dataAsis[i][1]);
+      const key = fecha.getFullYear() + "-" + String(fecha.getMonth() + 1).padStart(2, "0");
+      if (key === anioMes) alertasPorEstudiante[idEst].escapadas++;
+    }
+
+    const resultado = Object.values(alertasPorEstudiante)
+      .map(e => ({
+        id: e.id,
+        nombre: e.nombre,
+        ausentismo: e.ausentismo,
+        bajoRendimiento: e.bajoRendimiento.length >= 3 ? e.bajoRendimiento : [],
+        escapadas: e.escapadas
+      }))
+      .filter(e => e.ausentismo.length > 0 || e.bajoRendimiento.length > 0 || e.escapadas > 0);
+
+    resultado.sort((a, b) => {
+      const puntajeA = a.ausentismo.length + a.bajoRendimiento.length + (a.escapadas > 0 ? 1 : 0);
+      const puntajeB = b.ausentismo.length + b.bajoRendimiento.length + (b.escapadas > 0 ? 1 : 0);
+      return puntajeB - puntajeA;
+    });
+
+    return {
+      success: true,
+      mes: anioMes,
+      semanaIni: inicioVentana.toISOString().split('T')[0],
+      semanaFin: finVentanaSemana.toISOString().split('T')[0],
+      alertas: resultado
+    };
+  } catch (e) { return { error: e.toString() }; }
+}
+
+function generarPdfAlertasTempranas(idSeccion) {
+  try {
+    const datos = obtenerAlertasTempranas(idSeccion);
+    if (datos.error) return { success: false, message: datos.error };
+
+    if (datos.alertas.length === 0) {
+      return { success: false, message: "No hay estudiantes con alertas tempranas activas en este momento." };
+    }
+
+    let filas = "";
+    datos.alertas.forEach((e, idx) => {
+      const detalles = [];
+      if (e.ausentismo.length > 0) {
+        detalles.push("<b>Ausentismo semanal:</b> " + e.ausentismo.map(a => `${a.materia} (${a.pctPerdido}% perdido)`).join(", "));
+      }
+      if (e.bajoRendimiento.length > 0) {
+        detalles.push("<b>Bajo rendimiento académico</b> (" + e.bajoRendimiento.length + " materias): " + e.bajoRendimiento.map(m => `${m.materia} (${m.nota}%, mín. ${m.notaMinima}%)`).join(", "));
+      }
+      if (e.escapadas > 0) {
+        detalles.push(`<b>Escapadas este mes:</b> ${e.escapadas}`);
+      }
+
+      filas += `
+      <tr>
+        <td style="border:1px solid #ddd; padding:6px; font-size:10px; text-align:center;">${idx + 1}</td>
+        <td style="border:1px solid #ddd; padding:6px; font-size:10px;">${e.nombre}</td>
+        <td style="border:1px solid #ddd; padding:6px; font-size:10px;">${detalles.join("<br>")}</td>
+      </tr>`;
+    });
+
+    let html = `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+         <h3 style="text-align:center; color:#004E64; margin-bottom:5px;">REPORTE MENSUAL DE ALERTAS TEMPRANAS</h3>
+         <p style="text-align:center; font-size:11px; color:#888; margin-top:0;">Mes de referencia: ${datos.mes} · Ausentismo evaluado sobre los últimos 7 días: ${datos.semanaIni} al ${datos.semanaFin}</p>
+         <p style="font-size:10px; color:#999; text-align:center;">Basado en el Catálogo Oficial de Alertas Tempranas (UPRE-MEP). "Escapadas" es una señal adicional del sistema, no forma parte del catálogo oficial.</p>
+
+         <table style="width:100%; border-collapse:collapse; margin-top:20px;">
+            <thead>
+                <tr style="background-color:#004E64; color:white; font-size:11px;">
+                   <th style="padding:6px;">#</th>
+                   <th style="padding:6px; text-align:left;">ESTUDIANTE</th>
+                   <th style="padding:6px; text-align:left;">ALERTAS DETECTADAS</th>
+                </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+         </table>
+      </div>
+    `;
+
+    const blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
+    blob.setName(`Alertas_Tempranas_${datos.mes}.pdf`);
+    return { success: true, base64: Utilities.base64Encode(blob.getBytes()), nombre: blob.getName() };
+
+  } catch (e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+// ==========================================
+// SEGUIMIENTO DE ALERTAS TEMPRANAS (Fase 2)
+// Registro persistente de una alerta detectada (o reportada a mano), con la
+// Dimension + Nombre de Alerta del Catalogo Oficial UPRE-MEP y el Estado
+// oficial (Activada/En proceso/En espera/Cerrada/Eliminada). A diferencia de
+// obtenerAlertasTempranas (que es un calculo en vivo, no guarda nada), esto es
+// lo que le permite al docente decir "ya estoy atendiendo esto" y llevar el
+// registro que despues tiene que trasladar a su Boleta de AT / plataforma SABER.
+// Hoja ALERTAS_TEMPRANAS_SEGUIMIENTO se autocrea en el primer registro (mismo
+// patron que AMPLIACIONES y BITACORA_CAMBIOS).
+// ==========================================
+function guardarAlertaTemprana(form) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    let sheet = ss.getSheetByName("ALERTAS_TEMPRANAS_SEGUIMIENTO");
+    if (!sheet) {
+      sheet = ss.insertSheet("ALERTAS_TEMPRANAS_SEGUIMIENTO");
+      sheet.appendRow(["ID", "ID_SECCION", "ID_EST", "DIMENSION", "NOMBRE_ALERTA", "CONTEXTO", "PRIORIDAD", "ESTADO", "COMENTARIO", "FECHA", "ID_USUARIO"]);
+    }
+
+    const idUsuario = obtenerIdUsuarioPorEmail(form.email);
+
+    if (form.idAlerta) {
+      const data = sheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][0]) === String(form.idAlerta)) {
+          const fila = i + 1;
+          sheet.getRange(fila, 8).setValue(form.estado || data[i][7]);
+          sheet.getRange(fila, 9).setValue(form.comentario !== undefined ? form.comentario : data[i][8]);
+          sheet.getRange(fila, 10).setValue(new Date());
+          return { success: true, message: "Alerta actualizada" };
+        }
+      }
+      return { success: false, message: "Alerta no encontrada" };
+    }
+
+    sheet.appendRow([
+      "AT-" + Date.now(),
+      form.idSeccion,
+      form.idEst,
+      form.dimension,
+      form.nombreAlerta,
+      form.contexto || "",
+      form.prioridad || "",
+      form.estado || "Activada",
+      form.comentario || "",
+      new Date(),
+      idUsuario
+    ]);
+    return { success: true, message: "Alerta registrada" };
+  } catch (e) { return { success: false, message: e.toString() }; }
+}
+
+function obtenerAlertasSeguimiento(idSeccion) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName("ALERTAS_TEMPRANAS_SEGUIMIENTO");
+    if (!sheet) return { success: true, lista: [] };
+
+    const dataEst = ss.getSheetByName("ESTUDIANTES").getDataRange().getValues();
+    const nombresPorId = {};
+    for (let i = 1; i < dataEst.length; i++) nombresPorId[String(dataEst[i][0]).trim()] = String(dataEst[i][3]).trim();
+
+    const data = sheet.getDataRange().getValues();
+    const lista = [];
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][1]).trim() !== String(idSeccion).trim()) continue;
+      const idEst = String(data[i][2]).trim();
+      lista.push({
+        idAlerta: data[i][0],
+        idEst: idEst,
+        nombreEst: nombresPorId[idEst] || idEst,
+        dimension: data[i][3],
+        nombreAlerta: data[i][4],
+        contexto: data[i][5],
+        prioridad: data[i][6],
+        estado: data[i][7],
+        comentario: data[i][8],
+        fecha: data[i][9]
+      });
+    }
+    lista.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+    return { success: true, lista: lista };
+  } catch (e) { return { error: e.toString() }; }
 }
