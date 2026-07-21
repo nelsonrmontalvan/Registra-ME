@@ -4036,6 +4036,143 @@ renderScheduleList: () => {
             app.loadIndicadores();
         },
 
+        // ==========================================
+        // EXIMICIÓN (Artículo 49, Reglamento de Evaluación de los Aprendizajes
+        // y de la Conducta -- Decreto 45509-MEP, vigente desde 2026).
+        // No es eximir de la materia: es eximirse SOLO de la última prueba del
+        // último periodo, y únicamente si hay al menos 2 Pruebas en ese periodo.
+        // Requisito: nota >=90 en I Periodo Y >=90 en cada componente del
+        // último periodo. Distinto por completo del campo "eximido" de
+        // Estudiantes (ese solo controla si recibe correos a la casa).
+        // ==========================================
+        abrirPanelEximicion: async () => {
+            const idMateria = app.state.currentMatId;
+            Swal.fire({ title: 'Calculando elegibles...', didOpen: () => Swal.showLoading() });
+            const [res, historial] = await Promise.all([
+                app.api({ action: 'getElegiblesEximicion', idMateria }),
+                app.api({ action: 'getHistorialEximiciones', idMateria })
+            ]);
+            Swal.close();
+
+            if (!res || res.error) {
+                return Swal.fire('No aplica en esta materia', (res && res.error) || 'No se pudo calcular', 'info');
+            }
+
+            app.state.eximicionData = res; // usado por abrirModalAplicarEximicion
+
+            const idsYaEximidos = new Set(((historial && historial.lista) || []).map(h => h.idEst));
+
+            let filasElegibles;
+            if (res.elegibles.length === 0) {
+                filasElegibles = `<tr><td colspan="3" class="p-4 text-center text-slate-400 text-xs">Nadie cumple hoy con el Artículo 49 en esta materia (nota ≥90 en I Periodo y en cada componente del ${app.LABEL_PERIODO[String(res.ultimoPeriodo)] || res.ultimoPeriodo} Periodo).</td></tr>`;
+            } else {
+                filasElegibles = res.elegibles.map(e => {
+                    const yaEximido = idsYaEximidos.has(e.id);
+                    const detalle = e.componentes.map(c => `${c.categoria}: ${c.porcentaje}%`).join(' · ');
+                    const accion = yaEximido
+                        ? `<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Ya eximido</span>`
+                        : `<button onclick="app.abrirModalAplicarEximicion('${e.id}',${app.jsStr(e.nombre)})" class="text-[10px] font-bold text-white bg-teal-600 hover:bg-teal-700 px-2 py-0.5 rounded-full">Aplicar Exención</button>`;
+                    return `
+                    <tr class="border-b border-slate-50 last:border-0">
+                        <td class="p-2 font-medium text-slate-700 text-xs">${e.nombre}</td>
+                        <td class="p-2 text-[10px] text-slate-500">I Periodo: ${e.notaPeriodo1}% · ${detalle}</td>
+                        <td class="p-2 text-right">${accion}</td>
+                    </tr>`;
+                }).join('');
+            }
+
+            const pruebaLabel = res.ultimaPruebaSugerida ? res.ultimaPruebaSugerida.descripcion : '—';
+
+            await Swal.fire({
+                title: 'Eximidos — Artículo 49',
+                width: '650px',
+                html: `
+                    <p class="text-xs text-slate-500 text-left mb-3">
+                        <b>${res.materia}</b> · Último periodo: ${app.LABEL_PERIODO[String(res.ultimoPeriodo)] || res.ultimoPeriodo} Periodo<br>
+                        Prueba sugerida a eximir: <b>${pruebaLabel}</b> (se puede cambiar al aplicar)
+                    </p>
+                    <div class="max-h-[350px] overflow-y-auto border rounded-lg">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 text-slate-500 text-[10px] uppercase sticky top-0">
+                                <tr><th class="p-2">Estudiante</th><th class="p-2">Detalle (Art. 49)</th><th class="p-2 text-right">Acción</th></tr>
+                            </thead>
+                            <tbody>${filasElegibles}</tbody>
+                        </table>
+                    </div>
+                `,
+                showConfirmButton: false,
+                showCloseButton: true
+            });
+        },
+
+        abrirModalAplicarEximicion: async (idEst, nombreEst) => {
+            const res = app.state.eximicionData;
+            if (!res) return;
+
+            const opcionesPrueba = res.pruebasDisponibles.map(p => `<option value="${p.id}" ${p.id === res.ultimaPruebaSugerida.id ? 'selected' : ''}>${p.descripcion}</option>`).join('');
+            const hoy = new Date().toISOString().split('T')[0];
+
+            const { value: formValues } = await Swal.fire({
+                title: 'Aplicar Exención',
+                html: `
+                    <p class="text-sm text-slate-500 mb-3 text-left">${nombreEst}</p>
+                    <label class="block text-xs font-bold text-slate-500 mb-1 text-left">Prueba que se exime</label>
+                    <select id="exim-prueba" class="swal2-select" style="width:100%; margin:0 0 10px;">${opcionesPrueba}</select>
+                    <label class="block text-xs font-bold text-slate-500 mb-1 text-left">Fecha en que se avisó al estudiante/encargado</label>
+                    <input id="exim-fecha-aviso" type="date" class="swal2-input" style="width:100%; margin:0 0 10px;" value="${hoy}">
+                    <label class="block text-xs font-bold text-slate-500 mb-1 text-left">Fecha de la prueba</label>
+                    <input id="exim-fecha-prueba" type="date" class="swal2-input" style="width:100%; margin:0;">
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Aplicar Exención',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#0d9488',
+                focusConfirm: false,
+                preConfirm: () => {
+                    const fechaPrueba = document.getElementById('exim-fecha-prueba').value;
+                    if (!fechaPrueba) {
+                        Swal.showValidationMessage('Ingresá la fecha de la prueba');
+                        return false;
+                    }
+                    return {
+                        idIndicadorPrueba: document.getElementById('exim-prueba').value,
+                        fechaAviso: document.getElementById('exim-fecha-aviso').value,
+                        fechaPrueba
+                    };
+                }
+            });
+
+            if (!formValues) return;
+
+            const resultado = await app.api({
+                action: 'saveEximicion',
+                idMateria: app.state.currentMatId,
+                idEst,
+                idIndicadorPrueba: formValues.idIndicadorPrueba,
+                fechaAviso: formValues.fechaAviso,
+                fechaPrueba: formValues.fechaPrueba
+            });
+
+            if (!resultado || !resultado.success) {
+                Swal.fire('Error', (resultado && resultado.message) || 'No se pudo aplicar la exención', 'error');
+                return;
+            }
+
+            if (!resultado.avisoValido) {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'Exención aplicada, pero el aviso no cumple los 5 días hábiles',
+                    text: `Solo hay ${resultado.diasHabiles} día(s) hábil(es) entre el aviso y la prueba. La nota ya quedó en 100, pero revisá el requisito de notificación del Artículo 49.`
+                });
+            } else {
+                await Swal.fire({ icon: 'success', title: 'Exención aplicada', text: 'Se registró la nota de 100 y quedó documentado el aviso.', timer: 2200 });
+            }
+
+            app.state.allIndicators = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: 'ALL', periodo: app.state.currentPeriodoFiltro });
+            app.renderDynamicTabs();
+            app.loadIndicadores();
+        },
+
         // HISTORIAL DE CAMBIOS (Notas + Asistencia) de una materia completa.
         // Soporte real a "pasé lista y no se guardó" / "cambié esta nota y no se
         // refleja": en vez de discutir, se consulta quién cambió qué y cuándo.
@@ -7270,6 +7407,7 @@ loadAuditoriaData: async () => {
                         </div>
                         <button id="btn-recalcular-cot" onclick="app.confirmarRecalcularPesos()" class="hidden bg-sky-600 text-white px-4 py-2 rounded-lg shadow font-bold hover:bg-sky-700 text-sm items-center gap-2"><i class="fas fa-sync"></i> Recalcular Pesos</button>
                         <button onclick="app.confirmarClonarIndicadores()" class="bg-amber-500 text-white px-4 py-2 rounded-lg shadow font-bold hover:bg-amber-600 text-sm flex items-center gap-2"><i class="fas fa-copy"></i> Clonar a Periodo 2</button>
+                        <button onclick="app.abrirPanelEximicion()" class="bg-teal-600 text-white px-4 py-2 rounded-lg shadow font-bold hover:bg-teal-700 text-sm flex items-center gap-2"><i class="fas fa-user-check"></i> Eximidos (Art. 49)</button>
                         <button onclick="app.modalIndicador()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg shadow font-bold hover:bg-indigo-700 text-sm flex items-center gap-2"><i class="fas fa-plus"></i> Nuevo Indicador</button>
                     </div>
                 </div>

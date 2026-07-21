@@ -134,6 +134,11 @@ function doPost(e) {
     if(action === "getAlertasSeguimiento") return response(obtenerAlertasSeguimiento(data.idSeccion));
     if(action === "deleteAlertaTemprana") return response(eliminarAlertaTemprana(data.idAlerta));
 
+    // --- EXIMICIÓN (Articulo 49) ---
+    if(action === "getElegiblesEximicion") return response(obtenerElegiblesEximicion(data.idMateria));
+    if(action === "saveEximicion") return response(aplicarEximicion(data));
+    if(action === "getHistorialEximiciones") return response(obtenerHistorialEximiciones(data.idMateria));
+
     // --- BITACORA DE CAMBIOS (Notas + Asistencia) ---
     if(action === "getBitacoraCambios") return response(obtenerBitacoraCambios(data.idMateria));
     if(action === "pdfBitacoraCambios") return response(generarPdfBitacoraCambios(data.id));
@@ -3946,4 +3951,211 @@ function obtenerAlertasSeguimiento(idSeccion) {
 // borra la fila por completo.
 function eliminarAlertaTemprana(idAlerta) {
   return eliminarFilaGenerico("ALERTAS_TEMPRANAS_SEGUIMIENTO", idAlerta);
+}
+
+// ==========================================
+// EXIMICIÓN (Articulo 49 del Reglamento de Evaluacion de los Aprendizajes y
+// de la Conducta, Decreto 45509-MEP, vigente desde 2026)
+//
+// NO es "eximir de la materia" -- es eximirse SOLO de la ultima prueba del
+// ultimo periodo, y unicamente en materias con al menos 2 Pruebas en ese
+// periodo. Requisito: nota >=90 en el I Periodo Y >=90 en CADA componente
+// (Cotidiano/Tareas/Pruebas/Proyectos con peso asignado) del ultimo periodo.
+//
+// OJO: esto es un concepto totalmente distinto del campo "eximido" que ya
+// existe en ESTUDIANTES (ese solo controla si recibe correos a la casa) --
+// no se reutiliza esa columna para nada de esto.
+// ==========================================
+function obtenerElegiblesEximicion(idMateria) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+
+    const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+    let materia = null;
+    for (let i = 1; i < dataMat.length; i++) {
+      if (String(dataMat[i][0]).trim() === String(idMateria).trim()) {
+        materia = {
+          id: dataMat[i][0], idSec: dataMat[i][1], nombre: dataMat[i][2],
+          cotidiano: Number(dataMat[i][3]) || 0,
+          tareas: Number(dataMat[i][4]) || 0,
+          pruebas: Number(dataMat[i][5]) || 0,
+          proyectos: Number(dataMat[i][6]) || 0
+        };
+        break;
+      }
+    }
+    if (!materia) return { error: "Materia no encontrada" };
+
+    const dataSec = ss.getSheetByName("SECCIONES").getDataRange().getValues();
+    let ultimoPeriodo = 1;
+    for (let i = 1; i < dataSec.length; i++) {
+      if (String(dataSec[i][0]).trim() === String(materia.idSec).trim()) {
+        ultimoPeriodo = Number(dataSec[i][4]) || 1;
+        break;
+      }
+    }
+    if (ultimoPeriodo < 2) {
+      return { error: "Esta sección tiene un solo periodo (Anual). El Artículo 49 compara contra el I Periodo, así que no aplica en un esquema de 1 solo periodo." };
+    }
+
+    const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
+    const pruebasUltimoPeriodo = [];
+    for (let i = 1; i < dataInd.length; i++) {
+      if (String(dataInd[i][1]).trim() === String(idMateria).trim()
+          && String(dataInd[i][2]).trim() === "PRUEBAS"
+          && String(dataInd[i][7]) === String(ultimoPeriodo)) {
+        pruebasUltimoPeriodo.push({ id: String(dataInd[i][0]).trim(), descripcion: dataInd[i][3], fechaCreacion: new Date(dataInd[i][5]) });
+      }
+    }
+
+    if (pruebasUltimoPeriodo.length < 2) {
+      return { error: "Esta materia no tiene al menos 2 indicadores de Pruebas en el último periodo -- el Artículo 49 exige mínimo 2 pruebas por periodo para poder aplicar." };
+    }
+
+    // La "ultima prueba" se sugiere como la creada mas recientemente, pero el
+    // docente puede elegir otra desde el frontend (por eso se devuelven todas).
+    pruebasUltimoPeriodo.sort((a, b) => b.fechaCreacion - a.fechaCreacion);
+    const ultimaPruebaSugerida = pruebasUltimoPeriodo[0];
+
+    const cuadroP1 = obtenerCuadroMateria(idMateria, 1);
+    const cuadroUltimo = obtenerCuadroMateria(idMateria, ultimoPeriodo);
+    if (cuadroP1.error) return { error: "No se pudo calcular el I Periodo: " + cuadroP1.error };
+    if (cuadroUltimo.error) return { error: "No se pudo calcular el último periodo: " + cuadroUltimo.error };
+
+    const mapP1 = {};
+    cuadroP1.lista.forEach(e => { mapP1[e.id] = e.total; });
+
+    // Solo se evaluan los componentes que la materia realmente usa (peso > 0)
+    const componentes = [
+      { key: 'TRAB_COT', label: 'Cotidiano', peso: materia.cotidiano },
+      { key: 'TAREAS', label: 'Tareas', peso: materia.tareas },
+      { key: 'PRUEBAS', label: 'Pruebas', peso: materia.pruebas },
+      { key: 'PROYECTOS', label: 'Proyectos', peso: materia.proyectos }
+    ].filter(c => c.peso > 0);
+
+    const elegibles = [];
+    cuadroUltimo.lista.forEach(e => {
+      const notaP1 = mapP1[e.id];
+      if (notaP1 === undefined || notaP1 < 90) return;
+
+      let cumpleTodos = true;
+      const detalleComponentes = componentes.map(c => {
+        const obtenido = e.notas[c.key] || 0;
+        const pct = Math.round((obtenido / c.peso) * 1000) / 10; // 1 decimal
+        if (pct < 90) cumpleTodos = false;
+        return { categoria: c.label, porcentaje: pct };
+      });
+
+      if (cumpleTodos) {
+        elegibles.push({ id: e.id, nombre: e.nombre, notaPeriodo1: notaP1, componentes: detalleComponentes });
+      }
+    });
+
+    return {
+      success: true,
+      materia: materia.nombre,
+      ultimoPeriodo: ultimoPeriodo,
+      pruebasDisponibles: pruebasUltimoPeriodo.map(p => ({ id: p.id, descripcion: p.descripcion })),
+      ultimaPruebaSugerida: { id: ultimaPruebaSugerida.id, descripcion: ultimaPruebaSugerida.descripcion },
+      elegibles: elegibles
+    };
+  } catch (e) { return { error: e.toString() }; }
+}
+
+function aplicarEximicion(form) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+
+    // Dias habiles (lunes a viernes) entre la fecha de aviso y la fecha de la prueba
+    const fechaAviso = new Date(form.fechaAviso);
+    const fechaPrueba = new Date(form.fechaPrueba);
+    let diasHabiles = 0;
+    let cur = new Date(fechaAviso);
+    while (cur < fechaPrueba) {
+      cur.setDate(cur.getDate() + 1);
+      const dia = cur.getDay();
+      if (dia !== 0 && dia !== 6) diasHabiles++;
+    }
+    const avisoValido = diasHabiles >= 5;
+
+    // Puntos totales del indicador, para poner nivel = maximo (nota completa,
+    // el Articulo 49 exige consignar 100 en la prueba respectiva)
+    const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
+    let puntosTotalesInd = 100;
+    let existeIndicador = false;
+    for (let i = 1; i < dataInd.length; i++) {
+      if (String(dataInd[i][0]).trim() === String(form.idIndicadorPrueba).trim()) {
+        puntosTotalesInd = parseFloat(dataInd[i][6]) || 100;
+        existeIndicador = true;
+        break;
+      }
+    }
+    if (!existeIndicador) return { success: false, message: "El indicador de la prueba no existe" };
+
+    // Reutiliza el motor real de calificacion (misma logica de porcentaje y
+    // misma bitacora de cambios que una nota normal) en vez de escribir la
+    // hoja NOTAS a mano por separado.
+    guardarCalificaciones({
+      idIndicador: form.idIndicadorPrueba,
+      lista: [{ idEst: form.idEst, nivel: puntosTotalesInd }],
+      email: form.email
+    });
+
+    // Registro de trazabilidad de la exencion (para poder demostrar que se
+    // avisco con la antelacion que exige el Articulo 49)
+    let sheet = ss.getSheetByName("EXIMICIONES");
+    if (!sheet) {
+      sheet = ss.insertSheet("EXIMICIONES");
+      sheet.appendRow(["ID", "ID_MATERIA", "ID_EST", "ID_INDICADOR_PRUEBA", "FECHA_AVISO", "FECHA_PRUEBA", "AVISO_VALIDO", "ID_USUARIO", "FECHA_REGISTRO"]);
+    }
+    const idUsuario = obtenerIdUsuarioPorEmail(form.email);
+    sheet.appendRow([
+      "EXIM-" + Date.now(),
+      form.idMateria,
+      form.idEst,
+      form.idIndicadorPrueba,
+      form.fechaAviso,
+      form.fechaPrueba,
+      avisoValido,
+      idUsuario,
+      new Date()
+    ]);
+
+    return { success: true, avisoValido: avisoValido, diasHabiles: diasHabiles };
+  } catch (e) { return { success: false, message: e.toString() }; }
+}
+
+function obtenerHistorialEximiciones(idMateria) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName("EXIMICIONES");
+    if (!sheet) return { success: true, lista: [] };
+
+    const dataEst = ss.getSheetByName("ESTUDIANTES").getDataRange().getValues();
+    const nombresPorId = {};
+    for (let i = 1; i < dataEst.length; i++) nombresPorId[String(dataEst[i][0]).trim()] = String(dataEst[i][3]).trim();
+
+    const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
+    const descPorIndicador = {};
+    for (let i = 1; i < dataInd.length; i++) descPorIndicador[String(dataInd[i][0]).trim()] = dataInd[i][3];
+
+    const data = sheet.getDataRange().getValues();
+    const lista = [];
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][1]).trim() !== String(idMateria).trim()) continue;
+      const idEst = String(data[i][2]).trim();
+      const idInd = String(data[i][3]).trim();
+      lista.push({
+        idEst: idEst,
+        nombreEst: nombresPorId[idEst] || idEst,
+        descripcionPrueba: descPorIndicador[idInd] || idInd,
+        fechaAviso: data[i][4],
+        fechaPrueba: data[i][5],
+        avisoValido: data[i][6],
+        fechaRegistro: data[i][8]
+      });
+    }
+    lista.sort((a, b) => new Date(b.fechaRegistro) - new Date(a.fechaRegistro));
+    return { success: true, lista: lista };
+  } catch (e) { return { error: e.toString() }; }
 }
