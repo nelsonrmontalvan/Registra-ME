@@ -5211,6 +5211,10 @@ fillMaxScore: () => {
                         </td>
                         <td class="p-3"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${app.COLOR_ESTADO_ALERTA[s.estado] || 'bg-slate-100 text-slate-600'}">${s.estado}</span></td>
                         <td class="p-3 text-xs text-slate-400">${s.comentario || '—'}</td>
+                        <td class="p-3 text-right whitespace-nowrap">
+                            <button onclick="app.abrirModalAlertaTemprana('${idSeccion}','${s.idEst}',${app.jsStr(s.nombreEst)},'${s.idAlerta}')" class="h-7 w-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-amber-50 hover:text-amber-600 transition inline-flex items-center justify-center" title="Editar"><i class="fas fa-pen text-xs"></i></button>
+                            <button onclick="app.eliminarAlertaTempranaConfirm('${s.idAlerta}')" class="h-7 w-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition inline-flex items-center justify-center" title="Eliminar"><i class="fas fa-trash text-xs"></i></button>
+                        </td>
                     </tr>`;
                 }).join('');
 
@@ -5220,7 +5224,7 @@ fillMaxScore: () => {
                         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
                             <table class="w-full text-sm text-left">
                                 <thead class="bg-gray-100 text-gray-600 border-b">
-                                    <tr><th class="p-3">Estudiante</th><th class="p-3">Alerta (Catálogo MEP)</th><th class="p-3">Estado</th><th class="p-3">Comentario</th></tr>
+                                    <tr><th class="p-3">Estudiante</th><th class="p-3">Alerta (Catálogo MEP)</th><th class="p-3">Estado</th><th class="p-3">Comentario</th><th class="p-3 text-right">Acción</th></tr>
                                 </thead>
                                 <tbody>${filasHist}</tbody>
                             </table>
@@ -5379,6 +5383,29 @@ fillMaxScore: () => {
             if (!idEst) return;
             const nombreEst = (estudiantes.find(e => String(e.id) === String(idEst)) || {}).nombre || '';
             app.abrirModalAlertaTemprana(idSeccion, idEst, nombreEst);
+        },
+
+        // Borrado real de un registro de seguimiento (distinto del estado oficial
+        // "Eliminada", que conserva el registro para auditoría). Útil para
+        // corregir un registro hecho por error (ej. estudiante equivocado).
+        eliminarAlertaTempranaConfirm: async (idAlerta) => {
+            const confirm = await Swal.fire({
+                icon: 'warning',
+                title: '¿Eliminar este registro?',
+                text: 'Esto borra el registro por completo, no queda ni en el historial. Si solo querés marcarlo como resuelto, usá el estado "Cerrada" o "Eliminada" en vez de esto.',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#e11d48'
+            });
+            if (!confirm.isConfirmed) return;
+
+            const res = await app.api({ action: 'deleteAlertaTemprana', idAlerta });
+            if (!res || !res.success) {
+                Swal.fire('Error', 'No se pudo eliminar el registro', 'error');
+                return;
+            }
+            app.cargarAlertasTempranas();
         },
 
         // Auxiliares del Modal
@@ -7100,11 +7127,12 @@ loadAuditoriaData: async () => {
             <div id="view-alertas" class="view hidden fade-in">
                 <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-amber-500 mb-6">
                     <h3 class="text-xl font-bold text-gray-800 mb-2"><i class="fas fa-triangle-exclamation text-amber-500 mr-2"></i>Alertas Tempranas</h3>
-                    <p class="text-sm text-gray-500 mb-4">
-                        Detección automática basada en el <b>Catálogo Oficial de Alertas Tempranas del MEP (UPRE)</b>:
-                        ausentismo en los últimos 7 días por materia (≥50% de lecciones) y bajo rendimiento académico (bajo el mínimo en 3 o más materias).
-                        Incluye además el conteo de <b>Escapadas</b> (estado "E" en Asistencia) del mes calendario actual como señal adicional.
-                        Es un radar del momento actual, no un histórico.
+                    <p class="text-sm text-gray-600 mb-3">
+                        La deserción y exclusión educativa rara vez ocurren de un día para otro — se anticipan con señales tempranas: ausentismo creciente, caída sostenida en el rendimiento y cambios de conducta.
+                        El Ministerio de Educación Pública, a través de la Unidad para la Permanencia, Reincorporación y Éxito Educativo (UPRE), estableció un <b>Catálogo Oficial de Alertas Tempranas</b> para que los centros educativos detecten estas señales a tiempo y actúen antes de que el estudiante se aleje del sistema.
+                    </p>
+                    <p class="text-xs text-gray-400 mb-4">
+                        Este módulo automatiza esa detección con dos indicadores del catálogo oficial — ausentismo por materia (últimos 7 días) y bajo rendimiento académico (3 o más materias bajo el mínimo) — y suma el conteo de Escapadas como señal adicional. Es un radar del momento actual, no un histórico.
                     </p>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">

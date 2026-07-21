@@ -132,6 +132,7 @@ function doPost(e) {
     // --- SEGUIMIENTO DE ALERTAS TEMPRANAS (Fase 2) ---
     if(action === "saveAlertaTemprana") return response(guardarAlertaTemprana(data));
     if(action === "getAlertasSeguimiento") return response(obtenerAlertasSeguimiento(data.idSeccion));
+    if(action === "deleteAlertaTemprana") return response(eliminarAlertaTemprana(data.idAlerta));
 
     // --- BITACORA DE CAMBIOS (Notas + Asistencia) ---
     if(action === "getBitacoraCambios") return response(obtenerBitacoraCambios(data.idMateria));
@@ -3873,6 +3874,13 @@ function guardarAlertaTemprana(form) {
       for (let i = 1; i < data.length; i++) {
         if (String(data[i][0]) === String(form.idAlerta)) {
           const fila = i + 1;
+          // Antes solo se guardaban estado/comentario -- si el docente cambiaba
+          // la Dimension o el Nombre de la Alerta en el modal de edicion, ese
+          // cambio se perdia en silencio. Ahora se actualizan todos los campos.
+          sheet.getRange(fila, 4).setValue(form.dimension || data[i][3]);
+          sheet.getRange(fila, 5).setValue(form.nombreAlerta || data[i][4]);
+          sheet.getRange(fila, 6).setValue(form.contexto !== undefined ? form.contexto : data[i][5]);
+          sheet.getRange(fila, 7).setValue(form.prioridad !== undefined ? form.prioridad : data[i][6]);
           sheet.getRange(fila, 8).setValue(form.estado || data[i][7]);
           sheet.getRange(fila, 9).setValue(form.comentario !== undefined ? form.comentario : data[i][8]);
           sheet.getRange(fila, 10).setValue(new Date());
@@ -3930,4 +3938,12 @@ function obtenerAlertasSeguimiento(idSeccion) {
     lista.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
     return { success: true, lista: lista };
   } catch (e) { return { error: e.toString() }; }
+}
+
+// Borrado real de un registro (ej. se eligio el estudiante equivocado, o se
+// registro por error). Distinto del estado oficial "Eliminada" del catalogo
+// MEP -- ese es un estado mas (se conserva el registro para auditoria), esto
+// borra la fila por completo.
+function eliminarAlertaTemprana(idAlerta) {
+  return eliminarFilaGenerico("ALERTAS_TEMPRANAS_SEGUIMIENTO", idAlerta);
 }
