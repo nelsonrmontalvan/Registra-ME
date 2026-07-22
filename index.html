@@ -5284,6 +5284,8 @@ fillMaxScore: () => {
             seguimientoLista.forEach(s => { if (!ultimoPorEstudiante[s.idEst]) ultimoPorEstudiante[s.idEst] = s; });
 
             app.state.ultimoSeguimientoAT = ultimoPorEstudiante; // para el modal
+            app.state.seguimientoListaCompleta = seguimientoLista; // para filtrar por Estado sin volver a pedir datos
+            app.state.currentIdSeccionAT = idSeccion;
 
             let htmlDetectadas;
             if (res.alertas.length === 0) {
@@ -5305,7 +5307,7 @@ fillMaxScore: () => {
                     const activo = seg && seg.estado !== 'Cerrada' && seg.estado !== 'Eliminada';
                     const colorEstado = seg ? (app.COLOR_ESTADO_ALERTA[seg.estado] || 'bg-slate-100 text-slate-600') : '';
                     const botonAccion = activo
-                        ? `<button onclick="app.abrirModalAlertaTemprana('${idSeccion}','${e.id}',${app.jsStr(e.nombre)},'${seg.idAlerta}')" class="text-[10px] font-bold ${colorEstado} px-2 py-0.5 rounded-full whitespace-nowrap"><i class="fas fa-pen"></i> ${seg.estado}</button>`
+                        ? `<button onclick="app.abrirBitacoraAlerta('${seg.idAlerta}','${e.id}',${app.jsStr(e.nombre)},'${seg.estado}','${idSeccion}')" class="text-[10px] font-bold ${colorEstado} px-2 py-0.5 rounded-full whitespace-nowrap"><i class="fas fa-comment-dots"></i> ${seg.estado}</button>`
                         : `<button onclick="app.abrirModalAlertaTemprana('${idSeccion}','${e.id}',${app.jsStr(e.nombre)})" class="text-[10px] font-bold text-white bg-amber-500 hover:bg-amber-600 px-2 py-0.5 rounded-full whitespace-nowrap"><i class="fas fa-plus"></i> Registrar Alerta</button>`;
 
                     return `
@@ -5331,45 +5333,96 @@ fillMaxScore: () => {
                     </div>`;
             }
 
-            // Historial completo de seguimiento (incluye casos ya cerrados, para auditoría)
-            let htmlHistorial = '';
-            if (seguimientoLista.length > 0) {
-                const filasHist = seguimientoLista.map(s => {
-                    const colorPrioridad = app.COLOR_PRIORIDAD_ALERTA[s.prioridad] || 'bg-slate-100 text-slate-500';
-                    return `
-                    <tr class="border-b border-slate-50 last:border-0">
-                        <td class="p-3 font-medium text-slate-700">${s.nombreEst}</td>
-                        <td class="p-3 text-xs text-slate-500">
-                            ${s.dimension}<br><span class="text-slate-400">${s.nombreAlerta}</span>
-                            <div class="flex gap-1 mt-1">
-                                <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">${s.contexto || '—'}</span>
-                                ${s.prioridad ? `<span class="text-[9px] px-1.5 py-0.5 rounded ${colorPrioridad}">Prioridad ${s.prioridad}</span>` : ''}
-                            </div>
-                        </td>
-                        <td class="p-3"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${app.COLOR_ESTADO_ALERTA[s.estado] || 'bg-slate-100 text-slate-600'}">${s.estado}</span></td>
-                        <td class="p-3 text-xs text-slate-400">${s.comentario || '—'}</td>
-                        <td class="p-3 text-right whitespace-nowrap">
-                            <button onclick="app.abrirModalAlertaTemprana('${idSeccion}','${s.idEst}',${app.jsStr(s.nombreEst)},'${s.idAlerta}')" class="h-7 w-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-amber-50 hover:text-amber-600 transition inline-flex items-center justify-center" title="Editar"><i class="fas fa-pen text-xs"></i></button>
-                            <button onclick="app.eliminarAlertaTempranaConfirm('${s.idAlerta}')" class="h-7 w-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition inline-flex items-center justify-center" title="Eliminar"><i class="fas fa-trash text-xs"></i></button>
-                        </td>
-                    </tr>`;
-                }).join('');
+            cont.innerHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 mb-4">
+                    <button onclick="app.toggleAcordeonAT('at-acc-detectadas')" class="w-full flex items-center justify-between p-4 text-left">
+                        <span class="font-bold text-sm text-slate-700"><i class="fas fa-bolt text-rose-500 mr-2"></i>Alertas Detectadas Ahora <span class="text-xs font-normal text-slate-400">(${res.alertas.length})</span></span>
+                        <i id="at-acc-detectadas-icon" class="fas fa-chevron-down text-slate-400 transition-transform"></i>
+                    </button>
+                    <div id="at-acc-detectadas" class="px-4 pb-4">${htmlDetectadas}</div>
+                </div>
 
-                htmlHistorial = `
-                    <div class="mt-6">
-                        <p class="text-xs font-bold text-slate-500 uppercase mb-2">Historial de Seguimiento</p>
-                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
-                            <table class="w-full text-sm text-left">
-                                <thead class="bg-gray-100 text-gray-600 border-b">
-                                    <tr><th class="p-3">Estudiante</th><th class="p-3">Alerta (Catálogo MEP)</th><th class="p-3">Estado</th><th class="p-3">Comentario</th><th class="p-3 text-right">Acción</th></tr>
-                                </thead>
-                                <tbody>${filasHist}</tbody>
-                            </table>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                    <div class="flex items-center justify-between p-4 gap-2">
+                        <button onclick="app.toggleAcordeonAT('at-acc-historial')" class="flex items-center gap-2 text-left flex-1">
+                            <span class="font-bold text-sm text-slate-700"><i class="fas fa-clock-rotate-left text-teal-500 mr-2"></i>Historial de Seguimiento <span class="text-xs font-normal text-slate-400">(${seguimientoLista.length})</span></span>
+                        </button>
+                        <div class="flex items-center gap-2 shrink-0">
+                            <label class="text-[10px] font-bold text-slate-400">Filtrar por estado</label>
+                            <select id="at-filtro-estado" onchange="app.renderHistorialAlertas()" class="text-xs border rounded-lg px-2 py-1 bg-white">
+                                <option value="">Todos</option>
+                                ${app.ESTADOS_ALERTA_MEP.map(e => `<option value="${e}">${e}</option>`).join('')}
+                            </select>
+                            <i id="at-acc-historial-icon" onclick="app.toggleAcordeonAT('at-acc-historial')" class="fas fa-chevron-down text-slate-400 transition-transform cursor-pointer"></i>
                         </div>
-                    </div>`;
+                    </div>
+                    <div id="at-acc-historial" class="px-4 pb-4">
+                        <div id="at-historial-container"></div>
+                    </div>
+                </div>`;
+
+            app.renderHistorialAlertas();
+        },
+
+        // Acordeon simple: alterna visibilidad del contenido y gira el chevron.
+        // Arranca abierto -- solo se colapsa si el docente lo pide, para no
+        // esconder nada de golpe la primera vez que carga la vista.
+        toggleAcordeonAT: (id) => {
+            const contenido = document.getElementById(id);
+            const icono = document.getElementById(id + '-icon');
+            if (!contenido) return;
+            contenido.classList.toggle('hidden');
+            if (icono) icono.classList.toggle('rotate-180');
+        },
+
+        // Separado de cargarAlertasTempranas para poder filtrar por Estado sin
+        // volver a pedir los datos al servidor -- usa lo que ya quedó en
+        // app.state.seguimientoListaCompleta.
+        renderHistorialAlertas: () => {
+            const idSeccion = app.state.currentIdSeccionAT;
+            const filtro = (document.getElementById('at-filtro-estado') || {}).value || '';
+            const listaCompleta = app.state.seguimientoListaCompleta || [];
+            const lista = filtro ? listaCompleta.filter(s => s.estado === filtro) : listaCompleta;
+            const cont = document.getElementById('at-historial-container');
+            if (!cont) return;
+
+            if (lista.length === 0) {
+                cont.innerHTML = `<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center text-slate-400 text-xs">${filtro ? `No hay registros con estado "${filtro}".` : 'Todavía no hay seguimiento registrado.'}</div>`;
+                return;
             }
 
-            cont.innerHTML = htmlDetectadas + htmlHistorial;
+            const filasHist = lista.map(s => {
+                const colorPrioridad = app.COLOR_PRIORIDAD_ALERTA[s.prioridad] || 'bg-slate-100 text-slate-500';
+                return `
+                <tr class="border-b border-slate-50 last:border-0">
+                    <td class="p-3 font-medium text-slate-700">${s.nombreEst}</td>
+                    <td class="p-3 text-xs text-slate-500">
+                        ${s.dimension}<br><span class="text-slate-400">${s.nombreAlerta}</span>
+                        <div class="flex gap-1 mt-1">
+                            <span class="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500">${s.contexto || '—'}</span>
+                            ${s.prioridad ? `<span class="text-[9px] px-1.5 py-0.5 rounded ${colorPrioridad}">Prioridad ${s.prioridad}</span>` : ''}
+                        </div>
+                    </td>
+                    <td class="p-3"><span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${app.COLOR_ESTADO_ALERTA[s.estado] || 'bg-slate-100 text-slate-600'}">${s.estado}</span></td>
+                    <td class="p-3 text-xs text-slate-400">${s.comentario || '—'}</td>
+                    <td class="p-3 text-right whitespace-nowrap">
+                        <button onclick="app.abrirBitacoraAlerta('${s.idAlerta}','${s.idEst}',${app.jsStr(s.nombreEst)},'${s.estado}','${idSeccion}')" class="h-7 w-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition inline-flex items-center justify-center" title="Ver seguimiento"><i class="fas fa-comment-dots text-xs"></i></button>
+                        <button onclick="app.downloadPdf('pdfSeguimientoAlerta', null, { idAlerta: '${s.idAlerta}' })" class="h-7 w-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-sky-50 hover:text-sky-600 transition inline-flex items-center justify-center" title="Descargar PDF del seguimiento"><i class="fas fa-file-pdf text-xs"></i></button>
+                        <button onclick="app.abrirModalAlertaTemprana('${idSeccion}','${s.idEst}',${app.jsStr(s.nombreEst)},'${s.idAlerta}')" class="h-7 w-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-amber-50 hover:text-amber-600 transition inline-flex items-center justify-center" title="Editar categorización"><i class="fas fa-pen text-xs"></i></button>
+                        <button onclick="app.eliminarAlertaTempranaConfirm('${s.idAlerta}')" class="h-7 w-7 rounded-lg bg-slate-50 text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition inline-flex items-center justify-center" title="Eliminar"><i class="fas fa-trash text-xs"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+
+            cont.innerHTML = `
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-gray-100 text-gray-600 border-b">
+                            <tr><th class="p-3">Estudiante</th><th class="p-3">Alerta (Catálogo MEP)</th><th class="p-3">Estado</th><th class="p-3">Comentario</th><th class="p-3 text-right">Acción</th></tr>
+                        </thead>
+                        <tbody>${filasHist}</tbody>
+                    </table>
+                </div>`;
         },
 
         // Registra una alerta nueva (sin idAlerta) o actualiza el estado de una existente.
@@ -5485,7 +5538,8 @@ fillMaxScore: () => {
         descargarPdfAlertasTempranas: async () => {
             const idSeccion = document.getElementById('at-sec').value;
             if (!idSeccion) return Swal.fire('Faltan datos', 'Selecciona una sección', 'warning');
-            app.downloadPdf('pdfAlertasTempranas', null, { idSeccion });
+            const filtroEstado = (document.getElementById('at-filtro-estado') || {}).value || '';
+            app.downloadPdf('pdfAlertasTempranas', null, { idSeccion, filtroEstado });
         },
 
         // Registro manual, independiente de la detección automática -- para
@@ -5542,6 +5596,71 @@ fillMaxScore: () => {
                 Swal.fire('Error', 'No se pudo eliminar el registro', 'error');
                 return;
             }
+            app.cargarAlertasTempranas();
+        },
+
+        // Bitácora de seguimiento de UNA alerta puntual -- a diferencia del
+        // modal de "Editar" (que sobreescribe Dimensión/Nombre/Estado), esto
+        // suma una entrada nueva cada vez sin borrar las anteriores, para
+        // poder leer semana a semana qué pasó y quién le dio seguimiento.
+        abrirBitacoraAlerta: async (idAlerta, idEst, nombreEst, estadoActual, idSeccion) => {
+            const res = await app.api({ action: 'getSeguimientoAlerta', idAlerta });
+            const entradas = (res && res.lista) || [];
+
+            const filasLog = entradas.length === 0
+                ? '<p class="text-xs text-slate-400 text-center py-4">Todavía no hay entradas registradas.</p>'
+                : entradas.map(en => {
+                    const fecha = en.fecha ? new Date(en.fecha).toLocaleDateString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+                    const colorEstado = app.COLOR_ESTADO_ALERTA[en.estado] || 'bg-slate-100 text-slate-600';
+                    return `
+                    <div class="border-l-2 border-slate-200 pl-3 pb-3 mb-3">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-[10px] text-slate-400">${fecha}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${colorEstado}">${en.estado}</span>
+                        </div>
+                        <p class="text-xs text-slate-600">${en.nota || '—'}</p>
+                    </div>`;
+                }).join('');
+
+            const opcionesEstado = app.ESTADOS_ALERTA_MEP.map(e => `<option value="${e}" ${e === estadoActual ? 'selected' : ''}>${e}</option>`).join('');
+
+            const { value: formValues } = await Swal.fire({
+                title: 'Bitácora de Seguimiento',
+                width: '520px',
+                html: `
+                    <p class="text-sm text-slate-500 mb-3 text-left">${nombreEst}</p>
+                    <div class="max-h-[280px] overflow-y-auto text-left mb-4 border-b border-slate-100 pb-2">${filasLog}</div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1 text-left">Agregar entrada de seguimiento</label>
+                    <select id="log-estado" class="swal2-select" style="width:100%; margin:0 0 10px;">${opcionesEstado}</select>
+                    <textarea id="log-nota" placeholder="¿Qué pasó esta vez? ¿Qué se hizo?" class="swal2-textarea" style="width:100%; margin:0;"></textarea>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Agregar y Guardar',
+                cancelButtonText: 'Cerrar',
+                confirmButtonColor: '#0d9488',
+                focusConfirm: false,
+                footer: `<button onclick="app.downloadPdf('pdfSeguimientoAlerta', null, { idAlerta: '${idAlerta}' })" class="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1 mx-auto"><i class="fas fa-file-pdf"></i> Descargar PDF de este seguimiento</button>`,
+                preConfirm: () => {
+                    const nota = document.getElementById('log-nota').value.trim();
+                    if (!nota) {
+                        Swal.showValidationMessage('Escribí qué pasó en este seguimiento antes de guardar');
+                        return false;
+                    }
+                    return { estado: document.getElementById('log-estado').value, nota };
+                }
+            });
+
+            if (!formValues) return;
+
+            const guardado = await app.api({ action: 'saveSeguimientoAlerta', idAlerta, estado: formValues.estado, nota: formValues.nota });
+            if (!guardado || !guardado.success) {
+                Swal.fire('Error', 'No se pudo guardar el seguimiento', 'error');
+                return;
+            }
+
+            const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 1600 });
+            Toast.fire({ icon: 'success', title: 'Seguimiento agregado' });
+
             app.cargarAlertasTempranas();
         },
 

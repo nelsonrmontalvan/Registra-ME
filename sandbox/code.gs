@@ -127,12 +127,15 @@ function doPost(e) {
 
     // --- ALERTAS TEMPRANAS ---
     if(action === "getAlertasTempranas") return response(obtenerAlertasTempranas(data.idSeccion));
-    if(action === "pdfAlertasTempranas") return response(generarPdfAlertasTempranas(data.idSeccion));
+    if(action === "pdfAlertasTempranas") return response(generarPdfAlertasTempranas(data.idSeccion, data.filtroEstado));
 
     // --- SEGUIMIENTO DE ALERTAS TEMPRANAS (Fase 2) ---
     if(action === "saveAlertaTemprana") return response(guardarAlertaTemprana(data));
     if(action === "getAlertasSeguimiento") return response(obtenerAlertasSeguimiento(data.idSeccion));
     if(action === "deleteAlertaTemprana") return response(eliminarAlertaTemprana(data.idAlerta));
+    if(action === "saveSeguimientoAlerta") return response(guardarSeguimientoAlerta(data));
+    if(action === "getSeguimientoAlerta") return response(obtenerSeguimientoAlerta(data.idAlerta));
+    if(action === "pdfSeguimientoAlerta") return response(generarPdfSeguimientoAlerta(data.idAlerta, data.email));
 
     // --- EXIMICIÓN (Articulo 49) ---
     if(action === "getElegiblesEximicion") return response(obtenerElegiblesEximicion(data.idMateria));
@@ -3794,16 +3797,23 @@ function obtenerAlertasTempranas(idSeccion) {
   } catch (e) { return { error: e.toString() }; }
 }
 
-function generarPdfAlertasTempranas(idSeccion) {
+// filtroEstado (opcional): si viene, la tabla de seguimiento solo muestra
+// registros con ese Estado -- para que el PDF coincida con lo que el docente
+// esta viendo en pantalla con el filtro de Estado.
+function generarPdfAlertasTempranas(idSeccion, filtroEstado) {
   try {
     const datos = obtenerAlertasTempranas(idSeccion);
     if (datos.error) return { success: false, message: datos.error };
 
-    if (datos.alertas.length === 0) {
-      return { success: false, message: "No hay estudiantes con alertas tempranas activas en este momento." };
+    const seguimiento = obtenerAlertasSeguimiento(idSeccion);
+    let listaSeguimiento = (seguimiento && seguimiento.lista) || [];
+    if (filtroEstado) listaSeguimiento = listaSeguimiento.filter(s => s.estado === filtroEstado);
+
+    if (datos.alertas.length === 0 && listaSeguimiento.length === 0) {
+      return { success: false, message: "No hay alertas detectadas ni seguimiento registrado para mostrar en el reporte." };
     }
 
-    let filas = "";
+    let filasDetectadas = "";
     datos.alertas.forEach((e, idx) => {
       const detalles = [];
       if (e.ausentismo.length > 0) {
@@ -3816,7 +3826,7 @@ function generarPdfAlertasTempranas(idSeccion) {
         detalles.push(`<b>Escapadas este mes:</b> ${e.escapadas}`);
       }
 
-      filas += `
+      filasDetectadas += `
       <tr>
         <td style="border:1px solid #ddd; padding:6px; font-size:10px; text-align:center;">${idx + 1}</td>
         <td style="border:1px solid #ddd; padding:6px; font-size:10px;">${e.nombre}</td>
@@ -3824,13 +3834,9 @@ function generarPdfAlertasTempranas(idSeccion) {
       </tr>`;
     });
 
-    let html = `
-      <div style="font-family: Arial, sans-serif; padding: 20px;">
-         <h3 style="text-align:center; color:#004E64; margin-bottom:5px;">REPORTE MENSUAL DE ALERTAS TEMPRANAS</h3>
-         <p style="text-align:center; font-size:11px; color:#888; margin-top:0;">Mes de referencia: ${datos.mes} · Ausentismo evaluado sobre los últimos 7 días: ${datos.semanaIni} al ${datos.semanaFin}</p>
-         <p style="font-size:10px; color:#999; text-align:center;">Basado en el Catálogo Oficial de Alertas Tempranas (UPRE-MEP). "Escapadas" es una señal adicional del sistema, no forma parte del catálogo oficial.</p>
-
-         <table style="width:100%; border-collapse:collapse; margin-top:20px;">
+    const tablaDetectadas = datos.alertas.length === 0
+      ? `<p style="font-size:11px; color:#999; text-align:center;">Nadie tiene alertas detectadas automáticamente ahora mismo.</p>`
+      : `<table style="width:100%; border-collapse:collapse; margin-top:10px;">
             <thead>
                 <tr style="background-color:#004E64; color:white; font-size:11px;">
                    <th style="padding:6px;">#</th>
@@ -3838,8 +3844,50 @@ function generarPdfAlertasTempranas(idSeccion) {
                    <th style="padding:6px; text-align:left;">ALERTAS DETECTADAS</th>
                 </tr>
             </thead>
-            <tbody>${filas}</tbody>
-         </table>
+            <tbody>${filasDetectadas}</tbody>
+         </table>`;
+
+    let filasSeguimiento = "";
+    listaSeguimiento.forEach((s, idx) => {
+      const fecha = s.fecha ? Utilities.formatDate(new Date(s.fecha), Session.getScriptTimeZone(), "dd/MM/yyyy") : "";
+      filasSeguimiento += `
+      <tr>
+        <td style="border:1px solid #ddd; padding:6px; font-size:10px; text-align:center;">${idx + 1}</td>
+        <td style="border:1px solid #ddd; padding:6px; font-size:10px;">${s.nombreEst}</td>
+        <td style="border:1px solid #ddd; padding:6px; font-size:10px;">${s.dimension}<br><span style="color:#888;">${s.nombreAlerta}</span></td>
+        <td style="border:1px solid #ddd; padding:6px; font-size:10px; text-align:center;">${s.estado}</td>
+        <td style="border:1px solid #ddd; padding:6px; font-size:10px;">${s.comentario || "—"}</td>
+        <td style="border:1px solid #ddd; padding:6px; font-size:9px; text-align:center;">${fecha}</td>
+      </tr>`;
+    });
+
+    const tablaSeguimiento = listaSeguimiento.length === 0
+      ? `<p style="font-size:11px; color:#999; text-align:center;">No hay seguimiento registrado${filtroEstado ? ` con estado "${filtroEstado}"` : ""}.</p>`
+      : `<table style="width:100%; border-collapse:collapse; margin-top:10px;">
+            <thead>
+                <tr style="background-color:#0d9488; color:white; font-size:11px;">
+                   <th style="padding:6px;">#</th>
+                   <th style="padding:6px; text-align:left;">ESTUDIANTE</th>
+                   <th style="padding:6px; text-align:left;">ALERTA (CATÁLOGO MEP)</th>
+                   <th style="padding:6px;">ESTADO</th>
+                   <th style="padding:6px; text-align:left;">COMENTARIO</th>
+                   <th style="padding:6px;">ÚLT. ACTUALIZACIÓN</th>
+                </tr>
+            </thead>
+            <tbody>${filasSeguimiento}</tbody>
+         </table>`;
+
+    let html = `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+         <h3 style="text-align:center; color:#004E64; margin-bottom:5px;">REPORTE MENSUAL DE ALERTAS TEMPRANAS</h3>
+         <p style="text-align:center; font-size:11px; color:#888; margin-top:0;">Mes de referencia: ${datos.mes} · Ausentismo evaluado sobre los últimos 7 días: ${datos.semanaIni} al ${datos.semanaFin}${filtroEstado ? ` · Seguimiento filtrado por estado: <b>${filtroEstado}</b>` : ""}</p>
+         <p style="font-size:10px; color:#999; text-align:center;">Basado en el Catálogo Oficial de Alertas Tempranas (UPRE-MEP). "Escapadas" es una señal adicional del sistema, no forma parte del catálogo oficial.</p>
+
+         <h4 style="color:#004E64; margin-bottom:0;">Detección automática</h4>
+         ${tablaDetectadas}
+
+         <h4 style="color:#0d9488; margin-top:24px; margin-bottom:0;">Seguimiento registrado</h4>
+         ${tablaSeguimiento}
       </div>
     `;
 
@@ -3889,27 +3937,143 @@ function guardarAlertaTemprana(form) {
           sheet.getRange(fila, 8).setValue(form.estado || data[i][7]);
           sheet.getRange(fila, 9).setValue(form.comentario !== undefined ? form.comentario : data[i][8]);
           sheet.getRange(fila, 10).setValue(new Date());
+
+          // Cualquier edicion tambien queda como entrada de la bitacora de
+          // seguimiento, para que el historial completo viva en un solo lugar
+          // sin importar si se uso "Editar" o "Agregar seguimiento".
+          registrarLogAlerta(ss, form.idAlerta, form.estado || data[i][7], form.comentario !== undefined ? form.comentario : data[i][8], idUsuario);
+
           return { success: true, message: "Alerta actualizada" };
         }
       }
       return { success: false, message: "Alerta no encontrada" };
     }
 
+    const idNuevo = "AT-" + Date.now();
+    const estadoInicial = form.estado || "Activada";
     sheet.appendRow([
-      "AT-" + Date.now(),
+      idNuevo,
       form.idSeccion,
       form.idEst,
       form.dimension,
       form.nombreAlerta,
       form.contexto || "",
       form.prioridad || "",
-      form.estado || "Activada",
+      estadoInicial,
       form.comentario || "",
       new Date(),
       idUsuario
     ]);
+
+    // El comentario de creacion es la primera entrada de la bitacora de
+    // seguimiento -- asi toda la historia (por que se abrio, que paso despues)
+    // vive en un solo lugar (ver registrarLogAlerta / obtenerSeguimientoAlerta).
+    registrarLogAlerta(ss, idNuevo, estadoInicial, form.comentario || "", idUsuario);
+
     return { success: true, message: "Alerta registrada" };
   } catch (e) { return { success: false, message: e.toString() }; }
+}
+
+// ==========================================
+// BITÁCORA DE SEGUIMIENTO POR ALERTA (Fase 3)
+// El Comentario/Estado del registro principal solo mostraba el ULTIMO valor
+// -- cada edicion pisaba lo anterior, sin dejar rastro de que paso semana a
+// semana. Esto agrega una bitacora propia por alerta: cada entrada nueva se
+// SUMA (no reemplaza), y la ultima entrada define el Estado vigente de la
+// alerta principal. El "Comentario" del registro principal se deja intacto
+// como el motivo original de apertura -- el detalle de seguimiento vive acá.
+// ==========================================
+function registrarLogAlerta(ss, idAlerta, estado, nota, idUsuario) {
+  let sheet = ss.getSheetByName("ALERTAS_TEMPRANAS_LOG");
+  if (!sheet) {
+    sheet = ss.insertSheet("ALERTAS_TEMPRANAS_LOG");
+    sheet.appendRow(["ID", "ID_ALERTA", "FECHA", "ESTADO", "NOTA", "ID_USUARIO"]);
+  }
+  sheet.appendRow(["LOG-" + Date.now() + Math.floor(Math.random() * 1000), idAlerta, new Date(), estado, nota, idUsuario]);
+}
+
+// MIGRACION UNICA: alertas creadas ANTES de que existiera la bitacora de
+// seguimiento (ALERTAS_TEMPRANAS_LOG) nunca tuvieron esa primera entrada de
+// "Activada" con el motivo de apertura -- su PDF de seguimiento sale con la
+// linea de tiempo vacia o incompleta. Rellena esa entrada faltante usando el
+// Estado/Comentario/Fecha que ya tenia el registro principal. Correr UNA vez,
+// desde el editor de Apps Script (Run -> migrarAlertasSinLogInicial).
+function migrarAlertasSinLogInicial() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheetPadre = ss.getSheetByName("ALERTAS_TEMPRANAS_SEGUIMIENTO");
+  if (!sheetPadre) return { success: true, actualizadas: 0 };
+
+  let sheetLog = ss.getSheetByName("ALERTAS_TEMPRANAS_LOG");
+  if (!sheetLog) {
+    sheetLog = ss.insertSheet("ALERTAS_TEMPRANAS_LOG");
+    sheetLog.appendRow(["ID", "ID_ALERTA", "FECHA", "ESTADO", "NOTA", "ID_USUARIO"]);
+  }
+
+  const dataLog = sheetLog.getDataRange().getValues();
+  const idsConLog = new Set();
+  for (let i = 1; i < dataLog.length; i++) idsConLog.add(String(dataLog[i][1]).trim());
+
+  const dataPadre = sheetPadre.getDataRange().getValues();
+  let actualizadas = 0;
+  for (let i = 1; i < dataPadre.length; i++) {
+    const idAlerta = String(dataPadre[i][0]).trim();
+    if (idsConLog.has(idAlerta)) continue; // ya tiene bitacora, no hace falta
+
+    sheetLog.appendRow([
+      "LOG-" + Date.now() + Math.floor(Math.random() * 1000),
+      idAlerta,
+      dataPadre[i][9] || new Date(), // FECHA original del registro principal
+      dataPadre[i][7],               // ESTADO que tenia en ese momento
+      dataPadre[i][8],                // COMENTARIO original (motivo de apertura)
+      dataPadre[i][10]
+    ]);
+    actualizadas++;
+  }
+
+  Logger.log("Alertas con bitacora inicial rellenada: " + actualizadas);
+  return { success: true, actualizadas: actualizadas };
+}
+
+function guardarSeguimientoAlerta(form) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const idUsuario = obtenerIdUsuarioPorEmail(form.email);
+
+    registrarLogAlerta(ss, form.idAlerta, form.estado, form.nota || "", idUsuario);
+
+    // Sincroniza el Estado vigente en el registro principal, para que la
+    // tabla de "en riesgo" y el badge de la fila reflejen la ultima entrada.
+    const sheet = ss.getSheetByName("ALERTAS_TEMPRANAS_SEGUIMIENTO");
+    if (sheet) {
+      const data = sheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][0]) === String(form.idAlerta)) {
+          sheet.getRange(i + 1, 8).setValue(form.estado);
+          sheet.getRange(i + 1, 10).setValue(new Date());
+          break;
+        }
+      }
+    }
+
+    return { success: true, message: "Seguimiento agregado" };
+  } catch (e) { return { success: false, message: e.toString() }; }
+}
+
+function obtenerSeguimientoAlerta(idAlerta) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName("ALERTAS_TEMPRANAS_LOG");
+    if (!sheet) return { success: true, lista: [] };
+
+    const data = sheet.getDataRange().getValues();
+    const lista = [];
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][1]).trim() !== String(idAlerta).trim()) continue;
+      lista.push({ fecha: data[i][2], estado: data[i][3], nota: data[i][4] });
+    }
+    lista.sort((a, b) => new Date(a.fecha) - new Date(b.fecha)); // cronologico, mas viejo primero
+    return { success: true, lista: lista };
+  } catch (e) { return { error: e.toString() }; }
 }
 
 function obtenerAlertasSeguimiento(idSeccion) {
@@ -3951,6 +4115,130 @@ function obtenerAlertasSeguimiento(idSeccion) {
 // borra la fila por completo.
 function eliminarAlertaTemprana(idAlerta) {
   return eliminarFilaGenerico("ALERTAS_TEMPRANAS_SEGUIMIENTO", idAlerta);
+}
+
+function obtenerAlertaPorId(idAlerta) {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName("ALERTAS_TEMPRANAS_SEGUIMIENTO");
+  if (!sheet) return null;
+
+  const dataEst = ss.getSheetByName("ESTUDIANTES").getDataRange().getValues();
+  const nombresPorId = {};
+  for (let i = 1; i < dataEst.length; i++) nombresPorId[String(dataEst[i][0]).trim()] = String(dataEst[i][3]).trim();
+
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]).trim() === String(idAlerta).trim()) {
+      const idEst = String(data[i][2]).trim();
+      return {
+        idAlerta: data[i][0], idEst: idEst, nombreEst: nombresPorId[idEst] || idEst,
+        dimension: data[i][3], nombreAlerta: data[i][4], contexto: data[i][5],
+        prioridad: data[i][6], estado: data[i][7], comentario: data[i][8], fecha: data[i][9]
+      };
+    }
+  }
+  return null;
+}
+
+// PDF individual de UNA alerta, con toda su bitacora de seguimiento -- desde
+// que se registro (Activada) hasta el estado actual (ej. Cerrada). Distinto
+// del reporte mensual (que junta TODAS las alertas de la seccion); este es
+// para respaldar un caso puntual, ej. para adjuntar a la Boleta de AT oficial.
+function generarPdfSeguimientoAlerta(idAlerta, email) {
+  try {
+    const alerta = obtenerAlertaPorId(idAlerta);
+    if (!alerta) return { success: false, message: "Alerta no encontrada" };
+
+    // Nombre del docente que genera el documento, para el bloque de firma
+    let nombreDocente = "Docente a cargo";
+    if (email) {
+      const idUsuario = obtenerIdUsuarioPorEmail(email);
+      if (idUsuario) {
+        const ss = SpreadsheetApp.openById(SHEET_ID);
+        const dataUsers = ss.getSheetByName("USUARIOS").getDataRange().getValues();
+        for (let j = 1; j < dataUsers.length; j++) {
+          if (String(dataUsers[j][0]) === String(idUsuario)) { nombreDocente = dataUsers[j][1]; break; }
+        }
+      }
+    }
+
+    const seguimiento = obtenerSeguimientoAlerta(idAlerta);
+    const entradas = (seguimiento && seguimiento.lista) || [];
+
+    let filasLog = "";
+    if (entradas.length === 0) {
+      filasLog = `<tr><td colspan="3" style="padding:10px; text-align:center; color:#999; font-size:11px;">Sin entradas de seguimiento todavía.</td></tr>`;
+    } else {
+      entradas.forEach(en => {
+        // Fecha y hora exactas de cada entrada (antes solo se mostraba la fecha)
+        const fecha = en.fecha ? Utilities.formatDate(new Date(en.fecha), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm") : "";
+        filasLog += `
+        <tr>
+          <td style="border:1px solid #ddd; padding:6px; font-size:10px; text-align:center; white-space:nowrap;">${fecha}</td>
+          <td style="border:1px solid #ddd; padding:6px; font-size:10px; text-align:center;">${en.estado}</td>
+          <td style="border:1px solid #ddd; padding:6px; font-size:10px;">${en.nota || "—"}</td>
+        </tr>`;
+      });
+    }
+
+    const fechaEmision = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm");
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+         <h3 style="text-align:center; color:#004E64; margin-bottom:5px;">SEGUIMIENTO DE ALERTA TEMPRANA</h3>
+         <p style="text-align:center; font-size:11px; color:#888; margin-top:0;">Catálogo Oficial de Alertas Tempranas (UPRE-MEP)</p>
+
+         <table style="width:100%; margin-top:15px; font-size:11px;">
+            <tr><td style="padding:3px 0; color:#666;">Estudiante:</td><td style="padding:3px 0;"><b>${alerta.nombreEst}</b></td></tr>
+            <tr><td style="padding:3px 0; color:#666;">Dimensión:</td><td style="padding:3px 0;">${alerta.dimension}</td></tr>
+            <tr><td style="padding:3px 0; color:#666;">Nombre de la Alerta:</td><td style="padding:3px 0;">${alerta.nombreAlerta}</td></tr>
+            <tr><td style="padding:3px 0; color:#666;">Contexto:</td><td style="padding:3px 0;">${alerta.contexto || "—"}</td></tr>
+            <tr><td style="padding:3px 0; color:#666;">Prioridad:</td><td style="padding:3px 0;">${alerta.prioridad || "—"}</td></tr>
+            <tr><td style="padding:3px 0; color:#666;">Estado actual:</td><td style="padding:3px 0;"><b>${alerta.estado}</b></td></tr>
+            <tr><td style="padding:3px 0; color:#666;">Motivo de apertura:</td><td style="padding:3px 0;">${alerta.comentario || "—"}</td></tr>
+         </table>
+
+         <h4 style="color:#0d9488; margin-top:20px; margin-bottom:5px;">Línea de Tiempo del Seguimiento</h4>
+         <table style="width:100%; border-collapse:collapse;">
+            <thead>
+                <tr style="background-color:#0d9488; color:white; font-size:11px;">
+                   <th style="padding:6px;">FECHA Y HORA</th>
+                   <th style="padding:6px;">ESTADO</th>
+                   <th style="padding:6px; text-align:left;">NOTA DE SEGUIMIENTO</th>
+                </tr>
+            </thead>
+            <tbody>${filasLog}</tbody>
+         </table>
+
+         <table style="width:100%; margin-top:60px; font-size:10px;">
+            <tr>
+               <td style="width:50%; padding-right:20px; vertical-align:top;">
+                  <p style="border-top:1px solid #333; padding-top:4px; margin:0;">Firma del Docente: ${nombreDocente}</p>
+               </td>
+               <td style="width:50%; padding-left:20px; vertical-align:top;">
+                  <p style="border-top:1px solid #333; padding-top:4px; margin:0;">Firma de Padre/Encargado(a) u Oficina de Atención al Estudiante</p>
+               </td>
+            </tr>
+            <tr>
+               <td style="padding-right:20px; padding-top:30px; vertical-align:top;">
+                  <p style="border-top:1px solid #333; padding-top:4px; margin:0;">Cédula: _____________________ &nbsp; Fecha: _____________</p>
+               </td>
+               <td style="padding-left:20px; padding-top:30px; vertical-align:top;">
+                  <p style="border-top:1px solid #333; padding-top:4px; margin:0;">Nombre: _____________________ &nbsp; Cédula: _____________</p>
+               </td>
+            </tr>
+         </table>
+         <p style="font-size:9px; color:#999; text-align:center; margin-top:30px;">Documento emitido por RegistraME V-Pro el ${fechaEmision}. Sirve como respaldo del seguimiento de esta Alerta Temprana, oficial UPRE-MEP.</p>
+      </div>
+    `;
+
+    const blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
+    blob.setName(`Seguimiento_${alerta.nombreEst.replace(/\s+/g, "_")}.pdf`);
+    return { success: true, base64: Utilities.base64Encode(blob.getBytes()), nombre: blob.getName() };
+
+  } catch (e) {
+    return { success: false, message: e.toString() };
+  }
 }
 
 // ==========================================
