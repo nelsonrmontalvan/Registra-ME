@@ -1546,6 +1546,19 @@ enterApp: async () => {
 
         LABEL_PERIODO: { 1: 'I', 2: 'II', 3: 'III' },
 
+        // Defensivo: si la descripción de un indicador quedó pegada como fecha
+        // cruda (pasa al copiar una celda de fecha desde Excel a un campo de
+        // texto normal, ej. "2026-06-09T06:00:00.000Z"), la muestra formateada
+        // en vez del ISO feo. Es solo cosmético -- el dato de fondo sigue siendo
+        // una fecha, no un nombre real de la prueba.
+        formatearDescripcionInd: (desc) => {
+            if (!desc) return desc;
+            if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(desc)) return desc;
+            const fecha = new Date(desc);
+            if (isNaN(fecha.getTime())) return desc;
+            return fecha.toLocaleDateString('es-CR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        },
+
         // Arma un literal string 'seguro' para meter dentro de un atributo HTML
         // delimitado con comillas dobles (onclick="...", onchange="..."). NUNCA usar
         // JSON.stringify() ahi -- JSON.stringify tambien devuelve comillas dobles, que
@@ -3904,7 +3917,7 @@ renderScheduleList: () => {
                 <label class="flex items-center gap-2 py-1 px-1 text-xs hover:bg-slate-50 rounded cursor-pointer">
                     <input type="checkbox" class="swal-clon-check" value="${i.id}" checked>
                     <span class="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase shrink-0">${app.CAT_LABEL_CLONAR[i.categoria] || i.categoria}</span>
-                    <span class="truncate">${i.descripcion}</span>
+                    <span class="truncate">${app.formatearDescripcionInd(i.descripcion)}</span>
                 </label>`).join('');
         },
 
@@ -4081,7 +4094,7 @@ renderScheduleList: () => {
                 }).join('');
             }
 
-            const pruebaLabel = res.ultimaPruebaSugerida ? res.ultimaPruebaSugerida.descripcion : '—';
+            const pruebaLabel = res.ultimaPruebaSugerida ? app.formatearDescripcionInd(res.ultimaPruebaSugerida.descripcion) : '—';
 
             await Swal.fire({
                 title: 'Eximidos — Artículo 49',
@@ -4109,7 +4122,7 @@ renderScheduleList: () => {
             const res = app.state.eximicionData;
             if (!res) return;
 
-            const opcionesPrueba = res.pruebasDisponibles.map(p => `<option value="${p.id}" ${p.id === res.ultimaPruebaSugerida.id ? 'selected' : ''}>${p.descripcion}</option>`).join('');
+            const opcionesPrueba = res.pruebasDisponibles.map(p => `<option value="${p.id}" ${p.id === res.ultimaPruebaSugerida.id ? 'selected' : ''}>${app.formatearDescripcionInd(p.descripcion)}</option>`).join('');
             const hoy = new Date().toISOString().split('T')[0];
 
             const { value: formValues } = await Swal.fire({
@@ -4415,7 +4428,7 @@ list.forEach(i => {
 
     tbody.innerHTML += `
     <tr class="fade-in-up hover:bg-slate-50 group transition border-b border-slate-100">
-        <td class="p-2 md:p-4 font-bold text-slate-700 text-xs md:text-sm">${i.descripcion}</td>
+        <td class="p-2 md:p-4 font-bold text-slate-700 text-xs md:text-sm">${app.formatearDescripcionInd(i.descripcion)}</td>
         <td class="p-2 md:p-4 text-center">
             <span class="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-[10px] font-bold border border-slate-200">${periodoLabel}</span>
         </td>
@@ -4424,7 +4437,7 @@ list.forEach(i => {
         </td>
         <td class="p-2 md:p-4 text-right">
             <div class="flex flex-col sm:flex-row items-end sm:items-center justify-end gap-1 sm:gap-2">
-                <button onclick="app.openEvaluation('${i.id}', '${i.descripcion}', ${finalPts}, ${i.puntosTotales})"
+                <button onclick="app.openEvaluation('${i.id}', ${app.jsStr(app.formatearDescripcionInd(i.descripcion))}, ${finalPts}, ${i.puntosTotales})"
                         class="${btnClass} px-2 md:px-3 py-1 md:py-1.5 rounded-lg text-xs font-bold border shadow-sm transition flex items-center gap-1"
                         title="${btnTitle}">
                     <i class="fas ${btnIcon}"></i><span class="hidden sm:inline"> ${btnText}</span>
@@ -6100,7 +6113,7 @@ fillMaxScore: () => {
                 const inds = await app.api({ action: 'getIndicators', idMateria: idMat, categoria: cat });
                 if(inds && inds.length > 0) {
                     sel.innerHTML += `<optgroup label="${cat}">`;
-                    inds.forEach(i => sel.innerHTML += `<option value="${i.id}">${i.descripcion}</option>`);
+                    inds.forEach(i => sel.innerHTML += `<option value="${i.id}">${app.formatearDescripcionInd(i.descripcion)}</option>`);
                     sel.innerHTML += `</optgroup>`;
                 }
             }
