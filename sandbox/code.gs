@@ -4286,16 +4286,25 @@ function obtenerElegiblesEximicion(idMateria) {
       return { error: "Esta sección tiene un solo periodo (Anual). El Artículo 49 compara contra el I Periodo, así que no aplica en un esquema de 1 solo periodo." };
     }
 
+    // Indicadores del ultimo periodo, agrupados por categoria (TRAB_COT y ASIST
+    // se manejan aparte -- Cotidiano tiene su propio motor de peso dinamico y
+    // Asistencia se calcula sola, ninguno de los dos sufre el problema de abajo).
     const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
-    const pruebasUltimoPeriodo = [];
+    const indicadoresPorCategoria = { TAREAS: [], PRUEBAS: [], PROYECTOS: [] };
     for (let i = 1; i < dataInd.length; i++) {
-      if (String(dataInd[i][1]).trim() === String(idMateria).trim()
-          && String(dataInd[i][2]).trim() === "PRUEBAS"
-          && String(dataInd[i][7]) === String(ultimoPeriodo)) {
-        pruebasUltimoPeriodo.push({ id: String(dataInd[i][0]).trim(), descripcion: dataInd[i][3], fechaCreacion: new Date(dataInd[i][5]) });
-      }
+      if (String(dataInd[i][1]).trim() !== String(idMateria).trim()) continue;
+      if (String(dataInd[i][7]) !== String(ultimoPeriodo)) continue;
+      const cat = String(dataInd[i][2]).trim();
+      if (!indicadoresPorCategoria[cat]) continue;
+      indicadoresPorCategoria[cat].push({
+        id: String(dataInd[i][0]).trim(),
+        descripcion: dataInd[i][3],
+        puntaje: parseFloat(dataInd[i][4]) || 0,
+        fechaCreacion: new Date(dataInd[i][5])
+      });
     }
 
+    const pruebasUltimoPeriodo = indicadoresPorCategoria.PRUEBAS;
     if (pruebasUltimoPeriodo.length < 2) {
       return { error: "Esta materia no tiene al menos 2 indicadores de Pruebas en el último periodo -- el Artículo 49 exige mínimo 2 pruebas por periodo para poder aplicar." };
     }
@@ -4304,6 +4313,38 @@ function obtenerElegiblesEximicion(idMateria) {
     // docente puede elegir otra desde el frontend (por eso se devuelven todas).
     pruebasUltimoPeriodo.sort((a, b) => b.fechaCreacion - a.fechaCreacion);
     const ultimaPruebaSugerida = pruebasUltimoPeriodo[0];
+    // Se excluye de la verificacion de "componentes" porque es justo la que se
+    // esta evaluando si eximir -- no puede exigirse que ya este calificada.
+    const pruebasSinUltima = pruebasUltimoPeriodo.filter(p => p.id !== ultimaPruebaSugerida.id);
+
+    // IMPORTANTE: el peso de cada componente para esta cuenta es la SUMA de los
+    // puntajes de los indicadores que YA EXISTEN en esa categoria/periodo, no el
+    // % total configurado en la materia. Si la materia tiene 10% de Tareas pero
+    // el docente solo lleva creado un 8% en indicadores, exigir el 90% contra el
+    // 10% completo hace la meta matematicamente imposible (max alcanzable 80%)
+    // aunque el estudiante tenga nota perfecta en todo lo que ya existe.
+    const componentesAEvaluar = [];
+    if (materia.tareas > 0 && indicadoresPorCategoria.TAREAS.length > 0) {
+      componentesAEvaluar.push({ label: 'Tareas', indicadores: indicadoresPorCategoria.TAREAS });
+    }
+    if (materia.proyectos > 0 && indicadoresPorCategoria.PROYECTOS.length > 0) {
+      componentesAEvaluar.push({ label: 'Proyectos', indicadores: indicadoresPorCategoria.PROYECTOS });
+    }
+    if (materia.pruebas > 0 && pruebasSinUltima.length > 0) {
+      componentesAEvaluar.push({ label: 'Pruebas (sin la última)', indicadores: pruebasSinUltima });
+    }
+
+    // Nota de cada indicador por estudiante (ultima fila = la vigente), para
+    // sumar exactamente los indicadores de cada componente sin arrastrar el
+    // peso de la ultima prueba.
+    const dataNotas = ss.getSheetByName("NOTAS").getDataRange().getValues();
+    const notaPorIndicadorEst = {}; // idInd -> { idEst -> porcentaje }
+    for (let n = 1; n < dataNotas.length; n++) {
+      const idInd = String(dataNotas[n][1]).trim();
+      const idEst = String(dataNotas[n][2]).trim();
+      if (!notaPorIndicadorEst[idInd]) notaPorIndicadorEst[idInd] = {};
+      notaPorIndicadorEst[idInd][idEst] = extraerPorcentaje(dataNotas[n][3]);
+    }
 
     const cuadroP1 = obtenerCuadroMateria(idMateria, 1);
     const cuadroUltimo = obtenerCuadroMateria(idMateria, ultimoPeriodo);
@@ -4313,25 +4354,35 @@ function obtenerElegiblesEximicion(idMateria) {
     const mapP1 = {};
     cuadroP1.lista.forEach(e => { mapP1[e.id] = e.total; });
 
-    // Solo se evaluan los componentes que la materia realmente usa (peso > 0)
-    const componentes = [
-      { key: 'TRAB_COT', label: 'Cotidiano', peso: materia.cotidiano },
-      { key: 'TAREAS', label: 'Tareas', peso: materia.tareas },
-      { key: 'PRUEBAS', label: 'Pruebas', peso: materia.pruebas },
-      { key: 'PROYECTOS', label: 'Proyectos', peso: materia.proyectos }
-    ].filter(c => c.peso > 0);
-
     const elegibles = [];
     cuadroUltimo.lista.forEach(e => {
       const notaP1 = mapP1[e.id];
       if (notaP1 === undefined || notaP1 < 90) return;
 
       let cumpleTodos = true;
-      const detalleComponentes = componentes.map(c => {
-        const obtenido = e.notas[c.key] || 0;
-        const pct = Math.round((obtenido / c.peso) * 1000) / 10; // 1 decimal
+      const detalleComponentes = [];
+
+      // Cotidiano: el motor de peso dinamico ya garantiza que la suma de sus
+      // indicadores (una vez creado al menos uno) equivale al 100% del peso
+      // asignado en la materia -- por eso este SI se puede comparar contra
+      // materia.cotidiano directamente, sin el problema de arriba.
+      if (materia.cotidiano > 0) {
+        const pctCot = Math.round(((e.notas.TRAB_COT || 0) / materia.cotidiano) * 1000) / 10;
+        detalleComponentes.push({ categoria: 'Cotidiano', porcentaje: pctCot });
+        if (pctCot < 90) cumpleTodos = false;
+      }
+
+      componentesAEvaluar.forEach(comp => {
+        const pesoAsignado = comp.indicadores.reduce((s, ind) => s + ind.puntaje, 0);
+        let obtenido = 0;
+        comp.indicadores.forEach(ind => {
+          const notaInd = notaPorIndicadorEst[ind.id] && notaPorIndicadorEst[ind.id][e.id] !== undefined
+            ? notaPorIndicadorEst[ind.id][e.id] : 0;
+          obtenido += notaInd;
+        });
+        const pct = pesoAsignado > 0 ? Math.round((obtenido / pesoAsignado) * 1000) / 10 : 0;
+        detalleComponentes.push({ categoria: comp.label, porcentaje: pct });
         if (pct < 90) cumpleTodos = false;
-        return { categoria: c.label, porcentaje: pct };
       });
 
       if (cumpleTodos) {
