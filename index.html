@@ -1666,6 +1666,24 @@ enterApp: async () => {
                 </button>`;
             });
 
+            // Buscador global: permanece dentro del mismo bloque de filtros del dashboard.
+            filterContainer.innerHTML += `
+            <div class="relative w-full md:w-96 md:ml-auto order-last md:order-none" id="dashboard-student-search">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+                    <input id="student-search-input" type="search" autocomplete="off"
+                        placeholder="Buscar estudiante por nombre o cédula..."
+                        oninput="app.searchStudents(this.value)"
+                        onkeydown="if(event.key === 'Escape') app.clearStudentSearch()"
+                        class="w-full h-10 pl-9 pr-9 rounded-xl border border-slate-200 bg-white text-xs text-slate-700 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 placeholder-slate-400">
+                    <button type="button" onclick="app.clearStudentSearch()" aria-label="Limpiar búsqueda"
+                        class="hidden absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition" id="student-search-clear">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
+                </div>
+                <div id="student-search-results" class="hidden absolute left-0 right-0 top-12 z-30 bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden"></div>
+            </div>`;
+
             // Toggle de vistas (Grid / Compacto / Lista)
             const currentView = app.getSecView();
             const viewBtnBase = "w-8 h-8 rounded-lg flex items-center justify-center text-xs transition border";
@@ -1839,6 +1857,97 @@ enterApp: async () => {
             app.initSecDrag(grid);
             app.updateConfigView();
         },
+
+        // ==========================================
+        // BUSCADOR GLOBAL DE ESTUDIANTES
+        // ==========================================
+        escapeHtml: (value) => String(value ?? '').replace(/[&<>'"]/g, char => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        }[char])),
+
+        searchStudents: (query) => {
+            const input = document.getElementById('student-search-input');
+            const resultsBox = document.getElementById('student-search-results');
+            const clearButton = document.getElementById('student-search-clear');
+            if (!input || !resultsBox) return;
+
+            clearButton?.classList.toggle('hidden', !query);
+            clearTimeout(app.state.studentSearchTimer);
+
+            const termino = String(query || '').trim();
+            if (termino.length < 2) {
+                resultsBox.classList.add('hidden');
+                resultsBox.innerHTML = '';
+                return;
+            }
+
+            resultsBox.classList.remove('hidden');
+            resultsBox.innerHTML = '<div class="px-4 py-5 text-center text-xs text-slate-400"><i class="fas fa-spinner fa-spin mr-2 text-indigo-400"></i>Buscando estudiante...</div>';
+
+            app.state.studentSearchTimer = setTimeout(async () => {
+                const encontrados = await app.api({ action: 'searchStudents', query: termino }, { silent: true }) || [];
+                if (input.value.trim() !== termino) return;
+
+                if (!encontrados.length) {
+                    resultsBox.innerHTML = '<div class="px-4 py-5 text-center text-xs text-slate-400"><i class="fas fa-user-slash text-lg mb-2 block text-slate-300"></i>No encontramos estudiantes con ese dato.</div>';
+                    return;
+                }
+
+                resultsBox.innerHTML = encontrados.map(est => {
+                    const nombre = app.escapeHtml(est.nombre);
+                    const cedula = app.escapeHtml(est.cedula || 'Sin cédula');
+                    const seccion = app.escapeHtml(est.nombreSeccion);
+                    const institucion = app.escapeHtml(est.institucion);
+                    const idSec = app.jsStr(est.idSeccion);
+                    const nombreSec = app.jsStr(est.nombreSeccion);
+                    return `<div class="px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition">
+                        <div class="flex items-start gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0"><i class="fas fa-user-graduate text-sm"></i></div>
+                            <div class="min-w-0 flex-1">
+                                <p class="text-sm font-bold text-slate-800 truncate">${nombre}</p>
+                                <p class="text-[11px] text-slate-500 mt-0.5"><span class="font-mono">${cedula}</span> · ${institucion} · <b>${seccion}</b></p>
+                                <div class="flex flex-wrap sm:flex-nowrap items-center gap-1.5 mt-2 whitespace-nowrap">
+                                    <button onclick="app.openStudentSection(${idSec},${nombreSec})" class="px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white text-[10px] font-bold hover:bg-indigo-700 transition"><i class="fas fa-location-arrow mr-1"></i>Ir a sección</button>
+                                    <button onclick="app.prepareStudentGrades(${idSec},${nombreSec})" class="px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-[10px] font-bold hover:bg-indigo-100 transition"><i class="fas fa-pen mr-1"></i>Calificar</button>
+                                    <button onclick="app.prepareStudentAttendance(${idSec},${nombreSec})" class="px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-600 text-[10px] font-bold hover:bg-amber-100 transition"><i class="fas fa-calendar-check mr-1"></i>Pasar lista</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+            }, 280);
+        },
+
+        clearStudentSearch: () => {
+            const input = document.getElementById('student-search-input');
+            const resultsBox = document.getElementById('student-search-results');
+            const clearButton = document.getElementById('student-search-clear');
+            if (input) input.value = '';
+            clearButton?.classList.add('hidden');
+            resultsBox?.classList.add('hidden');
+            if (resultsBox) resultsBox.innerHTML = '';
+        },
+
+        openStudentSection: (idSeccion, nombreSeccion) => {
+            app.clearStudentSearch();
+            app.openStudents(idSeccion, nombreSeccion);
+        },
+
+        prepareStudentGrades: (idSeccion, nombreSeccion) => {
+            app.clearStudentSearch();
+            app.openMaterias(idSeccion, nombreSeccion);
+        },
+
+        prepareStudentAttendance: async (idSeccion, nombreSeccion) => {
+            app.clearStudentSearch();
+            app.nav('asistencia');
+            const selector = document.getElementById('as-sec');
+            if (!selector) return;
+            selector.value = idSeccion;
+            await app.loadMatAsistencia();
+            app.toast('info', `Sección ${nombreSeccion} lista para pasar asistencia`);
+        },
+
         // ==========================================
         // DRAG & DROP + PIN DE SECCIONES
         // ==========================================

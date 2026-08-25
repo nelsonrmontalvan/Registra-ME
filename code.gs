@@ -36,6 +36,7 @@ function doPost(e) {
 
     // --- ESTUDIANTES ---
     if(action === "getStudents") return response(obtenerEstudiantes(data.idSeccion));
+    if(action === "searchStudents") return response(buscarEstudiantes(data.email, data.query));
     if(action === "saveStudent") return response(guardarEstudiante(data));
     if(action === "deleteStudent") return response(eliminarEstudiante(data.id));
     if(action === "importStudents") return response(importarEstudiantesMasivo(data.idSeccion, data.lista));
@@ -354,6 +355,67 @@ function obtenerEstudiantes(idSeccion) {
     }
   }
   return lista;
+}
+
+// Busca solo dentro de las secciones asignadas al usuario autenticado.
+function buscarEstudiantes(email, query) {
+  const termino = String(query || '').trim().toLowerCase();
+  if (termino.length < 2) return [];
+
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const idUsuario = obtenerIdUsuarioPorEmail(email);
+  if (!idUsuario) return [];
+
+  const sheetSecc = ss.getSheetByName('SECCIONES');
+  const sheetEst = ss.getSheetByName('ESTUDIANTES');
+  const sheetInst = ss.getSheetByName('INSTITUCIONES');
+  if (!sheetSecc || !sheetEst) return [];
+
+  const instituciones = {};
+  if (sheetInst) {
+    sheetInst.getDataRange().getValues().slice(1).forEach(row => {
+      if (String(row[2]).trim() === String(idUsuario).trim()) {
+        instituciones[String(row[0]).trim()] = row[1];
+      }
+    });
+  }
+
+  const secciones = {};
+  sheetSecc.getDataRange().getValues().slice(1).forEach(row => {
+    if (String(row[6]).trim() === String(idUsuario).trim()) {
+      secciones[String(row[0]).trim()] = {
+        nombre: row[2],
+        institucion: instituciones[String(row[1]).trim()] || 'Institución desconocida',
+        idInstitucion: row[1]
+      };
+    }
+  });
+
+  const normalizar = valor => String(valor || '').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const resultados = [];
+
+  sheetEst.getDataRange().getValues().slice(1).forEach(row => {
+    const idSeccion = String(row[1]).trim();
+    const seccion = secciones[idSeccion];
+    if (!seccion) return;
+
+    const cedula = String(row[2] || '').trim();
+    const nombre = String(row[3] || '').trim();
+    if (!normalizar(nombre).includes(normalizar(termino)) && !cedula.toLowerCase().includes(termino)) return;
+
+    resultados.push({
+      id: row[0],
+      cedula: cedula,
+      nombre: nombre,
+      idSeccion: idSeccion,
+      nombreSeccion: seccion.nombre,
+      institucion: seccion.institucion,
+      idInstitucion: seccion.idInstitucion
+    });
+  });
+
+  return resultados.sort((a, b) => normalizar(a.nombre).localeCompare(normalizar(b.nombre))).slice(0, 25);
 }
 
 function toggleExemptStatus(idEstudiante, nuevoEstado) {
