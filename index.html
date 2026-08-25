@@ -4642,6 +4642,8 @@ list.forEach(i => {
             const isCotidiano = app.state.currentCat === 'TRAB_COT';
             
             app.nav('evaluar');
+            document.getElementById('bulk-score-cotidiano')?.classList.toggle('hidden', !isCotidiano);
+            document.getElementById('btn-fill-max')?.classList.toggle('hidden', isCotidiano);
             document.getElementById('eval-title').innerText = descInd;
             document.getElementById('eval-subtitle').innerText = isCotidiano 
                 ? `${app.state.currentCatLabel} | Valor Auto: ${app.state.currentMaxPts.toFixed(2)}%`
@@ -4823,12 +4825,16 @@ saveGrades: async () => {
     }
 },
 
-// --- FUNCIÓN PARA RELLENAR CON NOTA MÁXIMA ---
-fillMaxScore: () => {
+// --- ASIGNACIÓN RÁPIDA DE NIVEL PARA COTIDIANO ---
+fillMaxScore: async (nivelSeleccionado = null) => {
     // 1. Determinamos cuál es el "máximo" para este contexto
     // Si es cotidiano, la escala es siempre 3. Si es otra categoría, usamos los Puntos Totales configurados.
     const isCotidiano = app.state.currentCat === 'TRAB_COT';
-    const valorMaximo = isCotidiano ? 3 : app.state.currentPtsTotales;
+    const valorMaximo = isCotidiano
+        ? (nivelSeleccionado === null || nivelSeleccionado === '' ? 3 : Number(nivelSeleccionado))
+        : app.state.currentPtsTotales;
+
+    if (isCotidiano && ![0, 1, 2, 3].includes(valorMaximo)) return;
     
     // 2. Buscamos todos los inputs de nota en la tabla
     const inputs = document.querySelectorAll('.grade-input');
@@ -4836,6 +4842,19 @@ fillMaxScore: () => {
     if(inputs.length === 0) {
         Swal.fire('Atención', 'No hay estudiantes en esta lista.', 'warning');
         return;
+    }
+
+    if (isCotidiano && valorMaximo === 0) {
+        const confirmacion = await Swal.fire({
+            title: '¿Asignar Nivel 0?',
+            text: `Se asignará Nivel 0 a ${inputs.length} estudiantes. Luego debes presionar "Guardar Notas".`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            confirmButtonText: 'Sí, asignar Nivel 0',
+            cancelButtonText: 'Cancelar'
+        });
+        if (!confirmacion.isConfirmed) return;
     }
 
     // 3. Aplicamos el valor a cada input
@@ -4853,7 +4872,7 @@ fillMaxScore: () => {
         toast: true,
         position: 'top-end',
         icon: 'success',
-        title: 'Puntaje máximo asignado: ' + valorMaximo,
+         title: isCotidiano ? `Nivel ${valorMaximo} asignado a ${inputs.length} estudiantes` : 'Puntaje máximo asignado: ' + valorMaximo,
         showConfirmButton: false,
         timer: 1500
     });
@@ -7688,7 +7707,17 @@ loadAuditoriaData: async () => {
                         <p class="text-xs text-gray-500" id="eval-subtitle">...</p>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="app.fillMaxScore()" class="bg-blue-50 text-blue-600 px-3 py-2 rounded-lg font-bold text-sm hover:bg-blue-100" title="Rellenar todo con nota máxima"><i class="fas fa-magic"></i> Máx</button>
+                        <div id="bulk-score-cotidiano" class="hidden">
+                            <label class="sr-only" for="bulk-score-select">Asignar nivel a todos</label>
+                            <select id="bulk-score-select" onchange="app.fillMaxScore(this.value); this.value=''" class="h-10 bg-blue-50 text-blue-600 border border-blue-200 px-3 rounded-lg font-bold text-sm hover:bg-blue-100 outline-none focus:ring-2 focus:ring-blue-200 cursor-pointer" title="Asignar nivel a todos los estudiantes">
+                                <option value="">Asignar a todos...</option>
+                                <option value="3">Máximo (3)</option>
+                                <option value="2">Nivel 2</option>
+                                <option value="1">Nivel 1</option>
+                                <option value="0">Nivel 0</option>
+                            </select>
+                        </div>
+                        <button id="btn-fill-max" onclick="app.fillMaxScore()" class="bg-blue-50 text-blue-600 px-3 py-2 rounded-lg font-bold text-sm hover:bg-blue-100" title="Rellenar todo con nota máxima"><i class="fas fa-magic"></i> Máx</button>
                         <button onclick="app.saveGrades()" class="bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow hover:bg-green-700"><i class="fas fa-save mr-2"></i> Guardar Notas</button>
                     </div>
                 </div>
