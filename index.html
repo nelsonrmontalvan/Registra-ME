@@ -59,7 +59,7 @@
 <style>
     
     /* 1. FUENTE PROFESIONAL (Inter) */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400;1,700&family=Inter:wght@300;400;500;600;700&display=swap');
     
     :root {
         --primary: #C96442;
@@ -67,7 +67,7 @@
     }
 
     body {
-        font-family: 'Inter', sans-serif;
+        font-family: var(--font-app, 'Inter', sans-serif);
         background-color: var(--background);
         color: #191919;
         -webkit-font-smoothing: antialiased;
@@ -265,7 +265,255 @@
             position: absolute; top: 0; left: 0; width: 100%;
         }
     }
+
+    /* =======================================================================
+       PREFERENCIAS DE VISUALIZACIÓN (ACCESIBILIDAD)
+       Tema (claro/oscuro/auto), tipografía y tamaño de texto.
+       Todo depende de atributos en <html> (data-theme / data-font / data-size),
+       así que con los valores por defecto (claro / Inter / 100%) el diseño
+       actual NO cambia en absolutamente nada.
+       ======================================================================= */
+
+    /* --- Tipografía seleccionable --- */
+    html { --font-app: 'Inter', sans-serif; }
+    html[data-font="inter"]    { --font-app: 'Inter', sans-serif; }
+    html[data-font="atkinson"] { --font-app: 'Atkinson Hyperlegible', 'Inter', sans-serif; }
+    html[data-font="arial"]    { --font-app: Arial, Helvetica, sans-serif; }
+
+    /* --- Tamaño de texto (escala todo el layout, que trabaja en rem) --- */
+    html[data-size="100"]   { font-size: 100%; }
+    html[data-size="112.5"] { font-size: 112.5%; }
+    html[data-size="125"]   { font-size: 125%; }
+    html[data-size="140"]   { font-size: 140%; }
+
+    /* --- Botones del selector de preferencias --- */
+    .pref-btn {
+        display: flex; align-items: center; justify-content: center; gap: .4rem;
+        border: 1px solid #e2e8f0; background: #fff; color: #475569;
+        border-radius: .6rem; padding: .55rem .6rem; font-weight: 600;
+        font-size: .78rem; line-height: 1.1; cursor: pointer;
+        transition: all .15s ease; text-align: center;
+    }
+    .pref-btn:hover { border-color: #C96442; color: #AE5235; }
+    .pref-btn.pref-active {
+        background: #C96442; border-color: #C96442; color: #fff;
+        box-shadow: 0 3px 10px rgba(201,100,66,.35);
+    }
+    .pref-btn.pref-active i { color: #fff; }
+    html[data-theme="dark"] .pref-btn { background: #1e293b; border-color: #334155; color: #cbd5e1; }
+    html[data-theme="dark"] .pref-btn:hover { border-color: #E8AE8E; color: #F2CEBB; }
+    html[data-theme="dark"] .pref-btn.pref-active {
+        background: #C96442; border-color: #C96442; color: #fff;
+        box-shadow: 0 3px 10px rgba(201,100,66,.4);
+    }
+
+    /* =======================================================================
+       TEMA OSCURO
+       ======================================================================= */
+    html[data-theme="dark"] {
+        color-scheme: dark;
+        --background: #0b1220;
+        --h-red:239,68,68; --h-rose:244,63,94; --h-orange:249,115,22;
+        --h-amber:245,158,11; --h-yellow:234,179,8; --h-green:34,197,94;
+        --h-emerald:16,185,129; --h-teal:20,184,166; --h-cyan:6,182,212;
+        --h-sky:14,165,233; --h-blue:59,130,246; --h-purple:168,85,247;
+    }
+    html[data-theme="dark"] body { background-color: #0b1220; color: #e2e8f0; }
+    html[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #475569; }
+
+    /* Superficies */
+    html[data-theme="dark"] .bg-white     { background-color: #1b2436 !important; }
+    html[data-theme="dark"] .bg-slate-50,
+    html[data-theme="dark"] .bg-gray-50   { background-color: #111a2b !important; }
+    html[data-theme="dark"] .bg-slate-100,
+    html[data-theme="dark"] .bg-gray-100  { background-color: #253044 !important; }
+    html[data-theme="dark"] .bg-slate-200,
+    html[data-theme="dark"] .bg-gray-200  { background-color: #334155 !important; }
+    html[data-theme="dark"] .bg-slate-300,
+    html[data-theme="dark"] .bg-gray-300  { background-color: #475569 !important; }
+    html[data-theme="dark"] .bg-\[\#FBF9F5\] { background-color: #0f172a !important; }
+
+    /* Texto neutro */
+    html[data-theme="dark"] .text-slate-800,
+    html[data-theme="dark"] .text-gray-800,
+    html[data-theme="dark"] .text-black     { color: #f1f5f9 !important; }
+    html[data-theme="dark"] .text-slate-700,
+    html[data-theme="dark"] .text-gray-700  { color: #e2e8f0 !important; }
+    html[data-theme="dark"] .text-slate-600,
+    html[data-theme="dark"] .text-gray-600  { color: #cbd5e1 !important; }
+    html[data-theme="dark"] .text-slate-500,
+    html[data-theme="dark"] .text-gray-500  { color: #9fb0c6 !important; }
+    html[data-theme="dark"] .text-slate-400,
+    html[data-theme="dark"] .text-gray-400  { color: #8ea0b8 !important; }
+    html[data-theme="dark"] .text-slate-300,
+    html[data-theme="dark"] .text-gray-300  { color: #cbd5e1 !important; }
+
+    /* Bordes y separadores */
+    html[data-theme="dark"] .border-slate-50,
+    html[data-theme="dark"] .border-gray-50,
+    html[data-theme="dark"] .border-slate-100,
+    html[data-theme="dark"] .border-gray-100,
+    html[data-theme="dark"] .border-slate-200,
+    html[data-theme="dark"] .border-gray-200  { border-color: #2b3a52 !important; }
+    html[data-theme="dark"] .border-slate-300,
+    html[data-theme="dark"] .border-gray-300  { border-color: #3b4a61 !important; }
+    html[data-theme="dark"] .border-\[\#E8E4DA\] { border-color: #26304a !important; }
+    html[data-theme="dark"] .divide-gray-100 > :not([hidden]) ~ :not([hidden]),
+    html[data-theme="dark"] .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: #2b3a52 !important; }
+
+    /* Formularios */
+    html[data-theme="dark"] input,
+    html[data-theme="dark"] select,
+    html[data-theme="dark"] textarea { color: #e2e8f0; }
+    html[data-theme="dark"] ::placeholder { color: #7d8ca3 !important; }
+
+    /* Hover / focus neutros (evitan que queden superficies claras al interactuar) */
+    html[data-theme="dark"] .focus\:bg-white:focus { background-color: #1b2436 !important; }
+    html[data-theme="dark"] .hover\:bg-white:hover  { background-color: #1e293b !important; }
+    html[data-theme="dark"] .hover\:bg-slate-50:hover,
+    html[data-theme="dark"] .hover\:bg-gray-50:hover  { background-color: #1e293b !important; }
+    html[data-theme="dark"] .hover\:bg-slate-100:hover,
+    html[data-theme="dark"] .hover\:bg-gray-100:hover { background-color: #253044 !important; }
+    html[data-theme="dark"] .hover\:bg-slate-200:hover,
+    html[data-theme="dark"] .hover\:bg-gray-200:hover { background-color: #334155 !important; }
+    html[data-theme="dark"] .hover\:bg-slate-300:hover,
+    html[data-theme="dark"] .hover\:bg-gray-300:hover { background-color: #475569 !important; }
+    html[data-theme="dark"] .hover\:text-slate-600:hover,
+    html[data-theme="dark"] .hover\:text-gray-600:hover { color: #cbd5e1 !important; }
+    html[data-theme="dark"] .hover\:text-slate-700:hover,
+    html[data-theme="dark"] .hover\:text-gray-700:hover { color: #e2e8f0 !important; }
+
+    /* Sidebar */
+    html[data-theme="dark"] aside#sidebar { background-color: #0f172a !important; border-color: #26304a !important; color: #cbd5e1; }
+    html[data-theme="dark"] .sb-label { color: #64748b; }
+    html[data-theme="dark"] .sb-item  { color: #cbd5e1; }
+    html[data-theme="dark"] .sb-icon  { color: #7d8ca3; }
+    html[data-theme="dark"] .sb-item:hover { background: #1e293b; color: #f1f5f9; }
+    html[data-theme="dark"] .sb-item:hover .sb-icon { color: #E8AE8E; }
+    html[data-theme="dark"] .sb-item.sb-active { background: #1e293b; color: #f1f5f9; }
+    html[data-theme="dark"] .sb-item.sb-active .sb-icon { color: #DB8E68; }
+
+    /* Marca terracota: aclarar acentos sobre fondo oscuro */
+    html[data-theme="dark"] .text-indigo-600, html[data-theme="dark"] .hover\:text-indigo-600:hover { color: #DB8E68 !important; }
+    html[data-theme="dark"] .text-indigo-700, html[data-theme="dark"] .hover\:text-indigo-700:hover { color: #E8AE8E !important; }
+    html[data-theme="dark"] .text-indigo-800, html[data-theme="dark"] .hover\:text-indigo-800:hover { color: #F2CEBB !important; }
+    html[data-theme="dark"] .text-indigo-900, html[data-theme="dark"] .hover\:text-indigo-900:hover { color: #FAEAE1 !important; }
+    html[data-theme="dark"] .bg-indigo-50  { background-color: rgba(201,100,66,.16) !important; }
+    html[data-theme="dark"] .bg-indigo-100 { background-color: rgba(201,100,66,.26) !important; }
+    html[data-theme="dark"] .hover\:bg-indigo-50:hover  { background-color: rgba(201,100,66,.22) !important; }
+    html[data-theme="dark"] .hover\:bg-indigo-100:hover { background-color: rgba(201,100,66,.3) !important; }
+    html[data-theme="dark"] .hover\:bg-indigo-700:hover { background-color: #AE5235 !important; }
+    html[data-theme="dark"] .border-indigo-200 { border-color: rgba(201,100,66,.42) !important; }
+
+    /* Chips semánticos: fondos claros -> tintes oscuros; texto -600/-700 -> claro */
+    html[data-theme="dark"] .bg-red-50,    html[data-theme="dark"] .bg-red-100,
+    html[data-theme="dark"] .hover\:bg-red-50:hover, html[data-theme="dark"] .hover\:bg-red-100:hover       { background-color: rgba(var(--h-red),.17) !important; }
+    html[data-theme="dark"] .bg-rose-50,   html[data-theme="dark"] .bg-rose-100,
+    html[data-theme="dark"] .hover\:bg-rose-50:hover, html[data-theme="dark"] .hover\:bg-rose-100:hover     { background-color: rgba(var(--h-rose),.17) !important; }
+    html[data-theme="dark"] .bg-orange-50, html[data-theme="dark"] .bg-orange-100,
+    html[data-theme="dark"] .hover\:bg-orange-100:hover, html[data-theme="dark"] .hover\:bg-orange-200:hover { background-color: rgba(var(--h-orange),.17) !important; }
+    html[data-theme="dark"] .bg-amber-50,  html[data-theme="dark"] .bg-amber-100,
+    html[data-theme="dark"] .hover\:bg-amber-50:hover, html[data-theme="dark"] .hover\:bg-amber-100:hover, html[data-theme="dark"] .hover\:bg-amber-200:hover { background-color: rgba(var(--h-amber),.17) !important; }
+    html[data-theme="dark"] .bg-yellow-50, html[data-theme="dark"] .bg-yellow-100                            { background-color: rgba(var(--h-yellow),.17) !important; }
+    html[data-theme="dark"] .bg-green-50,  html[data-theme="dark"] .bg-green-100, html[data-theme="dark"] .bg-green-200,
+    html[data-theme="dark"] .hover\:bg-green-100:hover, html[data-theme="dark"] .hover\:bg-green-200:hover   { background-color: rgba(var(--h-green),.17) !important; }
+    html[data-theme="dark"] .bg-emerald-50, html[data-theme="dark"] .bg-emerald-100,
+    html[data-theme="dark"] .hover\:bg-emerald-50:hover, html[data-theme="dark"] .hover\:bg-emerald-100:hover { background-color: rgba(var(--h-emerald),.17) !important; }
+    html[data-theme="dark"] .bg-teal-50,   html[data-theme="dark"] .bg-teal-100,
+    html[data-theme="dark"] .hover\:bg-teal-50:hover, html[data-theme="dark"] .hover\:bg-teal-100:hover      { background-color: rgba(var(--h-teal),.17) !important; }
+    html[data-theme="dark"] .bg-cyan-50,   html[data-theme="dark"] .bg-cyan-100,
+    html[data-theme="dark"] .hover\:bg-cyan-100:hover                                                        { background-color: rgba(var(--h-cyan),.17) !important; }
+    html[data-theme="dark"] .bg-sky-50,    html[data-theme="dark"] .bg-sky-100,
+    html[data-theme="dark"] .hover\:bg-sky-50:hover                                                          { background-color: rgba(var(--h-sky),.17) !important; }
+    html[data-theme="dark"] .bg-blue-50,   html[data-theme="dark"] .bg-blue-100, html[data-theme="dark"] .bg-blue-200,
+    html[data-theme="dark"] .hover\:bg-blue-50:hover, html[data-theme="dark"] .hover\:bg-blue-100:hover, html[data-theme="dark"] .hover\:bg-blue-200:hover { background-color: rgba(var(--h-blue),.17) !important; }
+    html[data-theme="dark"] .bg-purple-50, html[data-theme="dark"] .bg-purple-100,
+    html[data-theme="dark"] .hover\:bg-purple-100:hover                                                      { background-color: rgba(var(--h-purple),.17) !important; }
+
+    /* group-hover de chips (tarjetas del modal "Acerca de") */
+    html[data-theme="dark"] .group:hover .group-hover\:bg-emerald-100 { background-color: rgba(var(--h-emerald),.26) !important; }
+    html[data-theme="dark"] .group:hover .group-hover\:bg-blue-100    { background-color: rgba(var(--h-blue),.26) !important; }
+    html[data-theme="dark"] .group:hover .group-hover\:bg-orange-100  { background-color: rgba(var(--h-orange),.26) !important; }
+    html[data-theme="dark"] .group:hover .group-hover\:bg-teal-100    { background-color: rgba(var(--h-teal),.26) !important; }
+    html[data-theme="dark"] .group:hover .group-hover\:bg-amber-100   { background-color: rgba(var(--h-amber),.26) !important; }
+    html[data-theme="dark"] .group:hover .group-hover\:bg-rose-100    { background-color: rgba(var(--h-rose),.26) !important; }
+    html[data-theme="dark"] .group:hover .group-hover\:bg-purple-100  { background-color: rgba(var(--h-purple),.26) !important; }
+    html[data-theme="dark"] .group:hover .group-hover\:bg-cyan-100    { background-color: rgba(var(--h-cyan),.26) !important; }
+    html[data-theme="dark"] .group:hover .group-hover\:bg-indigo-100  { background-color: rgba(201,100,66,.26) !important; }
+    html[data-theme="dark"] .group:hover .group-hover\:bg-slate-200   { background-color: #334155 !important; }
+
+    html[data-theme="dark"] .text-red-400, html[data-theme="dark"] .text-red-500, html[data-theme="dark"] .text-red-600,
+    html[data-theme="dark"] .hover\:text-red-500:hover, html[data-theme="dark"] .hover\:text-red-600:hover    { color: #f87171 !important; }
+    html[data-theme="dark"] .text-red-700, html[data-theme="dark"] .text-red-800                              { color: #fca5a5 !important; }
+    html[data-theme="dark"] .text-rose-400, html[data-theme="dark"] .text-rose-500, html[data-theme="dark"] .text-rose-600,
+    html[data-theme="dark"] .hover\:text-rose-500:hover, html[data-theme="dark"] .hover\:text-rose-600:hover  { color: #fb7185 !important; }
+    html[data-theme="dark"] .text-rose-700                                                                    { color: #fda4af !important; }
+    html[data-theme="dark"] .text-orange-400, html[data-theme="dark"] .text-orange-500, html[data-theme="dark"] .text-orange-600,
+    html[data-theme="dark"] .hover\:text-orange-500:hover                                                     { color: #fb923c !important; }
+    html[data-theme="dark"] .text-orange-700, html[data-theme="dark"] .text-orange-800                        { color: #fdba74 !important; }
+    html[data-theme="dark"] .text-amber-500, html[data-theme="dark"] .text-amber-600,
+    html[data-theme="dark"] .hover\:text-amber-600:hover                                                      { color: #fbbf24 !important; }
+    html[data-theme="dark"] .text-amber-700, html[data-theme="dark"] .text-amber-800                          { color: #fcd34d !important; }
+    html[data-theme="dark"] .text-yellow-500, html[data-theme="dark"] .text-yellow-600                        { color: #facc15 !important; }
+    html[data-theme="dark"] .text-yellow-700                                                                  { color: #fde047 !important; }
+    html[data-theme="dark"] .text-green-500, html[data-theme="dark"] .text-green-600,
+    html[data-theme="dark"] .hover\:text-green-600:hover                                                      { color: #4ade80 !important; }
+    html[data-theme="dark"] .text-green-700, html[data-theme="dark"] .text-green-800                          { color: #86efac !important; }
+    html[data-theme="dark"] .text-emerald-400, html[data-theme="dark"] .text-emerald-500, html[data-theme="dark"] .text-emerald-600,
+    html[data-theme="dark"] .hover\:text-emerald-600:hover, html[data-theme="dark"] .group:hover .group-hover\:text-emerald-700 { color: #34d399 !important; }
+    html[data-theme="dark"] .text-emerald-700                                                                 { color: #6ee7b7 !important; }
+    html[data-theme="dark"] .group:hover .group-hover\:text-amber-600                                         { color: #fbbf24 !important; }
+    html[data-theme="dark"] .text-teal-500, html[data-theme="dark"] .text-teal-600,
+    html[data-theme="dark"] .hover\:text-teal-600:hover                                                       { color: #2dd4bf !important; }
+    html[data-theme="dark"] .text-teal-700                                                                    { color: #5eead4 !important; }
+    html[data-theme="dark"] .text-cyan-600                                                                    { color: #22d3ee !important; }
+    html[data-theme="dark"] .text-sky-600, html[data-theme="dark"] .hover\:text-sky-600:hover                 { color: #38bdf8 !important; }
+    html[data-theme="dark"] .text-sky-700, html[data-theme="dark"] .hover\:text-sky-700:hover                 { color: #7dd3fc !important; }
+    html[data-theme="dark"] .text-blue-400, html[data-theme="dark"] .text-blue-500, html[data-theme="dark"] .text-blue-600,
+    html[data-theme="dark"] .hover\:text-blue-600:hover                                                       { color: #60a5fa !important; }
+    html[data-theme="dark"] .text-blue-700                                                                    { color: #93c5fd !important; }
+    html[data-theme="dark"] .text-purple-500, html[data-theme="dark"] .text-purple-600                        { color: #c084fc !important; }
+
+    html[data-theme="dark"] .border-red-100, html[data-theme="dark"] .border-red-200                          { border-color: rgba(var(--h-red),.4) !important; }
+    html[data-theme="dark"] .border-rose-100, html[data-theme="dark"] .border-rose-200, html[data-theme="dark"] .border-rose-300 { border-color: rgba(var(--h-rose),.4) !important; }
+    html[data-theme="dark"] .border-orange-100, html[data-theme="dark"] .border-orange-200                    { border-color: rgba(var(--h-orange),.4) !important; }
+    html[data-theme="dark"] .border-amber-100, html[data-theme="dark"] .border-amber-200, html[data-theme="dark"] .border-amber-300 { border-color: rgba(var(--h-amber),.4) !important; }
+    html[data-theme="dark"] .border-yellow-100, html[data-theme="dark"] .border-yellow-200                    { border-color: rgba(var(--h-yellow),.4) !important; }
+    html[data-theme="dark"] .border-green-100, html[data-theme="dark"] .border-green-200                      { border-color: rgba(var(--h-green),.4) !important; }
+    html[data-theme="dark"] .border-emerald-100, html[data-theme="dark"] .border-emerald-200                  { border-color: rgba(var(--h-emerald),.4) !important; }
+    html[data-theme="dark"] .border-teal-100                                                                  { border-color: rgba(var(--h-teal),.4) !important; }
+    html[data-theme="dark"] .border-sky-100                                                                   { border-color: rgba(var(--h-sky),.4) !important; }
+    html[data-theme="dark"] .border-blue-100, html[data-theme="dark"] .border-blue-200                        { border-color: rgba(var(--h-blue),.4) !important; }
+    html[data-theme="dark"] .border-purple-100                                                                { border-color: rgba(var(--h-purple),.4) !important; }
+
+    /* SweetAlert2 en oscuro */
+    html[data-theme="dark"] div:where(.swal2-container) div:where(.swal2-popup) {
+        background: #1b2436 !important; color: #e2e8f0 !important; border-color: #334155 !important;
+    }
+    html[data-theme="dark"] .swal2-title, html[data-theme="dark"] .swal2-html-container { color: #e2e8f0 !important; }
+    html[data-theme="dark"] .swal2-input, html[data-theme="dark"] .swal2-select,
+    html[data-theme="dark"] .swal2-textarea, html[data-theme="dark"] .swal2-file {
+        background-color: #0f172a !important; color: #e2e8f0 !important; border-color: #334155 !important;
+    }
 </style>
+<script>
+    // Aplica las preferencias de visualización ANTES del primer pintado (evita el parpadeo).
+    (function () {
+        try {
+            var email = '';
+            try { email = (JSON.parse(localStorage.getItem('registrame_user') || '{}') || {}).email || ''; } catch (e) {}
+            var raw = email ? localStorage.getItem('rme_prefs_' + email) : null;
+            if (!raw) raw = localStorage.getItem('rme_prefs');
+            var p = Object.assign({ theme: 'auto', font: 'inter', size: '100' }, JSON.parse(raw || '{}') || {});
+            var dark = p.theme === 'dark' || (p.theme === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            var r = document.documentElement;
+            r.setAttribute('data-theme', dark ? 'dark' : 'light');
+            r.setAttribute('data-theme-pref', p.theme);
+            r.setAttribute('data-font', p.font);
+            r.setAttribute('data-size', p.size);
+        } catch (e) {}
+    })();
+</script>
 </head>
 
 <body class="h-screen flex overflow-hidden">
@@ -848,6 +1096,121 @@
         user: null,      // Datos del usuario logueado
         data: {},        // Cache de datos (Secciones, Instituciones)
         state: {},       // Estado temporal (Sección activa, Materia activa)
+
+        // ==========================================
+        // PREFERENCIAS DE VISUALIZACIÓN (Accesibilidad)
+        // Se guardan por usuario en este dispositivo (localStorage).
+        // ==========================================
+        PREF_DEFAULTS: { theme: 'auto', font: 'inter', size: '100' },
+        prefs: { theme: 'auto', font: 'inter', size: '100' },
+
+        _prefKey: () => `rme_prefs_${app.user?.email || 'invitado'}`,
+
+        prefsLoad: () => {
+            let stored = null;
+            try { stored = JSON.parse(localStorage.getItem(app._prefKey()) || 'null'); } catch (e) {}
+            if (!stored) { try { stored = JSON.parse(localStorage.getItem('rme_prefs') || 'null'); } catch (e) {} }
+            app.prefs = Object.assign({}, app.PREF_DEFAULTS, stored || {});
+            return app.prefs;
+        },
+
+        prefsSave: () => {
+            try {
+                localStorage.setItem(app._prefKey(), JSON.stringify(app.prefs));
+                localStorage.setItem('rme_prefs', JSON.stringify(app.prefs));
+            } catch (e) {}
+        },
+
+        prefsApply: () => {
+            const r = document.documentElement;
+            const p = app.prefs || app.PREF_DEFAULTS;
+            const dark = p.theme === 'dark' || (p.theme === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            r.setAttribute('data-theme', dark ? 'dark' : 'light');
+            r.setAttribute('data-theme-pref', p.theme);
+            r.setAttribute('data-font', p.font || 'inter');
+            r.setAttribute('data-size', p.size || '100');
+        },
+
+        prefsSet: (key, val) => {
+            app.prefs[key] = String(val);
+            app.prefsSave();
+            app.prefsApply();
+            app.prefsSyncUI();
+        },
+
+        prefsReset: (silent) => {
+            app.prefs = Object.assign({}, app.PREF_DEFAULTS);
+            app.prefsSave();
+            app.prefsApply();
+            app.prefsSyncUI();
+            if (!silent) Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Preferencias restablecidas', showConfirmButton: false, timer: 1500 });
+        },
+
+        openPrefsModal: () => {
+            Swal.fire({
+                title: 'Ajustes visuales',
+                width: '620px',
+                html: `
+                    <div class="text-left">
+                        <p class="text-xs text-slate-500 mb-4 -mt-1">Ajusta el tema, la tipografía y el tamaño del texto. Se guarda en este dispositivo.</p>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tema</label>
+                                <div id="pref-theme" class="mt-2 grid grid-cols-3 gap-2">
+                                    <button type="button" data-val="light" onclick="app.prefsSet('theme','light')" class="pref-btn"><i class="fas fa-sun"></i> Claro</button>
+                                    <button type="button" data-val="dark" onclick="app.prefsSet('theme','dark')" class="pref-btn"><i class="fas fa-moon"></i> Oscuro</button>
+                                    <button type="button" data-val="auto" onclick="app.prefsSet('theme','auto')" class="pref-btn"><i class="fas fa-circle-half-stroke"></i> Auto</button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tipo de letra</label>
+                                <div id="pref-font" class="mt-2 grid grid-cols-3 gap-2">
+                                    <button type="button" data-val="inter" onclick="app.prefsSet('font','inter')" class="pref-btn" style="font-family:'Inter',sans-serif">Inter</button>
+                                    <button type="button" data-val="atkinson" onclick="app.prefsSet('font','atkinson')" class="pref-btn" style="font-family:'Atkinson Hyperlegible','Inter',sans-serif">Atkinson</button>
+                                    <button type="button" data-val="arial" onclick="app.prefsSet('font','arial')" class="pref-btn" style="font-family:Arial,Helvetica,sans-serif">Arial</button>
+                                </div>
+                                <p class="text-[11px] text-slate-400 mt-1.5">Inter (predeterminada) · Atkinson Hyperlegible (baja visión) · Arial</p>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-slate-500 uppercase tracking-wider">Tamaño de letra</label>
+                                <div id="pref-size" class="mt-2 grid grid-cols-4 gap-2">
+                                    <button type="button" data-val="100" onclick="app.prefsSet('size','100')" class="pref-btn" style="font-size:.75rem">A</button>
+                                    <button type="button" data-val="112.5" onclick="app.prefsSet('size','112.5')" class="pref-btn" style="font-size:.9rem">A</button>
+                                    <button type="button" data-val="125" onclick="app.prefsSet('size','125')" class="pref-btn" style="font-size:1.05rem">A</button>
+                                    <button type="button" data-val="140" onclick="app.prefsSet('size','140')" class="pref-btn" style="font-size:1.2rem">A</button>
+                                </div>
+                                <p class="text-[11px] text-slate-400 mt-1.5">Normal · Grande · Muy grande · Enorme</p>
+                            </div>
+                        </div>
+                        <div class="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
+                            <span class="text-[11px] text-slate-400"><i class="fas fa-eye mr-1"></i>Vista previa: <span class="text-slate-600">Texto de ejemplo.</span></span>
+                            <button type="button" onclick="app.prefsReset(true)" class="text-xs font-bold text-slate-500 hover:text-indigo-600 transition"><i class="fas fa-rotate-left mr-1"></i> Restablecer</button>
+                        </div>
+                    </div>`,
+                showConfirmButton: true,
+                confirmButtonText: 'Listo',
+                confirmButtonColor: '#C96442',
+                didOpen: () => { app.prefsSyncUI(); }
+            });
+        },
+
+        prefsSyncUI: () => {
+            ['theme', 'font', 'size'].forEach(k => {
+                const cont = document.getElementById('pref-' + k);
+                if (!cont) return;
+                cont.querySelectorAll('[data-val]').forEach(btn => {
+                    btn.classList.toggle('pref-active', String(btn.dataset.val) === String(app.prefs[k]));
+                });
+            });
+        },
+
+        prefsWatchSystem: () => {
+            if (!window.matchMedia) return;
+            const mq = window.matchMedia('(prefers-color-scheme: dark)');
+            const handler = () => { if (app.prefs.theme === 'auto') app.prefsApply(); };
+            if (mq.addEventListener) mq.addEventListener('change', handler);
+            else if (mq.addListener) mq.addListener(handler);
+        },
         
 // ----------------------------------------------------
         // MAGIA UX: POPUP DE ONBOARDING (TUTORIAL DE INICIO)
@@ -1097,6 +1460,11 @@ init: () => {
             // 1. PRIMERO: Construimos el HTML (Inyectar vistas)
             app.injectDynamicViews(); 
 
+            // Preferencias de visualización: cargar y aplicar (y escuchar cambios del sistema)
+            app.prefsLoad();
+            app.prefsApply();
+            app.prefsWatchSystem();
+
             // --- TRUCO NINJA PARA REDES SOCIALES ---
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('info') === 'true') {
@@ -1167,6 +1535,10 @@ enterApp: async () => {
             // Inyectamos el saludo y el nombre
             document.getElementById('user-name').innerHTML = `<span class="text-xs text-slate-400 font-normal mr-1">${saludo},</span> ${nombreCorto}`;
             document.getElementById('user-role').innerText = app.user.role;
+
+            // Preferencias propias del usuario (tema, letra, tamaño)
+            app.prefsLoad();
+            app.prefsApply();
 
             // --- LÓGICA DE MENÚS CORREGIDA (Queda intacta) ---
 
@@ -1400,6 +1772,7 @@ enterApp: async () => {
             if(viewId === 'asistencia') app.initAsistenciaUI();
             if(viewId === 'sea') app.initSeaUI();
             if(viewId === 'alertas') app.initAlertasUI();
+            if(viewId === 'config') app.prefsSyncUI();
         },
 
               // ==========================================
@@ -7601,6 +7974,12 @@ loadAuditoriaData: async () => {
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
+
+                        <!-- Botón de ajustes visuales (abre modal) -->
+                        <button onclick="app.openPrefsModal()" class="mt-4 w-full flex items-center justify-between gap-3 bg-indigo-50 text-indigo-700 border border-indigo-200 px-4 py-3 rounded-lg font-bold hover:bg-indigo-100 transition group shadow-sm">
+                            <span class="flex items-center gap-2"><i class="fas fa-sliders-h"></i> Ajustes visuales</span>
+                            <i class="fas fa-chevron-right text-indigo-400 group-hover:translate-x-0.5 transition"></i>
+                        </button>
                     </div>
 
                     <!-- TARJETA 2: CREAR SECCIÓN -->
