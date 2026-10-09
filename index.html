@@ -1136,6 +1136,7 @@
             app.prefsSave();
             app.prefsApply();
             app.prefsSyncUI();
+            app.prefsPushToServer();
         },
 
         prefsReset: (silent) => {
@@ -1143,7 +1144,34 @@
             app.prefsSave();
             app.prefsApply();
             app.prefsSyncUI();
+            app.prefsPushToServer();
             if (!silent) Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Preferencias restablecidas', showConfirmButton: false, timer: 1500 });
+        },
+
+        // Guarda los ajustes visuales en el servidor (atados a la cuenta) para que se
+        // conserven aunque el navegador borre el localStorage. Con debounce para no
+        // disparar una llamada por cada click que hace el usuario.
+        prefsPushToServer: () => {
+            if (!app.user || !app.user.email) return;
+            clearTimeout(app.state._prefsTimer);
+            app.state._prefsTimer = setTimeout(() => {
+                app.api({ action: 'savePrefs', email: app.user.email, prefs: app.prefs }, { silent: true });
+            }, 600);
+        },
+
+        // Trae los ajustes guardados en el servidor y los aplica (el servidor manda).
+        // Si el usuario todavía no tiene nada guardado, se conserva lo local.
+        prefsLoadFromServer: async () => {
+            if (!app.user || !app.user.email) return;
+            try {
+                const res = await app.api({ action: 'getPrefs', email: app.user.email }, { silent: true });
+                if (res && res.success && res.prefs) {
+                    app.prefs = Object.assign({}, app.PREF_DEFAULTS, res.prefs);
+                    app.prefsSave();
+                    app.prefsApply();
+                    app.prefsSyncUI();
+                }
+            } catch (e) {}
         },
 
         openPrefsModal: () => {
@@ -1539,6 +1567,7 @@ enterApp: async () => {
             // Preferencias propias del usuario (tema, letra, tamaño)
             app.prefsLoad();
             app.prefsApply();
+            app.prefsLoadFromServer(); // y las trae del servidor (por si este dispositivo las perdió)
 
             // --- LÓGICA DE MENÚS CORREGIDA (Queda intacta) ---
 

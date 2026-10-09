@@ -20,6 +20,10 @@ function doPost(e) {
     // --- AUTENTICACIÓN ---
     if(action === "login") return apiLogin(data);
 
+    // --- PREFERENCIAS VISUALES (accesibilidad, por usuario) ---
+    if(action === "getPrefs") return response(obtenerPreferencias(data.email));
+    if(action === "savePrefs") return response(guardarPreferencias(data.email, data.prefs));
+
     // --- DASHBOARD ---
     if(action === "getInitialData") return response(obtenerDatosDocente(data.email));
 
@@ -3037,6 +3041,60 @@ function apiLogin(data) {
     }
     return response({status: "error", msg: "Credenciales Incorrectas"});
   }
+}
+
+// ==========================================
+// PREFERENCIAS VISUALES (accesibilidad, por usuario)
+// Se guardan en el Sheets para que se conserven aunque el navegador borre el
+// localStorage (navegadores internos, limpieza de datos, otro dispositivo, etc.).
+// ==========================================
+function _sheetPreferencias(ss) {
+  let sheet = ss.getSheetByName("PREFERENCIAS");
+  if (!sheet) {
+    sheet = ss.insertSheet("PREFERENCIAS");
+    sheet.appendRow(["EMAIL", "TEMA", "FUENTE", "TAMANO", "ACTUALIZADO"]);
+  }
+  return sheet;
+}
+
+function obtenerPreferencias(email) {
+  try {
+    if (!email) return { success: false };
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName("PREFERENCIAS");
+    if (!sheet) return { success: true, prefs: null };
+    const data = sheet.getDataRange().getValues();
+    const objetivo = String(email).trim().toLowerCase();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === objetivo) {
+        return { success: true, prefs: {
+          theme: String(data[i][1] || "auto"),
+          font: String(data[i][2] || "inter"),
+          size: String(data[i][3] || "100")
+        }};
+      }
+    }
+    return { success: true, prefs: null };
+  } catch (e) { return { success: false, error: e.toString() }; }
+}
+
+function guardarPreferencias(email, prefs) {
+  try {
+    if (!email || !prefs) return { success: false };
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = _sheetPreferencias(ss);
+    const data = sheet.getDataRange().getValues();
+    const objetivo = String(email).trim().toLowerCase();
+    const fila = [email, String(prefs.theme || "auto"), String(prefs.font || "inter"), String(prefs.size || "100"), new Date()];
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toLowerCase() === objetivo) {
+        sheet.getRange(i + 1, 1, 1, 5).setValues([fila]);
+        return { success: true };
+      }
+    }
+    sheet.appendRow(fila);
+    return { success: true };
+  } catch (e) { return { success: false, error: e.toString() }; }
 }
 
 function cambiarEstadoUsuario(idUsuario, nuevoEstado) {
