@@ -1464,6 +1464,7 @@ function obtenerMatrizAsistencia(idSeccion, idMateria, fechaDesde, fechaHasta) {
 
   const dataAsis = sheetAsis ? sheetAsis.getDataRange().getValues() : [];
   let marcas = {};
+  let detalles = {};
 
   const fD = new Date(fechaDesde);
   const fH = new Date(fechaHasta);
@@ -1476,6 +1477,7 @@ function obtenerMatrizAsistencia(idSeccion, idMateria, fechaDesde, fechaHasta) {
        let fechaStr = formatearFechaInput(dataAsis[i][1]);
        let key = dataAsis[i][2] + "|" + fechaStr;
        marcas[key] = dataAsis[i][4];
+       detalles[key] = dataAsis[i][6] || "";
     }
   }
 
@@ -1484,8 +1486,62 @@ function obtenerMatrizAsistencia(idSeccion, idMateria, fechaDesde, fechaHasta) {
   return {
     estudiantes: estudiantes,
     marcas: marcas,
+    detalles: detalles,
     configs: configs
   };
+}
+
+// ==========================================
+// ASISTENCIA POR LECCIÓN (detalle opcional sobre el día)
+// ==========================================
+
+// Garantiza que ASISTENCIA_DATA tenga la columna G (DETALLE_LECCION) sin migrar datos.
+// Filas viejas quedan con la celda vacía => se interpretan como estado uniforme del día.
+function asegurarColumnaDetalleAsistencia(sheet) {
+  try {
+    const lastCol = Math.max(sheet.getLastColumn(), 7);
+    const header = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    if (String(header[6] || '').trim() !== 'DETALLE_LECCION') {
+      sheet.getRange(1, 7).setValue('DETALLE_LECCION');
+    }
+  } catch (e) {}
+}
+
+// Estado efectivo de la lección i (0-based): usa el detalle si existe esa posición;
+// si no, cae al ESTADO del día. Fuente única de la resolución (backend).
+function resolverEstadoLeccion(estadoDia, detalleJson, i) {
+  if (detalleJson) {
+    try {
+      const arr = JSON.parse(detalleJson);
+      if (Array.isArray(arr) && i < arr.length && arr[i] !== undefined && arr[i] !== null) {
+        return String(arr[i]);
+      }
+    } catch (e) {}
+  }
+  return String(estadoDia || '');
+}
+
+// Resumen del día a partir del detalle por lección (qué se guarda en ESTADO).
+// Orden de severidad: AI > E > T > J > P > (vacío).
+function resumirEstadoDia(arr) {
+  const presentes = (arr || []).map(x => String(x || ''));
+  const orden = ['AI', 'E', 'T', 'J', 'P'];
+  for (const s of orden) if (presentes.indexOf(s) !== -1) return s;
+  return '';
+}
+
+// Texto legible de una marca de asistencia para la Bitácora de Cambios.
+// Con detalle por lección devuelve "AI·P·P"; sin detalle, el estado del día.
+function fmtFirmaAsistencia(estado, detalleJson) {
+  try {
+    if (detalleJson) {
+      const arr = JSON.parse(detalleJson);
+      if (Array.isArray(arr) && arr.length) {
+        return arr.map(x => (x && String(x).trim()) ? String(x).trim() : '–').join('·');
+      }
+    }
+  } catch (e) {}
+  return String(estado || '');
 }
 
 function guardarMarcaAsistencia(payload) {
@@ -1497,8 +1553,9 @@ function guardarMarcaAsistencia(payload) {
     let sheet = ss.getSheetByName("ASISTENCIA_DATA");
     if(!sheet) {
       sheet = ss.insertSheet("ASISTENCIA_DATA");
-      sheet.appendRow(["ID", "FECHA", "ID_EST", "ID_MAT", "ESTADO", "USER"]);
+      sheet.appendRow(["ID", "FECHA", "ID_EST", "ID_MAT", "ESTADO", "USER", "DETALLE_LECCION"]);
     }
+    asegurarColumnaDetalleAsistencia(sheet);
 
     const idUser = obtenerIdUsuarioPorEmail(payload.email);
     const data = sheet.getDataRange().getValues();
@@ -1515,20 +1572,30 @@ function guardarMarcaAsistencia(payload) {
 
     const referenciaBit = payload.idMateria + "|" + payload.idEst + "|" + fechaInput;
 
+    // Asistencia por lección: si viene un detalle (array, una posición por lección),
+    // se guarda como JSON en la columna G y el ESTADO del día pasa a ser el resumen
+    // más severo. Sin detalle => comportamiento clásico (uniforme) y se limpia el detalle.
+    const detalleJson = (payload.detalle && payload.detalle.length) ? JSON.stringify(payload.detalle) : "";
+    const estadoFinal = detalleJson ? resumirEstadoDia(payload.detalle) : payload.estado;
+
     if(filasEncontradas.length > 0) {
-      const estadoAnterior = data[filasEncontradas[0] - 1][4];
-      sheet.getRange(filasEncontradas[0], 5).setValue(payload.estado);
+      const filaExistente = data[filasEncontradas[0] - 1];
+      const anteriorFirma = fmtFirmaAsistencia(filaExistente[4], filaExistente[6] || "");
+      const nuevoFirma = fmtFirmaAsistencia(estadoFinal, detalleJson);
+      sheet.getRange(filasEncontradas[0], 5).setValue(estadoFinal);
+      sheet.getRange(filasEncontradas[0], 7).setValue(detalleJson);
 
       for(let k = filasEncontradas.length - 1; k >= 1; k--) {
         sheet.deleteRow(filasEncontradas[k]);
       }
 
-      if (String(estadoAnterior) !== String(payload.estado)) {
-        registrarBitacoraCambio(ss, "ASISTENCIA", referenciaBit, estadoAnterior, payload.estado, payload.email);
+      if (anteriorFirma !== nuevoFirma) {
+        registrarBitacoraCambio(ss, "ASISTENCIA", referenciaBit, anteriorFirma, nuevoFirma, payload.email);
       }
     } else {
-      sheet.appendRow(["AS-" + Date.now(), payload.fecha, payload.idEst, payload.idMateria, payload.estado, idUser]);
-      registrarBitacoraCambio(ss, "ASISTENCIA", referenciaBit, "", payload.estado, payload.email);
+      const nuevoFirma = fmtFirmaAsistencia(estadoFinal, detalleJson);
+      sheet.appendRow(["AS-" + Date.now(), payload.fecha, payload.idEst, payload.idMateria, estadoFinal, idUser, detalleJson]);
+      registrarBitacoraCambio(ss, "ASISTENCIA", referenciaBit, "", nuevoFirma, payload.email);
     }
 
     return { success: true };
@@ -1548,8 +1615,9 @@ function guardarMarcaAsistenciaBatch(payload) {
     let sheet = ss.getSheetByName("ASISTENCIA_DATA");
     if(!sheet) {
       sheet = ss.insertSheet("ASISTENCIA_DATA");
-      sheet.appendRow(["ID", "FECHA", "ID_EST", "ID_MAT", "ESTADO", "USER"]);
+      sheet.appendRow(["ID", "FECHA", "ID_EST", "ID_MAT", "ESTADO", "USER", "DETALLE_LECCION"]);
     }
+    asegurarColumnaDetalleAsistencia(sheet);
     const data = sheet.getDataRange().getValues();
     const marcas = payload.marcas || [];
 
@@ -1565,17 +1633,24 @@ function guardarMarcaAsistenciaBatch(payload) {
       }
       const referenciaBit = m.idMateria + "|" + m.idEst + "|" + fechaInput;
 
+      const detalleJson = (m.detalle && m.detalle.length) ? JSON.stringify(m.detalle) : "";
+      const estadoFinal = detalleJson ? resumirEstadoDia(m.detalle) : m.estado;
+
       if(filasEncontradas.length > 0) {
-        const estadoAnterior = data[filasEncontradas[0] - 1][4];
-        sheet.getRange(filasEncontradas[0], 5).setValue(m.estado);
-        if (String(estadoAnterior) !== String(m.estado)) {
-          registrarBitacoraCambio(ss, "ASISTENCIA", referenciaBit, estadoAnterior, m.estado, payload.email);
+        const filaExistente = data[filasEncontradas[0] - 1];
+        const anteriorFirma = fmtFirmaAsistencia(filaExistente[4], filaExistente[6] || "");
+        const nuevoFirma = fmtFirmaAsistencia(estadoFinal, detalleJson);
+        sheet.getRange(filasEncontradas[0], 5).setValue(estadoFinal);
+        sheet.getRange(filasEncontradas[0], 7).setValue(detalleJson);
+        if (anteriorFirma !== nuevoFirma) {
+          registrarBitacoraCambio(ss, "ASISTENCIA", referenciaBit, anteriorFirma, nuevoFirma, payload.email);
         }
       } else {
-        const newRow = ["AS-" + Date.now() + Math.random(), m.fecha, m.idEst, m.idMateria, m.estado, payload.email];
+        const nuevoFirma = fmtFirmaAsistencia(estadoFinal, detalleJson);
+        const newRow = ["AS-" + Date.now() + Math.random(), m.fecha, m.idEst, m.idMateria, estadoFinal, payload.email, detalleJson];
         sheet.appendRow(newRow);
         data.push(newRow); // Actualizar copia local para próximas iteraciones
-        registrarBitacoraCambio(ss, "ASISTENCIA", referenciaBit, "", m.estado, payload.email);
+        registrarBitacoraCambio(ss, "ASISTENCIA", referenciaBit, "", nuevoFirma, payload.email);
       }
     });
 
@@ -3024,23 +3099,32 @@ function calcularAsistenciaMap(idMateria, valorTotalAsist) {
    const PESO_ESTADO = { 'AI': 1, 'T': 0.5 };
 
    for(let i=1; i<dataAsis.length; i++) {
-     const estado = dataAsis[i][4];
-     const peso = PESO_ESTADO[estado];
-     if(String(dataAsis[i][3]).trim() === String(idMateria).trim() && peso) {
-        let idEst = String(dataAsis[i][2]).trim();
-        let fecha = new Date(dataAsis[i][1]);
-        let dName = diasMap[fecha.getDay()];
+     if(String(dataAsis[i][3]).trim() !== String(idMateria).trim()) continue;
 
-        let ptsPerdidos = 0;
-        configs.forEach(cfg => {
-           if(fecha >= cfg.ini && fecha <= cfg.fin && cfg.dias[dName]) {
-              ptsPerdidos = Number(cfg.dias[dName]) * peso;
-           }
-        });
+     let idEst = String(dataAsis[i][2]).trim();
+     let fecha = new Date(dataAsis[i][1]);
+     let dName = diasMap[fecha.getDay()];
+     const detalleJson = dataAsis[i][6] || "";
 
-        if(!perdidas[idEst]) perdidas[idEst] = 0;
-        perdidas[idEst] += ptsPerdidos;
+     // Lecciones de ESE día según la configuración vigente (misma regla que la matriz).
+     let lecciones = 0;
+     configs.forEach(cfg => {
+        if(fecha >= cfg.ini && fecha <= cfg.fin && cfg.dias[dName]) {
+           lecciones = Number(cfg.dias[dName]);
+        }
+     });
+     if(lecciones <= 0) continue;
+
+     // Asistencia por lección: cada lección aporta su propio peso. Un día uniforme
+     // (sin detalle) reproduce exactamente el cálculo anterior.
+     let ptsPerdidos = 0;
+     for(let k = 0; k < lecciones; k++) {
+        const estadoLec = resolverEstadoLeccion(dataAsis[i][4], detalleJson, k);
+        ptsPerdidos += (PESO_ESTADO[estadoLec] || 0);
      }
+
+     if(!perdidas[idEst]) perdidas[idEst] = 0;
+     perdidas[idEst] += ptsPerdidos;
    }
 
    for(let idEst in perdidas) {
@@ -3785,10 +3869,7 @@ function obtenerAlertasTempranas(idSeccion) {
       for (let i = 1; i < dataAsis.length; i++) {
         if (String(dataAsis[i][3]).trim() !== mat.id) continue;
         const estado = dataAsis[i][4];
-        let peso = 0;
-        if (estado === 'AI') peso = 1;
-        else if (estado === 'T') peso = 0.5;
-        if (peso === 0) continue;
+        const detalleJson = dataAsis[i][6] || "";
 
         const fecha = new Date(dataAsis[i][1]);
         if (fecha < inicioVentana || fecha > finVentanaSemana) continue;
@@ -3797,8 +3878,17 @@ function obtenerAlertasTempranas(idSeccion) {
         const lecDia = lecPorDia[key] || 0;
         if (lecDia === 0) continue;
 
+        // Pérdidas por lección (respeta el detalle por lección si existe), igual que el % oficial.
+        let pts = 0;
+        for (let k = 0; k < lecDia; k++) {
+          const estadoLec = resolverEstadoLeccion(estado, detalleJson, k);
+          if (estadoLec === 'AI') pts += 1;
+          else if (estadoLec === 'T') pts += 0.5;
+        }
+        if (pts === 0) continue;
+
         const idEst = String(dataAsis[i][2]).trim();
-        perdidasPorEst[idEst] = (perdidasPorEst[idEst] || 0) + (lecDia * peso);
+        perdidasPorEst[idEst] = (perdidasPorEst[idEst] || 0) + pts;
       }
 
       Object.keys(perdidasPorEst).forEach(idEst => {

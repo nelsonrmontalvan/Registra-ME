@@ -4040,6 +4040,8 @@ renderScheduleList: () => {
             if(!idSec || !idMat) return Swal.fire('Faltan datos','Selecciona sección y materia','warning');
 
             const cont = document.getElementById('matrix-container');
+            // Preservar el scroll: al re-renderizar (ej. al guardar un detalle) no debe saltar arriba
+            const prevScroll = { top: cont.scrollTop, left: cont.scrollLeft };
             cont.innerHTML = '<div class="text-center py-10"><i class="fas fa-spinner fa-spin text-2xl text-green-600"></i><br>Generando Matriz...</div>';
 
             const [res, diasNoLectivos] = await Promise.all([
@@ -4088,7 +4090,7 @@ renderScheduleList: () => {
 
             // Guardamos el contexto para poder abrir la Ficha del Estudiante sin otra llamada al backend
             app.state.matrixData = {
-                dateCols, marcas: res.marcas, idMat, valAsistencia, totalLeccionesPeriodo,
+                dateCols, marcas: res.marcas, detalles: res.detalles || {}, idMat, valAsistencia, totalLeccionesPeriodo,
                 nombreMat: selMat.options[selMat.selectedIndex].text,
                 nombreSec: selSec.options[selSec.selectedIndex].text,
                 fIni, fFin
@@ -4144,23 +4146,40 @@ renderScheduleList: () => {
                     }
 
                     let key = est.id + "|" + d.dateStr;
-                    let val = res.marcas[key] || ""; // Estado actual (P, AI, T, E, J) o vacío
+                    let val = res.marcas[key] || ""; // Estado del día (P, AI, T, E, J) o vacío
+                    let detalleArr = app.parseDetalleLecciones((res.detalles || {})[key]); // Detalle por lección (o null)
+                    let nLec = Number(d.lessons) || 1;
 
-                    // Cálculos -- misma regla que calcularAsistenciaMap (backend):
+                    // Cálculos -- mismas reglas que calcularAsistenciaMap (backend):
                     // AI pierde la lección completa; T (tardía, 0-10 min) pierde media
                     // lección (pasados los 10 min ya se marca AI directo, no T);
                     // E y J no restan puntos.
-                    if(val === 'AI') { sumAI++; perdidas += Number(d.lessons); }
-                    if(val === 'T')  { sumT++;  perdidas += Number(d.lessons) * 0.5; }
+                    // Los CONTADORES (AI/T/E/J) son por DÍA (usan el resumen), para no
+                    // alterar los números históricos; el % sí se calcula por lección.
+                    if(val === 'AI') { sumAI++; }
+                    if(val === 'T')  { sumT++;  }
                     if(val === 'E')  { sumE++; }
                     if(val === 'J')  { sumJ++; }
 
-                    // Color celda
-                    let bg = val==='P'?'bg-green-100': val==='AI'?'bg-red-100': val==='T'?'bg-yellow-100': val==='E'?'bg-orange-100': val==='J'?'bg-blue-100':'';
+                    // Pérdidas por lección (detalle si existe; si no, estado uniforme del día)
+                    for(let k = 0; k < nLec; k++) {
+                        const estadoLec = (detalleArr && detalleArr[k] !== undefined && detalleArr[k] !== null) ? String(detalleArr[k]) : val;
+                        if(estadoLec === 'AI') { perdidas += 1; }
+                        else if(estadoLec === 'T') { perdidas += 0.5; }
+                    }
 
-                    return `<td class="border p-1 text-center ${bg} cursor-pointer hover:bg-gray-200 transition font-bold text-xs"
+                    // Color celda (según el resumen del día)
+                    let bg = val==='P'?'bg-green-100': val==='AI'?'bg-red-100': val==='T'?'bg-yellow-100': val==='E'?'bg-orange-100': val==='J'?'bg-blue-100':'';
+                    let ring = detalleArr ? ' ring-2 ring-indigo-300' : '';
+                    let display = detalleArr ? app.fmtDetalleLecciones(detalleArr) : val;
+                    let botonDetalle = (nLec > 1)
+                        ? `<i class="cell-detail fas fa-list-ul text-[8px] ml-0.5 opacity-40 hover:opacity-100 cursor-pointer" onclick="event.stopPropagation(); app.openLessonDetail('${est.id}', '${idMat}', '${d.dateStr}', ${app.jsStr(est.nombre)})" title="Detallar por lección (${nLec} lecciones)"></i>`
+                        : '';
+
+                    return `<td class="border p-1 text-center ${bg}${ring} cursor-pointer hover:bg-gray-200 transition font-bold text-xs"
                                 data-fecha="${d.dateStr}" data-est="${est.id}"
-                                onclick="app.cycleAttendance(this, '${est.id}', '${idMat}', '${d.dateStr}')">${val}</td>`;
+                                onclick="app.cycleAttendance(this, '${est.id}', '${idMat}', '${d.dateStr}')">
+                                <div class="flex items-center justify-center"><span class="cell-state leading-none">${display}</span>${botonDetalle}</div></td>`;
                 }).join('');
 
                 // Calcular Porcentaje Final
@@ -4185,7 +4204,32 @@ renderScheduleList: () => {
             });
 
             html += `</tbody></table>`;
-            cont.innerHTML = html;
+            const leyenda = `<div class="text-[10px] text-slate-400 px-2 py-1 bg-white border-b">Consejo: en días con varias lecciones, tocá el ícono <i class="fas fa-list-ul text-indigo-400"></i> de la celda para detallar por lección (ej. P·E·E).</div>`;
+            cont.innerHTML = leyenda + html;
+
+            // Restaurar la posición de scroll tras re-renderizar (el detalle no debe "saltar" la vista)
+            cont.scrollTop = prevScroll.top;
+            cont.scrollLeft = prevScroll.left;
+        },
+
+        // Parseo/formato del detalle por lección (JSON guardado en ASISTENCIA_DATA.DETALLE_LECCION)
+        parseDetalleLecciones: (raw) => {
+            if(!raw) return null;
+            try {
+                const arr = JSON.parse(raw);
+                return (Array.isArray(arr) && arr.length) ? arr : null;
+            } catch(e) { return null; }
+        },
+
+        fmtDetalleLecciones: (arr) => (arr || []).map(x => (x && String(x).trim()) ? String(x).trim() : '–').join('·'),
+
+        // Resumen del día a partir del detalle por lección (misma prioridad que el backend:
+        // AI > E > T > J > P). Se envía junto al detalle como red de seguridad: si el
+        // backend todavía no conoce el detalle, al menos guarda un resumen correcto.
+        resumirEstadoLecciones: (arr) => {
+            const presentes = (arr || []).map(x => String(x || ''));
+            for (const s of ['AI', 'E', 'T', 'J', 'P']) if (presentes.indexOf(s) !== -1) return s;
+            return '';
         },
 
         // Marca (o quita la marca de) un día como "sin clases" (feriado/evento) para la materia actual
@@ -4223,15 +4267,18 @@ renderScheduleList: () => {
             app.loadAttendanceMatrix();
         },
 
-        // Click en celda para cambiar estado
+        // Click en celda para cambiar el estado del DÍA (cicla). Si la celda tenía
+        // detalle por lección, este click lo reemplaza por un estado uniforme.
         cycleAttendance: (cell, idEst, idMat, fecha) => {
             const states = ['', 'P', 'AI', 'T', 'E', 'J'];
-            let current = cell.innerText.trim();
+            const stateEl = cell.querySelector('.cell-state') || cell;
+            let current = (stateEl.innerText || '').trim();
             let nextIndex = (states.indexOf(current) + 1) % states.length;
             let next = states[nextIndex];
 
             // UI Update inmediata (Optimista)
-            cell.innerText = next;
+            stateEl.innerText = next;
+            cell.classList.remove('ring-2', 'ring-indigo-300');
             cell.className = cell.className.replace(/bg-\w+-100/g, '');
             if(next==='P') cell.classList.add('bg-green-100');
             if(next==='AI') cell.classList.add('bg-red-100');
@@ -4239,12 +4286,115 @@ renderScheduleList: () => {
             if(next==='E') cell.classList.add('bg-orange-100');
             if(next==='J') cell.classList.add('bg-blue-100');
 
-            // Guardar en background sin bloquear más clicks
+            // Guardar en background sin bloquear más clicks (sin 'detalle' => limpia el detalle previo)
             app.api({
                 action: 'saveMark',
                 email: app.user.email,
                 idEst: idEst, idMateria: idMat, fecha: fecha, estado: next
             }, { silent: true });
+
+            // Mantener el contexto en memoria al día para que la Ficha y el % reflejen el cambio
+            const md = app.state.matrixData;
+            if(md && md.marcas) {
+                md.marcas[idEst + "|" + fecha] = next;
+                if(md.detalles) delete md.detalles[idEst + "|" + fecha];
+            }
+        },
+
+        // Editor de asistencia por lección: solo aplica a días con más de una lección.
+        // El estado de cada lección es independiente; "sin marcar" es válido.
+        openLessonDetail: async (idEst, idMat, dateStr, nombreEst) => {
+            const m = app.state.matrixData;
+            if(!m) return;
+            const col = (m.dateCols || []).find(d => d.dateStr === dateStr);
+            if(!col) return;
+            const nLec = Number(col.lessons) || 1;
+            if(nLec <= 1) return app.toast('info', 'Ese día tiene una sola lección');
+
+            const key = idEst + "|" + dateStr;
+            const estadoDia = m.marcas[key] || '';
+            const detalleActual = app.parseDetalleLecciones((m.detalles || {})[key]);
+
+            const estados = [];
+            for(let k = 0; k < nLec; k++) {
+                estados.push(detalleActual && detalleActual[k] !== undefined ? String(detalleActual[k] || '') : String(estadoDia || ''));
+            }
+
+            const opciones = ['P', 'AI', 'T', 'E', 'J', ''];
+            const etiquetas = { P:'Presente', AI:'Aus. injustificada', T:'Tardía', E:'Escapada', J:'Justificada', '':'Sin marcar' };
+            const btnCls = (activo) => `lec-btn px-2 py-1 rounded text-[11px] font-bold border ${activo ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-600 border-slate-200'}`;
+
+            const filasHtml = estados.map((st, k) => `
+                <div class="flex items-center justify-between gap-2 py-1 border-b border-slate-100">
+                    <span class="text-xs font-bold text-slate-500 w-20 text-left">Lección ${k+1}</span>
+                    <div class="flex gap-1" data-lec="${k}">
+                        ${opciones.map(op => `<button type="button" data-op="${op}" class="${btnCls(op === st)}" title="${etiquetas[op]}">${op === '' ? '–' : op}</button>`).join('')}
+                    </div>
+                </div>`).join('');
+
+            const { isConfirmed, value: arrLecciones } = await Swal.fire({
+                title: 'Detalle por lección',
+                html: `
+                    <p class="text-xs text-slate-500 mb-2 text-left">${app.escapeHtml(nombreEst || '')} · ${dateStr} · ${nLec} lecciones</p>
+                    <div class="text-left">${filasHtml}</div>
+                    <div class="flex items-center justify-center flex-wrap gap-1 mt-3 pt-3 border-t border-slate-100">
+                        <span class="text-[11px] font-bold text-slate-500 mr-1">Aplicar a todas:</span>
+                        ${opciones.map(op => `<button type="button" data-aplicar="${op}" class="apl-btn px-2 py-1 rounded text-[11px] font-bold border bg-white text-slate-600 border-slate-200">${op === '' ? '–' : op}</button>`).join('')}
+                    </div>`,
+                showCancelButton: true,
+                confirmButtonText: 'Guardar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#C96442',
+                didOpen: () => {
+                    const root = Swal.getHtmlContainer();
+                    root.querySelectorAll('[data-lec]').forEach(group => {
+                        group.querySelectorAll('.lec-btn').forEach(btn => {
+                            btn.addEventListener('click', () => {
+                                group.querySelectorAll('.lec-btn').forEach(b => { b.className = btnCls(false); });
+                                btn.className = btnCls(true);
+                            });
+                        });
+                    });
+                    root.querySelectorAll('[data-aplicar]').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const op = btn.getAttribute('data-aplicar');
+                            root.querySelectorAll('[data-lec]').forEach(group => {
+                                group.querySelectorAll('.lec-btn').forEach(b => {
+                                    b.className = btnCls(b.getAttribute('data-op') === op);
+                                });
+                            });
+                        });
+                    });
+                },
+                preConfirm: () => {
+                    const root = Swal.getHtmlContainer();
+                    const out = [];
+                    root.querySelectorAll('[data-lec]').forEach(group => {
+                        const activo = group.querySelector('.lec-btn.bg-indigo-600');
+                        out.push(activo ? activo.getAttribute('data-op') : '');
+                    });
+                    return out;
+                }
+            });
+
+            if(!isConfirmed || !arrLecciones) return;
+
+            // Si quedó todo "sin marcar", no guardamos un detalle vacío: se limpia la marca del día.
+            const hayAlgunEstado = arrLecciones.some(x => x && String(x).trim());
+            const res = await app.api({
+                action: 'saveMark',
+                email: app.user.email,
+                idEst: idEst, idMateria: idMat, fecha: dateStr,
+                estado: hayAlgunEstado ? app.resumirEstadoLecciones(arrLecciones) : '',
+                detalle: hayAlgunEstado ? arrLecciones : []
+            });
+
+            if(!res || !res.success) {
+                return Swal.fire('No se guardó', 'No se pudo guardar el detalle por lección. Intentá de nuevo.', 'error');
+            }
+
+            app.toast('success', 'Detalle por lección guardado');
+            app.loadAttendanceMatrix();
         },
 
         markAllPresent: async (fecha, idMat, thEl) => {
@@ -4252,16 +4402,25 @@ renderScheduleList: () => {
             if(!cells.length) return;
 
             // Si todos ya son P → limpiar; si no → marcar todos P
-            const allP = [...cells].every(c => c.innerText.trim() === 'P');
+            const leerEstado = (cel) => { const s = cel.querySelector('.cell-state') || cel; return (s.innerText || '').trim(); };
+            const allP = [...cells].every(c => leerEstado(c) === 'P');
             const next = allP ? '' : 'P';
-            const estadoPrevio = [...cells].map(c => c.innerText.trim());
+            const estadoPrevio = [...cells].map(c => leerEstado(c));
 
             const marcas = [];
             cells.forEach(cell => {
-                cell.innerText = next;
+                const stateEl = cell.querySelector('.cell-state') || cell;
+                stateEl.innerText = next;
+                cell.classList.remove('ring-2', 'ring-indigo-300');
                 cell.className = cell.className.replace(/bg-\w+-100/g, '');
                 if(next === 'P') cell.classList.add('bg-green-100');
                 marcas.push({ idEst: cell.dataset.est, idMateria: idMat, fecha, estado: next });
+
+                const md = app.state.matrixData;
+                if(md && md.marcas) {
+                    md.marcas[cell.dataset.est + "|" + fecha] = next;
+                    if(md.detalles) delete md.detalles[cell.dataset.est + "|" + fecha];
+                }
             });
 
             // Actualizar ícono del encabezado (optimista)
@@ -4278,7 +4437,8 @@ renderScheduleList: () => {
 
             if (!res || !res.success) {
                 cells.forEach((cell, idx) => {
-                    cell.innerText = estadoPrevio[idx];
+                    const stateEl = cell.querySelector('.cell-state') || cell;
+                    stateEl.innerText = estadoPrevio[idx];
                     cell.className = cell.className.replace(/bg-\w+-100/g, '');
                     if(estadoPrevio[idx]==='P') cell.classList.add('bg-green-100');
                     if(estadoPrevio[idx]==='AI') cell.classList.add('bg-red-100');
@@ -6994,14 +7154,22 @@ adminLoadUsers: async () => {
 
             let sumAI = 0, sumT = 0, sumE = 0, sumJ = 0, perdidas = 0;
             const filas = m.dateCols.map(d => {
-                const val = m.marcas[idEst + "|" + d.dateStr] || '';
-                // Misma regla que calcularAsistenciaMap (backend) y loadAttendanceMatrix:
-                // AI pierde la lección completa, T (tardía 0-10 min) pierde media lección.
-                if(val === 'AI') { sumAI++; perdidas += Number(d.lessons); }
-                if(val === 'T') { sumT++; perdidas += Number(d.lessons) * 0.5; }
+                const key = idEst + "|" + d.dateStr;
+                const val = m.marcas[key] || '';
+                const detalleArr = app.parseDetalleLecciones((m.detalles || {})[key]);
+                const nLec = Number(d.lessons) || 1;
+                // Contadores por DÍA (resumen del estado), igual que la matriz.
+                if(val === 'AI') sumAI++;
+                if(val === 'T') sumT++;
                 if(val === 'E') sumE++;
                 if(val === 'J') sumJ++;
-                return { ...d, val };
+                // % por lección: AI pierde la lección completa, T (tardía 0-10 min) media lección.
+                for(let k = 0; k < nLec; k++) {
+                    const estadoLec = (detalleArr && detalleArr[k] !== undefined && detalleArr[k] !== null) ? String(detalleArr[k]) : val;
+                    if(estadoLec === 'AI') perdidas += 1;
+                    else if(estadoLec === 'T') perdidas += 0.5;
+                }
+                return { ...d, val, detalleArr };
             }).reverse(); // más reciente primero
 
             let porcentaje = 100;
@@ -7056,7 +7224,7 @@ adminLoadUsers: async () => {
                                 <span class="text-xs font-bold">${f.label} <span class="font-normal opacity-70">· ${dayName}</span></span>
                                 <span class="text-[10px] opacity-70">${f.lessons} lección(es)</span>
                             </div>
-                            <span class="text-[10px] font-bold uppercase tracking-wide">${info.label}</span>
+                            <span class="text-[10px] font-bold uppercase tracking-wide">${f.detalleArr ? 'Por lección: ' + app.fmtDetalleLecciones(f.detalleArr) : info.label}</span>
                         </div>`;
                     }).join('')}
                    </div>`
@@ -7089,7 +7257,7 @@ adminLoadUsers: async () => {
                     <td style="border:1px solid #cbd5e1;padding:6px;">${row.label}</td>
                     <td style="border:1px solid #cbd5e1;padding:6px;">${dayName}</td>
                     <td style="border:1px solid #cbd5e1;padding:6px;text-align:center;">${row.lessons}</td>
-                    <td style="border:1px solid #cbd5e1;padding:6px;">${info.label}</td>
+                    <td style="border:1px solid #cbd5e1;padding:6px;">${row.detalleArr ? app.fmtDetalleLecciones(row.detalleArr) : info.label}</td>
                 </tr>`;
             }).join('');
 
