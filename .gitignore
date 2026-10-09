@@ -1,0 +1,30 @@
+# ==========================================
+# RegistraME — Archivos que NO se versionan
+# ==========================================
+# Nota: los PDFs/reglamentos de referencia y los videos son material local de
+# trabajo. Si en algún momento se quieren versionar, comentá la línea y volvé a
+# agregarlos con: git add -f <archivo>
+
+# ---- Sistema operativo ----
+.DS_Store
+**/.DS_Store
+
+# ---- Configuración local del editor / asistente ----
+.claude/settings.local.json
+
+# ---- Respaldos locales de trabajo ----
+sandbox/.backup-crlf/
+
+# ---- Media pesada (videos de marketing / tutoriales) ----
+sandbox/Videos - Registrame/
+sandbox/10 razones/
+sandbox/anuncio.html
+
+# ---- Material de referencia local (reglamentos, guías, catálogos) ----
+/catalogo-alerta-temprana-UPRE-23.xlsx
+/guiaimplementacionalertatemprana.pdf
+/lineamientos-2025.pdf
+/nuevo-reglamento-MEP-2026.md
+/nuevo-reglamento-MEP-2026.pdf
+/protocolo-permanencia-2022.pdf
+/reglamento-eval-aprendizajes-conducta-2026.pdf
