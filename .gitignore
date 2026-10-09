@@ -28,3 +28,9 @@ sandbox/anuncio.html
 /nuevo-reglamento-MEP-2026.pdf
 /protocolo-permanencia-2022.pdf
 /reglamento-eval-aprendizajes-conducta-2026.pdf
+
+# ---- Sandbox de pruebas locales (no versionar) ----
+# Las copias de code.gs / index.html del sandbox son de trabajo local.
+# El README.md del sandbox sí se mantiene versionado.
+sandbox/index.html
+sandbox/code.gs
