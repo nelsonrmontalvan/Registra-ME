@@ -59,6 +59,8 @@ function doPost(e) {
     if(action === "deleteIndicator") return response(eliminarIndicador(data.id));
     if(action === "getEvaluationData") return response(obtenerDatosEvaluacion(data.idSeccion, data.idIndicador));
     if(action === "saveGrades") return response(guardarCalificaciones(data));
+    if(action === "corregirNota") return response(corregirNota(data));
+    if(action === "corregirNotaFinal") return response(corregirNotaFinal(data));
     if(action === "pdfStudentReport") return response(generarPdfBoletaEstudiante(data.id));
     if(action === "pdfGrades") return response(generarPdfNotasMateria(data.id));
 
@@ -1392,6 +1394,94 @@ function obtenerDiasNoLectivos(idMateria) {
   } catch (e) { return []; }
 }
 
+function corregirNota(data) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName("NOTAS");
+    const fechaActual = formatearFechaInput(new Date());
+
+    const indId = String(data.idIndicador).trim();
+    const estId = String(data.idEstudiante).trim();
+    const motivo = String(data.motivo || "").trim();
+    const detalle = String(data.detalle || "").trim();
+    const usuario = data.email || "desconocido";
+
+    if (!indId || !estId || !motivo) {
+      return { success: false, message: "Faltan datos obligatorios para corregir la nota." };
+    }
+
+    const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
+    let puntajeInd = 0, puntosTotalesInd = 100, esCotidianoInd = false, idMateriaInd = null, periodoInd = null;
+    for (let k = 1; k < dataInd.length; k++) {
+      if (String(dataInd[k][0]).trim() === indId) {
+        esCotidianoInd = String(dataInd[k][2]).trim() === "TRAB_COT";
+        puntajeInd = parseFloat(dataInd[k][4]) || 0;
+        puntosTotalesInd = parseFloat(dataInd[k][6]) || 100;
+        idMateriaInd = String(dataInd[k][1]).trim();
+        periodoInd = dataInd[k][7];
+        break;
+      }
+    }
+
+    const pesoCotFijo = esCotidianoInd ? calcularPesoCotidianoVigente(ss, idMateriaInd, periodoInd) : 0;
+    const nivelBruto = parseFloat(data.nivel);
+
+    let porcObtenido;
+    if (esCotidianoInd) {
+      if (isNaN(nivelBruto) || nivelBruto < 0 || nivelBruto > 3) return { success: false, message: "Nivel inválido para Cotidiano (0-3)." };
+      porcObtenido = parseFloat(((nivelBruto / 3) * pesoCotFijo).toFixed(2));
+    } else {
+      if (isNaN(nivelBruto)) return { success: false, message: "Puntos inválidos." };
+      if (nivelBruto < 0) return { success: false, message: "Los puntos no pueden ser negativos." };
+      if (nivelBruto > puntosTotalesInd) return { success: false, message: "Los puntos no pueden superar los puntos totales." };
+      porcObtenido = parseFloat(((nivelBruto / puntosTotalesInd) * puntajeInd).toFixed(2));
+    }
+
+    const dataNotas = sheet.getDataRange().getValues();
+    let fila = -1;
+    let nivelAnterior = null;
+    for (let r = 1; r < dataNotas.length; r++) {
+      if (String(dataNotas[r][1]).trim() === indId && String(dataNotas[r][2]).trim() === estId) {
+        fila = r + 1;
+        nivelAnterior = dataNotas[r][5];
+        break;
+      }
+    }
+
+    if (fila > -1) {
+      sheet.getRange(fila, 4).setNumberFormat('0.00').setValue(porcObtenido);
+      sheet.getRange(fila, 5).setValue(fechaActual);
+      sheet.getRange(fila, 6).setNumberFormat('0.00').setValue(nivelBruto);
+    } else {
+      sheet.appendRow([
+        "NOTE-" + Date.now() + Math.floor(Math.random() * 1000),
+        indId,
+        estId,
+        porcObtenido,
+        fechaActual,
+        nivelBruto
+      ]);
+      nivelAnterior = "";
+    }
+
+    let motivoFull = "CORRECCIÓN | Motivo: " + motivo;
+    if (detalle) motivoFull += " | Detalle: " + detalle;
+    try {
+      const bitSheet = ss.getSheetByName("BITACORA_CAMBIOS");
+      if (bitSheet) {
+        const fechaHora = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+        bitSheet.appendRow([fechaHora, usuario, "NOTA", indId + "|" + estId, nivelAnterior, nivelBruto, motivoFull]);
+      }
+    } catch (e) {
+      Logger.log("Error registrando motivo de corrección: " + e.toString());
+    }
+
+    return { success: true, message: "Nota corregida correctamente" };
+  } catch (e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
 // Trae TODOS los horarios del docente (todas las instituciones/secciones), para la vista de consulta
 function obtenerTodosLosHorarios(email) {
   try {
@@ -2385,6 +2475,8 @@ function obtenerCuadroMateria(idMateria, periodo) {
 
     const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
     const dataNotas = ss.getSheetByName("NOTAS").getDataRange().getValues();
+    const sheetCorrNF = ss.getSheetByName("CORRECCIONES_NOTA_FINAL");
+    const dataCorrNF = sheetCorrNF ? sheetCorrNF.getDataRange().getValues() : [];
 
     let mapIndCat = {};
     let tieneIndAsistencia = false;
@@ -2432,6 +2524,18 @@ function obtenerCuadroMateria(idMateria, periodo) {
        e.notas.ASIST = Number(e.notas.ASIST.toFixed(1));
 
        e.total = Math.round(e.notas.TRAB_COT + e.notas.TAREAS + e.notas.PRUEBAS + e.notas.PROYECTOS + e.notas.ASIST);
+       e.corregida = false;
+       e.motivoCorreccion = "";
+       for (let c = 1; c < dataCorrNF.length; c++) {
+         if (String(dataCorrNF[c][1]).trim() === String(idMateria).trim() &&
+             String(dataCorrNF[c][2]).trim() === String(e.id).trim() &&
+             String(dataCorrNF[c][3]).trim() === String(periodo === undefined || periodo === null ? "" : periodo).trim()) {
+           e.total = Number(dataCorrNF[c][4]);
+           e.corregida = true;
+           e.motivoCorreccion = String(dataCorrNF[c][5] || "");
+           break;
+         }
+       }
     });
 
     return { success: true, materia: materia.nombre, lista: estudiantes };
@@ -3647,6 +3751,70 @@ function migrarNotasAMotorV2() {
 // Si el Periodo 2 todavia no tiene notas, se marca como "Pendiente" en vez
 // de forzar un promedio con un lado en cero.
 // ==========================================
+
+function corregirNotaFinal(data) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const idMateria = String(data.idMateria).trim();
+    const idEstudiante = String(data.idEstudiante).trim();
+    const periodo = (data.periodo === undefined || data.periodo === null) ? "" : String(data.periodo).trim();
+    const motivo = String(data.motivo || "").trim();
+    const detalle = String(data.detalle || "").trim();
+    const usuario = data.email || "desconocido";
+
+    if (!idMateria || !idEstudiante || motivo === "") {
+      return { success: false, message: "Faltan datos obligatorios para corregir la nota final." };
+    }
+    const notaCorregida = parseFloat(data.nota);
+    if (isNaN(notaCorregida) || notaCorregida < 0 || notaCorregida > 100) {
+      return { success: false, message: "La nota final debe estar entre 0 y 100." };
+    }
+
+    let sheet = ss.getSheetByName("CORRECCIONES_NOTA_FINAL");
+    if (!sheet) {
+      sheet = ss.insertSheet("CORRECCIONES_NOTA_FINAL");
+      sheet.appendRow(["id", "idMateria", "idEstudiante", "periodo", "notaCorregida", "motivo", "detalle", "usuario", "fecha"]);
+    }
+
+    const dataSheet = sheet.getDataRange().getValues();
+    let fila = -1;
+    for (let r = 1; r < dataSheet.length; r++) {
+      if (String(dataSheet[r][1]).trim() === idMateria &&
+          String(dataSheet[r][2]).trim() === idEstudiante &&
+          String(dataSheet[r][3]).trim() === periodo) {
+        fila = r + 1;
+        break;
+      }
+    }
+
+    const fechaActual = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+    if (fila > -1) {
+      sheet.getRange(fila, 5).setValue(notaCorregida);
+      sheet.getRange(fila, 6).setValue(motivo);
+      sheet.getRange(fila, 7).setValue(detalle);
+      sheet.getRange(fila, 8).setValue(usuario);
+      sheet.getRange(fila, 9).setValue(fechaActual);
+    } else {
+      sheet.appendRow(["CNF-" + Date.now(), idMateria, idEstudiante, periodo, notaCorregida, motivo, detalle, usuario, fechaActual]);
+    }
+
+    // Bitácora
+    try {
+      const bitSheet = ss.getSheetByName("BITACORA_CAMBIOS");
+      if (bitSheet) {
+        const fechaHora = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
+        bitSheet.appendRow([fechaHora, usuario, "NOTA_FINAL", idMateria + "|" + idEstudiante + "|" + periodo, "", notaCorregida, "CORRECCIÓN NOTA FINAL | Motivo: " + motivo + (detalle ? " | Detalle: " + detalle : "")]);
+      }
+    } catch (e) {
+      Logger.log("Error bitacora corregirNotaFinal: " + e.toString());
+    }
+
+    return { success: true, message: "Nota final corregida correctamente" };
+  } catch (e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
 function obtenerNotaFinalAnual(idMateria) {
   try {
     const ss = SpreadsheetApp.openById(SHEET_ID);
@@ -3656,6 +3824,15 @@ function obtenerNotaFinalAnual(idMateria) {
       if (String(dataMat[i][0]).trim() === String(idMateria).trim()) { notaMinima = Number(dataMat[i][8]) || 65; break; }
     }
     const ampliaciones = obtenerAmpliacionesPorMateria(ss, idMateria);
+
+    const sheetCorrNF = ss.getSheetByName("CORRECCIONES_NOTA_FINAL");
+    const dataCorrNF = sheetCorrNF ? sheetCorrNF.getDataRange().getValues() : [];
+    const corrMapNF = {};
+    for (let c = 1; c < dataCorrNF.length; c++) {
+      if (String(dataCorrNF[c][1]).trim() === String(idMateria).trim() && String(dataCorrNF[c][3]).trim() === "") {
+        corrMapNF[String(dataCorrNF[c][2]).trim()] = dataCorrNF[c];
+      }
+    }
 
     const p1 = obtenerCuadroMateria(idMateria, 1);
     if (p1.error) return p1;
@@ -3670,12 +3847,24 @@ function obtenerNotaFinalAnual(idMateria) {
       const notaFinalBase = tieneP2 ? Math.round((eP1.total + eP2.total) / 2) : "Pendiente";
       const resultado = aplicarTopeAmpliacion(notaFinalBase, notaMinima, ampliaciones[eP1.id]);
 
+      let notaFinal = resultado.notaFinal;
+      let corregida = false;
+      let motivoCorreccion = "";
+      const corr = corrMapNF[String(eP1.id).trim()];
+      if (corr) {
+        notaFinal = Number(corr[4]);
+        corregida = true;
+        motivoCorreccion = String(corr[5] || "");
+      }
+
       return {
         id: eP1.id,
         nombre: eP1.nombre,
         notaPeriodo1: eP1.total,
         notaPeriodo2: tieneP2 ? eP2.total : null,
-        notaFinal: resultado.notaFinal,
+        notaFinal: notaFinal,
+        corregida: corregida,
+        motivoCorreccion: motivoCorreccion,
         notaFinalOriginal: notaFinalBase,
         ampliacion: resultado.ampliacion
       };

@@ -5212,14 +5212,14 @@ list.forEach(i => {
                 : `${app.state.currentCatLabel} | Valor: ${app.state.currentMaxPts}% | Prueba de: ${app.state.currentPtsTotales} Pts`;
             
             const tbody = document.getElementById('table-eval-body');
-            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin text-indigo-500"></i></td></tr>';
+            tbody.innerHTML = '<tr><td colspan="2" class="p-4 text-center"><i class="fas fa-spinner fa-spin text-indigo-500"></i></td></tr>';
 
             // Cargar datos
             const list = await app.api({ action: 'getEvaluationData', idSeccion: app.state.currentSecId, idIndicador: idInd });
             tbody.innerHTML = '';
             
             if(!list || list.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center text-slate-400">Sin estudiantes.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="2" class="p-4 text-center text-slate-400">Sin estudiantes.</td></tr>';
                 return;
             }
 
@@ -5228,7 +5228,12 @@ list.forEach(i => {
                 let badgeFecha = e.fecha ? `<span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-100 shadow-sm" id="badge-fecha-${e.id}"><i class="far fa-calendar-check"></i> ${e.fecha}</span>` : `<span class="hidden" id="badge-fecha-${e.id}"></span>`;
                 
                 let inputHtml = '';
-               let inputVal = (e.nivel !== null && e.nivel !== undefined) ? e.nivel : "";  
+                let inputVal = (e.nivel !== null && e.nivel !== undefined) ? e.nivel : "";
+                let hasNota = (e.nivel !== null && e.nivel !== undefined && e.nivel !== "");
+                let btnCorregir = "";
+                if (hasNota) {
+                    btnCorregir = `<button type="button" onclick='app.abrirCorreccionNota("${e.id}", ${JSON.stringify(e.nombre)}, "${e.nivel}")' class="ml-1 text-[10px] px-2 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-bold" title="Corregir con motivo"><i class="fas fa-pen mr-1"></i>Corregir</button>`;
+                }
 
                 if (isCotidiano) {
                     // LÓGICA COTIDIANO (ESCALA 0-3)
@@ -5236,8 +5241,8 @@ list.forEach(i => {
                     
                     inputHtml = `
                         <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded min-w-[60px] text-center" id="pts-view-${e.id}">- pts</span>
-                        <select class="grade-input w-36 p-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-600 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm" 
-                                data-id="${e.id}" onchange="app.updatePreviewScore(this)">
+                        <select class="grade-input w-36 p-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-600 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm ${hasNota ? 'opacity-60 cursor-not-allowed bg-slate-100' : ''}"
+                            data-id="${e.id}" onchange="app.updatePreviewScore(this)" ${hasNota ? 'disabled' : ''}>
                             <option value="" ${selectedVal === "" ? "selected" : ""}>- Seleccionar -</option>
                             <option value="3" ${selectedVal === 3 ? "selected" : ""}>3 (Logrado)</option>
                             <option value="2" ${selectedVal === 2 ? "selected" : ""}>2 (Intermedio)</option>
@@ -5249,25 +5254,37 @@ list.forEach(i => {
                     inputHtml = `
                         <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded min-w-[50px] text-center" id="nota100-view-${e.id}" title="Nota 1-100">Nota: -</span>
                         <span class="text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1 rounded min-w-[60px] text-center" id="pts-view-${e.id}" title="Porcentaje para el reporte">- %</span>
-                        <input type="number" class="grade-input w-20 p-2 border border-rose-300 rounded-lg text-center font-bold text-rose-600 focus:ring-2 focus:ring-rose-500 outline-none shadow-sm" 
-                               data-id="${e.id}" value="${inputVal}" onkeyup="app.updatePreviewScore(this)" onchange="app.updatePreviewScore(this)">
+                        <input type="number" class="grade-input w-20 p-2 border border-rose-300 rounded-lg text-center font-bold text-rose-600 focus:ring-2 focus:ring-rose-500 outline-none shadow-sm ${hasNota ? 'opacity-60 cursor-not-allowed bg-slate-100' : ''}"
+                           data-id="${e.id}" value="${inputVal}" onkeyup="app.updatePreviewScore(this)" onchange="app.updatePreviewScore(this)" ${hasNota ? 'disabled' : ''}>
                         `;
+                }
+
+                if (btnCorregir) {
+                    inputHtml = inputHtml + btnCorregir;
+                    if (hasNota) inputHtml = inputHtml + ` <span class="text-[10px] font-bold text-amber-600">Usa botón: Corregir nota</span>`;
                 }
 
                 tbody.innerHTML += `
                 <tr class="hover:bg-slate-50 border-b border-slate-100 transition">
                     <td class="p-4 text-slate-400 font-bold w-10 text-xs">${idx+1}</td>
-                    <td class="p-4 font-medium text-slate-700">${e.nombre}</td>
-                    <td class="p-4 text-right">
-                        <div class="flex flex-col items-end gap-1">
-                            ${badgeFecha}
-                            <div class="flex items-center gap-2">
+                    <td class="p-4">
+                        <div class="flex items-center gap-2 flex-wrap justify-between">
+                            <span class="font-medium text-slate-700">${e.nombre}</span>
+                            <div class="flex items-center gap-2 flex-wrap justify-end">
+                                ${badgeFecha}
                                 ${inputHtml}
                             </div>
                         </div>
                     </td>
                 </tr>`;
             });
+
+            // Deshabilitar asignación masiva si todos ya tienen nota (evita sobrescribir sin evidencia)
+            const todosCalificados = list.length > 0 && list.every(e => (e.nivel !== null && e.nivel !== undefined && e.nivel !== ""));
+            const bulkSel = document.getElementById('bulk-score-select');
+            const bulkBtn = document.getElementById('btn-fill-max');
+            if (bulkSel) { bulkSel.disabled = todosCalificados; bulkSel.classList.toggle('opacity-50', todosCalificados); bulkSel.classList.toggle('cursor-not-allowed', todosCalificados); bulkSel.title = todosCalificados ? 'Todos ya tienen nota. Usa "Corregir" para modificar.' : 'Asignar nivel a todos los estudiantes'; }
+            if (bulkBtn) { bulkBtn.disabled = todosCalificados; bulkBtn.classList.toggle('opacity-50', todosCalificados); bulkBtn.classList.toggle('cursor-not-allowed', todosCalificados); }
 
             // -------------------------------------------------------------
             // DISPARADOR AUTOMÁTICO DE CÁLCULO AL ABRIR
@@ -5351,6 +5368,7 @@ saveGrades: async () => {
     const isCotidiano = app.state.currentCat === 'TRAB_COT';
     
     selects.forEach(sel => {
+        if (sel.disabled) return; // ya calificado: se corrige con "Corregir" (con motivo)
         if(sel.value !== "") {
             let notaFinal = 0;
             let nivelOBruto = parseFloat(sel.value);
@@ -5406,6 +5424,13 @@ fillMaxScore: async (nivelSeleccionado = null) => {
         return;
     }
 
+    // Solo asignar a quienes NO tienen nota todavía (evita sobrescribir sin evidencia)
+    const vacios = Array.from(inputs).filter(inp => (inp.value === "" || inp.value === null || inp.value === undefined));
+    if (vacios.length === 0) {
+        Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'Todos ya tienen nota. Usa "Corregir" para modificar.', showConfirmButton: false, timer: 2500 });
+        return;
+    }
+
     if (isCotidiano && valorMaximo === 0) {
         const confirmacion = await Swal.fire({
             title: '¿Asignar Nivel 0?',
@@ -5419,26 +5444,24 @@ fillMaxScore: async (nivelSeleccionado = null) => {
         if (!confirmacion.isConfirmed) return;
     }
 
-    // 3. Aplicamos el valor a cada input
-    inputs.forEach(input => {
-        // Solo rellenamos si el input está vacío o si el docente quiere sobrescribir
+    // 3. Aplicamos el valor a cada input (solo los vacíos)
+    vacios.forEach(input => {
         input.value = valorMaximo;
         
         // 4. IMPORTANTE: Disparamos la lógica de cálculo visual
-        // Esto hace que el porcentaje y la nota de 1-100 aparezcan instantáneamente
         app.updatePreviewScore(input);
     });
-    
-    // Feedback visual para el docente
+
+    // Feedback visual ajustado
     Swal.fire({
         toast: true,
         position: 'top-end',
         icon: 'success',
-         title: isCotidiano ? `Nivel ${valorMaximo} asignado a ${inputs.length} estudiantes` : 'Puntaje máximo asignado: ' + valorMaximo,
+        title: isCotidiano ? `Nivel ${valorMaximo} asignado a ${vacios.length} estudiante(s) sin nota` : `Puntaje máximo asignado a ${vacios.length} estudiante(s)`,
         showConfirmButton: false,
         timer: 1500
     });
-},
+    },
 
         // ==========================================
         // MÓDULO BITÁCORA (LÓGICA COMPLETA)
@@ -5461,6 +5484,219 @@ fillMaxScore: async (nivelSeleccionado = null) => {
 
             app.renderBitacoraTable();
         },
+
+    abrirCorreccionNota: async (idEst, nombreEst, notaActual) => {
+        const isCotidiano = app.state.currentCat === 'TRAB_COT';
+        let inputNuevo = "";
+        if (isCotidiano) {
+            inputNuevo = `
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">Corregir a (Nivel 0-3)</label>
+                    <select id="corr-nuevo" class="w-full p-2 border rounded bg-white mt-1">
+                        <option value="">Seleccione...</option>
+                        <option value="3">3 (Logrado)</option>
+                        <option value="2">2 (Intermedio)</option>
+                        <option value="1">1 (Inicial)</option>
+                        <option value="0">0 (Nulo)</option>
+                    </select>
+                </div>`;
+        } else {
+            inputNuevo = `
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">Corregir a (Puntos)</label>
+                    <input id="corr-nuevo" type="number" class="w-full p-2 border rounded bg-white mt-1" placeholder="Ej: 45">
+                </div>`;
+        }
+
+        const { value: form } = await Swal.fire({
+            title: 'Corregir nota',
+            html: `
+                <div class="text-left space-y-3">
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <div class="text-sm font-bold text-slate-700">${nombreEst}</div>
+                        <div class="text-xs text-slate-500 mt-1">Nota actual: <b>${notaActual}</b></div>
+                    </div>
+                    ${inputNuevo}
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase">Motivo (obligatorio)</label>
+                        <select id="corr-motivo" class="w-full p-2 border rounded bg-white mt-1" onchange="if(this.value==='Otro'){document.getElementById('corr-detalle-wrap').classList.remove('hidden')}else{document.getElementById('corr-detalle-wrap').classList.add('hidden')}">
+                            <option value="">Seleccione...</option>
+                            <option value="Error de digitación">Error de digitación</option>
+                            <option value="Viene de otro colegio / traslado">Viene de otro colegio / traslado</option>
+                            <option value="Ajuste autorizado">Ajuste autorizado</option>
+                            <option value="Otro">Otro (indique la razón)</option>
+                        </select>
+                    </div>
+                    <div id="corr-detalle-wrap" class="hidden">
+                        <label class="text-xs font-bold text-slate-500 uppercase">Detalle / Justificación</label>
+                        <textarea id="corr-detalle" class="w-full p-2 border rounded bg-white mt-1" rows="2" placeholder="Indique el motivo..."></textarea>
+                    </div>
+                </div>
+            `,
+            width: '520px',
+            showCancelButton: true,
+            confirmButtonText: 'Guardar corrección',
+            confirmButtonColor: '#f59e0b',
+            preConfirm: () => {
+                const nuevo = document.getElementById('corr-nuevo').value;
+                const motivo = document.getElementById('corr-motivo').value;
+                const detalle = document.getElementById('corr-detalle').value;
+                if (nuevo === "" || nuevo === null) { Swal.showValidationMessage('Debe indicar la nueva nota'); return false; }
+                if (!motivo) { Swal.showValidationMessage('Debe seleccionar un motivo'); return false; }
+                if (motivo === "Otro" && !detalle.trim()) { Swal.showValidationMessage('Debe indicar el detalle'); return false; }
+                return { nuevo, motivo, detalle };
+            }
+        });
+
+        if (!form) return;
+        Swal.fire({ title: 'Corrigiendo...', didOpen: () => Swal.showLoading() });
+        const res = await app.api({ action: 'corregirNota', idIndicador: app.state.currentIndId, idEstudiante: idEst, nivel: form.nuevo, motivo: form.motivo, detalle: form.detalle, email: app.user?.email });
+        Swal.close();
+        if (res && res.success) {
+            app.toast('success', 'Nota corregida');
+            app.openEvaluation(app.state.currentIndId, document.getElementById('eval-title').innerText, app.state.currentMaxPts, app.state.currentPtsTotales);
+        } else {
+            Swal.fire('Error', res?.message || 'No se pudo corregir la nota', 'error');
+        }
+    },
+
+// Corregir una nota ya registrada, con motivo obligatorio
+    abrirCorreccionNota: async (idEst, nombreEst, notaActual) => {
+        const isCotidiano = app.state.currentCat === 'TRAB_COT';
+        let inputNuevo = "";
+        if (isCotidiano) {
+            inputNuevo = `
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">Corregir a (Nivel 0-3)</label>
+                    <select id="corr-nuevo" class="w-full p-2 border rounded bg-white mt-1">
+                        <option value="">Seleccione...</option>
+                        <option value="3">3 (Logrado)</option>
+                        <option value="2">2 (Intermedio)</option>
+                        <option value="1">1 (Inicial)</option>
+                        <option value="0">0 (Nulo)</option>
+                    </select>
+                </div>`;
+        } else {
+            inputNuevo = `
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase">Corregir a (Puntos)</label>
+                    <input id="corr-nuevo" type="number" class="w-full p-2 border rounded bg-white mt-1" placeholder="Ej: 45">
+                </div>`;
+        }
+
+        const { value: form } = await Swal.fire({
+            title: 'Corregir nota',
+            html: `
+                <div class="text-left space-y-3">
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <div class="text-sm font-bold text-slate-700">${nombreEst}</div>
+                        <div class="text-xs text-slate-500 mt-1">Nota actual: <b>${notaActual}</b></div>
+                    </div>
+                    ${inputNuevo}
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase">Motivo (obligatorio)</label>
+                        <select id="corr-motivo" class="w-full p-2 border rounded bg-white mt-1" onchange="if(this.value==='Otro'){document.getElementById('corr-detalle-wrap').classList.remove('hidden')}else{document.getElementById('corr-detalle-wrap').classList.add('hidden')}">
+                            <option value="">Seleccione...</option>
+                            <option value="Error de digitación">Error de digitación</option>
+                            <option value="Viene de otro colegio / traslado">Viene de otro colegio / traslado</option>
+                            <option value="Ajuste autorizado">Ajuste autorizado</option>
+                            <option value="Otro">Otro (indique la razón)</option>
+                        </select>
+                    </div>
+                    <div id="corr-detalle-wrap" class="hidden">
+                        <label class="text-xs font-bold text-slate-500 uppercase">Detalle / Justificación</label>
+                        <textarea id="corr-detalle" class="w-full p-2 border rounded bg-white mt-1" rows="2" placeholder="Indique el motivo..."></textarea>
+                    </div>
+                </div>
+            `,
+            width: '520px',
+            showCancelButton: true,
+            confirmButtonText: 'Guardar corrección',
+            confirmButtonColor: '#f59e0b',
+            preConfirm: () => {
+                const nuevo = document.getElementById('corr-nuevo').value;
+                const motivo = document.getElementById('corr-motivo').value;
+                const detalle = document.getElementById('corr-detalle').value;
+                if (nuevo === "" || nuevo === null) { Swal.showValidationMessage('Debe indicar la nueva nota'); return false; }
+                if (!motivo) { Swal.showValidationMessage('Debe seleccionar un motivo'); return false; }
+                if (motivo === "Otro" && !detalle.trim()) { Swal.showValidationMessage('Debe indicar el detalle'); return false; }
+                return { nuevo, motivo, detalle };
+            }
+        });
+
+        if (!form) return;
+        Swal.fire({ title: 'Corrigiendo...', didOpen: () => Swal.showLoading() });
+        const res = await app.api({ action: 'corregirNota', idIndicador: app.state.currentIndId, idEstudiante: idEst, nivel: form.nuevo, motivo: form.motivo, detalle: form.detalle, email: app.user?.email });
+        Swal.close();
+        if (res && res.success) {
+            app.toast('success', 'Nota corregida');
+            app.openEvaluation(app.state.currentIndId, document.getElementById('eval-title').innerText, app.state.currentMaxPts, app.state.currentPtsTotales);
+        } else {
+            Swal.fire('Error', res?.message || 'No se pudo corregir la nota', 'error');
+        }
+    },
+
+// Corregir la nota final (dato total) de un alumno en una materia, con motivo obligatorio
+    abrirCorreccionNotaFinal: async (idMat, nomMat, idEst, nombreEst, notaActual, periodo) => {
+        const { value: form } = await Swal.fire({
+            title: 'Corregir nota final',
+            html: `
+                <div class="text-left space-y-3">
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <div class="text-sm font-bold text-slate-700">${nombreEst}</div>
+                        <div class="text-xs text-slate-500 mt-1">Nota final actual: <b>${notaActual}</b>${periodo ? ' (Periodo ' + periodo + ')' : ' (Anual)'}</div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase">Nueva nota final (0-100)</label>
+                        <input id="cnf-nuevo" type="number" class="w-full p-2 border rounded bg-white mt-1" placeholder="Ej: 75" value="${notaActual}">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase">Motivo (obligatorio)</label>
+                        <select id="cnf-motivo" class="w-full p-2 border rounded bg-white mt-1" onchange="if(this.value==='Otro'){document.getElementById('cnf-detalle-wrap').classList.remove('hidden')}else{document.getElementById('cnf-detalle-wrap').classList.add('hidden')}">
+                            <option value="">Seleccione...</option>
+                            <option value="Error de digitación">Error de digitación</option>
+                            <option value="Viene de otro colegio / traslado">Viene de otro colegio / traslado</option>
+                            <option value="Ajuste autorizado">Ajuste autorizado</option>
+                            <option value="Otro">Otro (indique la razón)</option>
+                        </select>
+                    </div>
+                    <div id="cnf-detalle-wrap" class="hidden">
+                        <label class="text-xs font-bold text-slate-500 uppercase">Detalle / Justificación</label>
+                        <textarea id="cnf-detalle" class="w-full p-2 border rounded bg-white mt-1" rows="2" placeholder="Indique el motivo..."></textarea>
+                    </div>
+                </div>
+            `,
+            width: '520px',
+            showCancelButton: true,
+            confirmButtonText: 'Guardar corrección',
+            confirmButtonColor: '#f59e0b',
+            preConfirm: () => {
+                const nuevo = document.getElementById('cnf-nuevo').value;
+                const motivo = document.getElementById('cnf-motivo').value;
+                const detalle = document.getElementById('cnf-detalle').value;
+                if (nuevo === "" || nuevo === null) { Swal.showValidationMessage('Debe indicar la nueva nota'); return false; }
+                if (isNaN(parseFloat(nuevo)) || parseFloat(nuevo) < 0 || parseFloat(nuevo) > 100) { Swal.showValidationMessage('La nota debe estar entre 0 y 100'); return false; }
+                if (!motivo) { Swal.showValidationMessage('Debe seleccionar un motivo'); return false; }
+                if (motivo === "Otro" && !detalle.trim()) { Swal.showValidationMessage('Debe indicar el detalle'); return false; }
+                return { nuevo, motivo, detalle };
+            }
+        });
+
+        if (!form) return;
+        Swal.fire({ title: 'Corrigiendo...', didOpen: () => Swal.showLoading() });
+        const res = await app.api({ action: 'corregirNotaFinal', idMateria: idMat, idEstudiante: idEst, periodo: periodo || "", nota: form.nuevo, motivo: form.motivo, detalle: form.detalle, email: app.user?.email });
+        Swal.close();
+        if (res && res.success) {
+            app.toast('success', 'Nota final corregida');
+            if (periodo) {
+                app.verNotasMateria(idMat, nomMat, periodo);
+            } else {
+                app.verNotaFinalAnual(idMat, nomMat);
+            }
+        } else {
+            Swal.fire('Error', res?.message || 'No se pudo corregir la nota final', 'error');
+        }
+    },
 
 // 2. RENDERIZAR TABLA DE BITÁCORAS (CASCADA Y EMPTY STATE)
         renderBitacoraTable: () => {
@@ -7560,7 +7796,12 @@ adminLoadUsers: async () => {
                     <td class="p-2 text-center">${e.notas.PRUEBAS}</td>
                     <td class="p-2 text-center">${e.notas.PROYECTOS}</td>
                     <td class="p-2 text-center">${e.notas.ASIST}</td>
-                    <td class="p-2 text-center font-bold bg-gray-50 ${color}">${e.total}</td>
+                    <td class="p-2 text-center bg-gray-50">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <span class="font-bold ${color}">${e.total}${e.corregida ? ' <i class="fas fa-pen text-[9px] text-amber-500" title="Corregida: ${e.motivoCorreccion}"></i>' : ''}</span>
+                            <button type="button" onclick="app.abrirCorreccionNotaFinal('${idMat}', ${app.jsStr(nomMat)}, '${e.id}', ${app.jsStr(e.nombre)}, ${e.total}, '${periodo}')" class="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-bold" title="Corregir nota final con motivo"><i class="fas fa-pen mr-0.5"></i>Corregir</button>
+                        </div>
+                    </td>
                 </tr>`;
             });
             html += `</tbody></table></div>`;
@@ -7617,7 +7858,12 @@ adminLoadUsers: async () => {
                     <td class="p-2 font-medium truncate max-w-[150px]">${e.nombre}</td>
                     <td class="p-2 text-center">${e.notaPeriodo1}</td>
                     <td class="p-2 text-center">${e.notaPeriodo2 !== null ? e.notaPeriodo2 : '—'}</td>
-                    <td class="p-2 text-center font-bold bg-gray-50 ${color}">${e.notaFinal}</td>
+                    <td class="p-2 text-center bg-gray-50">
+                        <div class="flex items-center justify-center gap-1.5">
+                            <span class="font-bold ${color}">${e.notaFinal}${e.corregida ? ' <i class="fas fa-pen text-[9px] text-amber-500" title="Corregida: ${e.motivoCorreccion}"></i>' : ''}</span>
+                            <button type="button" onclick="app.abrirCorreccionNotaFinal('${idMat}', ${app.jsStr(nomMat)}, '${e.id}', ${app.jsStr(e.nombre)}, ${e.notaFinal}, '')" class="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-bold" title="Corregir nota final con motivo"><i class="fas fa-pen mr-0.5"></i>Corregir</button>
+                        </div>
+                    </td>
                     <td class="p-2">${detalle}</td>
                 </tr>`;
             });
@@ -8304,7 +8550,6 @@ loadAuditoriaData: async () => {
                             <tr>
                                 <th class="p-4 w-10">#</th>
                                 <th class="p-4">Estudiante</th>
-                                <th class="p-4 w-32 text-center">Puntaje Obt.</th>
                             </tr>
                         </thead>
                         <tbody id="table-eval-body" class="divide-y divide-gray-100 text-sm"></tbody>
