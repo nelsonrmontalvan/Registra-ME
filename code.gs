@@ -61,6 +61,7 @@ function doPost(e) {
     if(action === "saveGrades") return response(guardarCalificaciones(data));
     if(action === "corregirNota") return response(corregirNota(data));
     if(action === "corregirNotaFinal") return response(corregirNotaFinal(data));
+    if(action === "quitarCorreccionNotaFinal") return response(quitarCorreccionNotaFinal(data));
     if(action === "pdfStudentReport") return response(generarPdfBoletaEstudiante(data.id));
     if(action === "pdfGrades") return response(generarPdfNotasMateria(data.id));
 
@@ -2605,8 +2606,13 @@ function obtenerCuadroMateria(idMateria, periodo) {
        e.notas.ASIST = Number(e.notas.ASIST.toFixed(1));
 
        e.total = Math.round(e.notas.TRAB_COT + e.notas.TAREAS + e.notas.PRUEBAS + e.notas.PROYECTOS + e.notas.ASIST);
+       // totalCalculado: la nota que da el sistema SIN correccion manual. Se
+       // devuelve siempre, para poder mostrarla al lado de una nota corregida.
+       e.totalCalculado = e.total;
        e.corregida = false;
        e.motivoCorreccion = "";
+       e.calculadaAlCorregir = null;
+       e.cambioDesdeCorreccion = false;
        for (let c = 1; c < dataCorrNF.length; c++) {
          if (String(dataCorrNF[c][1]).trim() === String(idMateria).trim() &&
              String(dataCorrNF[c][2]).trim() === String(e.id).trim() &&
@@ -2614,6 +2620,8 @@ function obtenerCuadroMateria(idMateria, periodo) {
            e.total = Number(dataCorrNF[c][4]);
            e.corregida = true;
            e.motivoCorreccion = String(dataCorrNF[c][5] || "");
+           e.calculadaAlCorregir = leerCalculadaAlCorregir(dataCorrNF[c]);
+           e.cambioDesdeCorreccion = e.calculadaAlCorregir !== null && e.calculadaAlCorregir !== e.totalCalculado;
            break;
          }
        }
@@ -3957,6 +3965,12 @@ function corregirNotaFinalInterno(data) {
       }
     }
 
+    // Se guarda tambien la nota CALCULADA en el momento de corregir (columna 10).
+    // Asi, si despues el profe califica algo nuevo y la calculada cambia, la
+    // pantalla puede avisar que la correccion quedo desactualizada.
+    const calculadaAhora = obtenerNotaFinalCalculada(idMateria, idEstudiante, periodo);
+    asegurarColumnaCalculadaCorreccion(sheet);
+
     const fechaActual = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
     if (fila > -1) {
       sheet.getRange(fila, 5).setValue(notaCorregida);
@@ -3964,8 +3978,9 @@ function corregirNotaFinalInterno(data) {
       sheet.getRange(fila, 7).setValue(detalle);
       sheet.getRange(fila, 8).setValue(usuario);
       sheet.getRange(fila, 9).setValue(fechaActual);
+      sheet.getRange(fila, 10).setValue(calculadaAhora === null ? "" : calculadaAhora);
     } else {
-      sheet.appendRow(["CNF-" + Date.now(), idMateria, idEstudiante, periodo, notaCorregida, motivo, detalle, usuario, fechaActual]);
+      sheet.appendRow(["CNF-" + Date.now(), idMateria, idEstudiante, periodo, notaCorregida, motivo, detalle, usuario, fechaActual, calculadaAhora === null ? "" : calculadaAhora]);
     }
 
     // Bitácora (mismo arreglo que corregirNota: con columna ID y MOTIVO en su lugar).
@@ -3978,6 +3993,148 @@ function corregirNotaFinalInterno(data) {
   } catch (e) {
     return { success: false, message: e.toString() };
   }
+}
+
+// ==========================================
+// QUITAR CORRECCION DE NOTA FINAL
+// Borra la fila de CORRECCIONES_NOTA_FINAL de ese estudiante+materia+periodo,
+// con lo que vuelve a mandar la nota que calcula el sistema. Exige motivo y
+// deja el rastro en la bitacora (nota corregida -> nota calculada). No toca
+// NOTAS ni ninguna otra hoja.
+// ==========================================
+function quitarCorreccionNotaFinal(data) {
+  return conCandadoNotas(() => quitarCorreccionNotaFinalInterno(data));
+}
+
+function quitarCorreccionNotaFinalInterno(data) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const idMateria = String(data.idMateria || "").trim();
+    const idEstudiante = String(data.idEstudiante || "").trim();
+    const periodo = (data.periodo === undefined || data.periodo === null) ? "" : String(data.periodo).trim();
+    const motivo = String(data.motivo || "").trim();
+    const detalle = String(data.detalle || "").trim();
+    const usuario = data.email || "desconocido";
+
+    if (!idMateria || !idEstudiante || !motivo) {
+      return { success: false, message: "Faltan datos obligatorios para quitar la corrección." };
+    }
+
+    const sheet = ss.getSheetByName("CORRECCIONES_NOTA_FINAL");
+    if (!sheet) return { success: false, message: "Este estudiante no tiene una nota final corregida." };
+
+    const dataSheet = sheet.getDataRange().getValues();
+    let fila = -1, notaCorregida = "";
+    for (let r = 1; r < dataSheet.length; r++) {
+      if (String(dataSheet[r][1]).trim() === idMateria &&
+          String(dataSheet[r][2]).trim() === idEstudiante &&
+          String(dataSheet[r][3]).trim() === periodo) {
+        fila = r + 1;
+        notaCorregida = dataSheet[r][4];
+        break;
+      }
+    }
+    if (fila === -1) return { success: false, message: "Este estudiante no tiene una nota final corregida." };
+
+    sheet.deleteRow(fila);
+    const calculada = obtenerNotaFinalCalculada(idMateria, idEstudiante, periodo);
+
+    registrarBitacoraCambio(ss, "NOTA_FINAL", idMateria + "|" + idEstudiante + "|" + periodo,
+      notaCorregida, calculada === null ? "" : calculada, usuario,
+      "DESHACER CORRECCIÓN (vuelve a la nota calculada) | Motivo: " + motivo + (detalle ? " | Detalle: " + detalle : ""));
+
+    return { success: true, message: "Corrección deshecha. Ahora se usa la nota calculada.", notaCalculada: calculada };
+  } catch (e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+// Nota que da el sistema para un estudiante, SIN correccion manual.
+// periodo "" = nota final anual (con ampliacion aplicada), si no, la del periodo.
+// Devuelve null si no se puede calcular (o si la anual esta "Pendiente").
+function obtenerNotaFinalCalculada(idMateria, idEstudiante, periodo) {
+  try {
+    const idEst = String(idEstudiante).trim();
+    if (periodo === "" || periodo === null || periodo === undefined) {
+      const anual = obtenerNotaFinalAnual(idMateria);
+      if (!anual || anual.error) return null;
+      const e = anual.lista.find(x => String(x.id).trim() === idEst);
+      return e && typeof e.notaFinalCalculada === "number" ? e.notaFinalCalculada : null;
+    }
+    const cuadro = obtenerCuadroMateria(idMateria, periodo);
+    if (!cuadro || cuadro.error) return null;
+    const e = cuadro.lista.find(x => String(x.id).trim() === idEst);
+    return e ? e.totalCalculado : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+// Correcciones viejas tienen 9 columnas. La 10 guarda la nota calculada al
+// momento de corregir; se agrega el encabezado la primera vez (no toca datos).
+function asegurarColumnaCalculadaCorreccion(sheet) {
+  const h = sheet.getRange(1, 10).getValue();
+  if (String(h).trim() === "") sheet.getRange(1, 10).setValue("notaCalculadaAlCorregir");
+}
+
+// Lee la columna 10 de una fila de CORRECCIONES_NOTA_FINAL (null si no existe:
+// correcciones hechas antes de este cambio).
+function leerCalculadaAlCorregir(fila) {
+  if (!fila || fila.length < 10) return null;
+  const v = fila[9];
+  if (v === "" || v === null || v === undefined) return null;
+  const n = Number(v);
+  return isFinite(n) ? n : null;
+}
+
+// Decide si el II Periodo de la seccion de esta materia ya cerro.
+// 1) Si la seccion tiene fechas de periodos (SECCIONES col F, JSON
+//    [{p, inicio, fin}] con fin "yyyy-MM-dd"): cerrado = hoy > fin del periodo 2.
+// 2) Si no hay fecha valida: se mira por estudiante si ya tiene AL MENOS una
+//    nota en un indicador del II Periodo de esta materia (estConNotasP2).
+function estadoCierrePeriodo2(ss, idMateria) {
+  const res = { usaFechas: false, cerrado: false, finP2: "", estConNotasP2: new Set() };
+  try {
+    const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+    let idSec = null;
+    for (let i = 1; i < dataMat.length; i++) {
+      if (String(dataMat[i][0]).trim() === String(idMateria).trim()) { idSec = String(dataMat[i][1]).trim(); break; }
+    }
+    if (idSec) {
+      const dataSec = ss.getSheetByName("SECCIONES").getDataRange().getValues();
+      for (let i = 1; i < dataSec.length; i++) {
+        if (String(dataSec[i][0]).trim() !== idSec) continue;
+        let periodos = [];
+        try { periodos = JSON.parse(dataSec[i][5] || "[]"); } catch (e) { periodos = []; }
+        const p2 = Array.isArray(periodos) ? periodos.find(p => String(p.p) === "2") : null;
+        const fin = p2 ? String(p2.fin || "").trim() : "";
+        if (/^\d{4}-\d{2}-\d{2}$/.test(fin)) {
+          const hoy = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+          res.usaFechas = true;
+          res.finP2 = fin;
+          res.cerrado = hoy > fin; // el ultimo dia del periodo todavia cuenta como abierto
+        }
+        break;
+      }
+    }
+  } catch (e) { /* sin fechas: se usa la regla por notas */ }
+
+  if (!res.usaFechas) {
+    const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
+    const idsP2 = new Set();
+    for (let i = 1; i < dataInd.length; i++) {
+      if (String(dataInd[i][1]).trim() === String(idMateria).trim() && String(dataInd[i][7]) === "2") {
+        idsP2.add(String(dataInd[i][0]).trim());
+      }
+    }
+    if (idsP2.size > 0) {
+      const dataNotas = ss.getSheetByName("NOTAS").getDataRange().getValues();
+      for (let n = 1; n < dataNotas.length; n++) {
+        if (idsP2.has(String(dataNotas[n][1]).trim())) res.estConNotasP2.add(String(dataNotas[n][2]).trim());
+      }
+    }
+  }
+  return res;
 }
 
 function obtenerNotaFinalAnual(idMateria) {
@@ -4006,28 +4163,45 @@ function obtenerNotaFinalAnual(idMateria) {
     const mapP2 = {};
     if (!p2.error) p2.lista.forEach(e => { mapP2[e.id] = e; });
 
+    // ¿Ya se puede calcular la nota anual? (ver estadoCierrePeriodo2)
+    // Antes "tieneP2" siempre daba true (el cuadro del II Periodo trae a todos
+    // los estudiantes aunque no tengan notas), asi que a mitad del II Periodo
+    // la anual salia a la mitad (ej. 70 en I Periodo -> 35). Ahora, mientras el
+    // II Periodo no haya cerrado, sale "Pendiente" + una nota parcial de
+    // referencia. Una vez cerrado, el calculo es EXACTAMENTE el de siempre.
+    const cierreP2 = estadoCierrePeriodo2(ss, idMateria);
+
     const lista = p1.lista.map(eP1 => {
       const eP2 = mapP2[eP1.id];
-      const tieneP2 = eP2 !== undefined;
-      const notaFinalBase = tieneP2 ? Math.round((eP1.total + eP2.total) / 2) : "Pendiente";
+      const existeP2 = eP2 !== undefined;
+      const notaParcial = existeP2 ? Math.round((eP1.total + eP2.total) / 2) : null;
+      const cerrado = existeP2 && (cierreP2.usaFechas ? cierreP2.cerrado : cierreP2.estConNotasP2.has(String(eP1.id).trim()));
+      const notaFinalBase = cerrado ? notaParcial : "Pendiente";
       const resultado = aplicarTopeAmpliacion(notaFinalBase, notaMinima, ampliaciones[eP1.id]);
 
       let notaFinal = resultado.notaFinal;
+      const notaFinalCalculada = resultado.notaFinal; // la del sistema, sin correccion manual
       let corregida = false;
       let motivoCorreccion = "";
+      let calculadaAlCorregir = null;
       const corr = corrMapNF[String(eP1.id).trim()];
       if (corr) {
         notaFinal = Number(corr[4]);
         corregida = true;
         motivoCorreccion = String(corr[5] || "");
+        calculadaAlCorregir = leerCalculadaAlCorregir(corr);
       }
 
       return {
         id: eP1.id,
         nombre: eP1.nombre,
         notaPeriodo1: eP1.total,
-        notaPeriodo2: tieneP2 ? eP2.total : null,
+        notaPeriodo2: existeP2 ? eP2.total : null,
         notaFinal: notaFinal,
+        notaFinalCalculada: notaFinalCalculada,
+        notaParcial: cerrado ? null : notaParcial, // solo referencia mientras esta Pendiente
+        calculadaAlCorregir: calculadaAlCorregir,
+        cambioDesdeCorreccion: calculadaAlCorregir !== null && typeof notaFinalCalculada === "number" && calculadaAlCorregir !== notaFinalCalculada,
         corregida: corregida,
         motivoCorreccion: motivoCorreccion,
         notaFinalOriginal: notaFinalBase,
@@ -4035,7 +4209,7 @@ function obtenerNotaFinalAnual(idMateria) {
       };
     });
 
-    return { success: true, materia: p1.materia, lista: lista };
+    return { success: true, materia: p1.materia, lista: lista, finPeriodo2: cierreP2.finP2 || "", usaFechasCierre: cierreP2.usaFechas };
   } catch (e) { return { error: e.toString() }; }
 }
 

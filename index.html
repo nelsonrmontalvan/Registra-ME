@@ -4869,7 +4869,7 @@ renderScheduleList: () => {
 
             if (!res || res.error) return Swal.fire('Error', (res && res.error) || 'No se pudo cargar el historial', 'error');
 
-            const ETIQUETA_TIPO = { NOTA: { label: 'Nota', color: 'bg-indigo-50 text-indigo-700 border-indigo-100' }, ASISTENCIA: { label: 'Asistencia', color: 'bg-sky-50 text-sky-700 border-sky-100' } };
+            const ETIQUETA_TIPO = { NOTA: { label: 'Nota', color: 'bg-indigo-50 text-indigo-700 border-indigo-100' }, ASISTENCIA: { label: 'Asistencia', color: 'bg-sky-50 text-sky-700 border-sky-100' }, NOTA_FINAL: { label: 'Nota final', color: 'bg-amber-50 text-amber-700 border-amber-100' } };
 
             let filasHtml;
             if (!res.lista || res.lista.length === 0) {
@@ -5633,6 +5633,96 @@ fillMaxScore: async (nivelSeleccionado = null) => {
             app.openEvaluation(app.state.currentIndId, document.getElementById('eval-title').innerText, app.state.currentMaxPts, app.state.currentPtsTotales);
         } else {
             Swal.fire('Error', res?.message || 'No se pudo corregir la nota', 'error');
+        }
+    },
+
+// Celda de nota final (Cuadro por periodo y Nota Final Anual). Si la nota fue
+// corregida a mano, muestra tambien la nota CALCULADA por el sistema, avisa si
+// la calculada cambio despues de la correccion, y ofrece "Deshacer corrección" para volver
+// a la calculada.
+    celdaNotaFinal: (o) => {
+        const esc = app.escapeHtml;
+        const color = o.nota === 'Pendiente' ? 'text-gray-400' : (o.nota >= 70 ? 'text-green-600' : 'text-red-600');
+        const lapiz = o.corregida ? ` <i class="fas fa-pen text-[9px] text-amber-500" title="Corregida: ${esc(o.motivo)}"></i>` : '';
+        const notaParaModal = typeof o.nota === 'number' ? o.nota : `'${o.nota}'`;
+        const btnCorregir = `<button type="button" onclick="app.abrirCorreccionNotaFinal('${o.idMat}', ${app.jsStr(o.nomMat)}, '${o.idEst}', ${app.jsStr(o.nombre)}, ${notaParaModal}, '${o.periodo}')" class="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-bold" title="Corregir nota final con motivo"><i class="fas fa-pen mr-0.5"></i>Corregir</button>`;
+        const btnQuitar = o.corregida
+            ? `<button type="button" onclick="app.quitarCorreccionNotaFinal('${o.idMat}', ${app.jsStr(o.nomMat)}, '${o.idEst}', ${app.jsStr(o.nombre)}, ${notaParaModal}, ${o.calculada === null || o.calculada === undefined ? 'null' : app.jsStr(o.calculada)}, '${o.periodo}')" class="text-[9px] px-1.5 py-0.5 rounded bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 font-bold" title="Deshace la corrección manual y vuelve a usar la nota que calcula el sistema"><i class="fas fa-undo mr-0.5"></i>Deshacer corrección</button>`
+            : '';
+        let extra = '';
+        // Nota anual todavia Pendiente (II Periodo abierto): se muestra la parcial solo como referencia.
+        if (o.nota === 'Pendiente' && o.parcial !== null && o.parcial !== undefined) {
+            extra += `<span class="text-[9px] text-slate-400" title="${esc(o.infoPendiente || 'Promedio con el II Periodo todavía incompleto. No es la nota final.')}">parcial: ${esc(o.parcial)}</span>`;
+        }
+        if (o.corregida && o.calculada !== null && o.calculada !== undefined) {
+            extra += `<span class="text-[9px] text-slate-400">calculada: ${esc(o.calculada)}</span>`;
+        }
+        if (o.corregida && o.cambio) {
+            extra += `<span class="text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded px-1" title="Cuando se corrigió, la nota calculada era ${esc(o.calcAlCorregir)}; ahora es ${esc(o.calculada)}. Revisá si la corrección sigue siendo válida."><i class="fas fa-exclamation-triangle mr-0.5"></i>la calculada cambió (${esc(o.calcAlCorregir)} → ${esc(o.calculada)})</span>`;
+        }
+        return `<div class="flex flex-col items-center gap-0.5">
+                    <div class="flex items-center justify-center gap-1.5">
+                        <span class="font-bold ${color}">${o.nota}${lapiz}</span>
+                        ${btnCorregir}${btnQuitar}
+                    </div>
+                    ${extra}
+                </div>`;
+    },
+
+// Quitar una correccion de nota final: vuelve a mandar la nota calculada. Pide motivo (queda en la bitacora).
+    quitarCorreccionNotaFinal: async (idMat, nomMat, idEst, nombreEst, notaCorregida, notaCalculada, periodo) => {
+        const calcTxt = (notaCalculada === null || notaCalculada === undefined) ? 'la que calcule el sistema' : `<b>${app.escapeHtml(notaCalculada)}</b>`;
+        const { value: form } = await Swal.fire({
+            title: 'Deshacer corrección',
+            html: `
+                <div class="text-left space-y-3">
+                    <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <div class="text-sm font-bold text-slate-700">${app.escapeHtml(nombreEst)}</div>
+                        <div class="text-xs text-slate-500 mt-1">Nota corregida: <b>${app.escapeHtml(notaCorregida)}</b>${periodo ? ' (Periodo ' + periodo + ')' : ' (Anual)'}</div>
+                        <div class="text-xs text-slate-500">Vuelve a la nota calculada: ${calcTxt}</div>
+                        <div class="text-[11px] text-slate-400 mt-1">Solo se elimina la corrección manual. Las notas de los indicadores no se tocan.</div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase">Motivo (obligatorio)</label>
+                        <select id="qcnf-motivo" class="w-full p-2 border rounded bg-white mt-1" onchange="if(this.value==='Otro'){document.getElementById('qcnf-detalle-wrap').classList.remove('hidden')}else{document.getElementById('qcnf-detalle-wrap').classList.add('hidden')}">
+                            <option value="">Seleccione...</option>
+                            <option value="La corrección fue un error">La corrección fue un error</option>
+                            <option value="Ya se corrigieron las notas de los indicadores">Ya se corrigieron las notas de los indicadores</option>
+                            <option value="Otro">Otro (indique la razón)</option>
+                        </select>
+                    </div>
+                    <div id="qcnf-detalle-wrap" class="hidden">
+                        <label class="text-xs font-bold text-slate-500 uppercase">Detalle / Justificación</label>
+                        <textarea id="qcnf-detalle" class="w-full p-2 border rounded bg-white mt-1" rows="2" placeholder="Indique el motivo..."></textarea>
+                    </div>
+                </div>
+            `,
+            width: '520px',
+            showCancelButton: true,
+            confirmButtonText: 'Volver a la nota calculada',
+            confirmButtonColor: '#475569',
+            preConfirm: () => {
+                const motivo = document.getElementById('qcnf-motivo').value;
+                const detalle = document.getElementById('qcnf-detalle').value;
+                if (!motivo) { Swal.showValidationMessage('Debe seleccionar un motivo'); return false; }
+                if (motivo === "Otro" && !detalle.trim()) { Swal.showValidationMessage('Debe indicar el detalle'); return false; }
+                return { motivo, detalle };
+            }
+        });
+
+        if (!form) return;
+        Swal.fire({ title: 'Deshaciendo corrección...', didOpen: () => Swal.showLoading() });
+        const res = await app.api({ action: 'quitarCorreccionNotaFinal', idMateria: idMat, idEstudiante: idEst, periodo: periodo || "", motivo: form.motivo, detalle: form.detalle, email: app.user?.email });
+        Swal.close();
+        if (res && res.success) {
+            app.toast('success', 'Corrección deshecha: se usa la nota calculada');
+            if (periodo) {
+                app.verNotasMateria(idMat, nomMat, periodo);
+            } else {
+                app.verNotaFinalAnual(idMat, nomMat);
+            }
+        } else {
+            Swal.fire('Error', res?.message || 'No se pudo deshacer la corrección', 'error');
         }
     },
 
@@ -7797,10 +7887,7 @@ adminLoadUsers: async () => {
                     <td class="p-2 text-center">${e.notas.PROYECTOS}</td>
                     <td class="p-2 text-center">${e.notas.ASIST}</td>
                     <td class="p-2 text-center bg-gray-50">
-                        <div class="flex items-center justify-center gap-1.5">
-                            <span class="font-bold ${color}">${e.total}${e.corregida ? ' <i class="fas fa-pen text-[9px] text-amber-500" title="Corregida: ${e.motivoCorreccion}"></i>' : ''}</span>
-                            <button type="button" onclick="app.abrirCorreccionNotaFinal('${idMat}', ${app.jsStr(nomMat)}, '${e.id}', ${app.jsStr(e.nombre)}, ${e.total}, '${periodo}')" class="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-bold" title="Corregir nota final con motivo"><i class="fas fa-pen mr-0.5"></i>Corregir</button>
-                        </div>
+                        ${app.celdaNotaFinal({ idMat, nomMat, idEst: e.id, nombre: e.nombre, nota: e.total, calculada: e.totalCalculado, corregida: e.corregida, motivo: e.motivoCorreccion, cambio: e.cambioDesdeCorreccion, calcAlCorregir: e.calculadaAlCorregir, periodo })}
                     </td>
                 </tr>`;
             });
@@ -7830,10 +7917,21 @@ adminLoadUsers: async () => {
             const sec = (app.data.secciones || []).find(s => String(s.id) === String(app.state.currentSecId));
             const anioNotaFinal = sec ? sec.anio : '';
 
+            // Aviso cuando hay notas Pendientes: la nota anual se calcula al cerrar el II Periodo.
+            const hayPendientes = res.lista.some(e => e.notaFinal === 'Pendiente');
+            const finP2Txt = res.finPeriodo2 ? res.finPeriodo2.split('-').reverse().join('/') : '';
+            const infoPendiente = res.usaFechasCierre
+                ? `La nota final se calcula al cerrar el II Periodo (fin: ${finP2Txt}). La "parcial" es solo referencia. Si esa fecha está mal, corregila en la configuración de la sección.`
+                : 'La nota final se calcula cuando el estudiante tenga notas en el II Periodo (esta sección no tiene fechas de periodos configuradas). La "parcial" es solo referencia.';
+            const avisoPendiente = hayPendientes
+                ? `<div class="mt-2 p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600"><i class="fas fa-hourglass-half mr-1 text-slate-400"></i>${app.escapeHtml(infoPendiente)}</div>`
+                : '';
+
             let html = `
             <div class="text-left mb-3">
                 <h4 class="font-bold text-gray-700">${nomMat}</h4>
                 <p class="text-xs text-gray-500">Nota Final Anual ${anioNotaFinal} (promedio I y II Periodo)</p>
+                ${avisoPendiente}
             </div>
             <div class="overflow-y-auto max-h-[420px] border rounded-lg">
                 <table class="w-full text-xs text-left">
@@ -7859,10 +7957,7 @@ adminLoadUsers: async () => {
                     <td class="p-2 text-center">${e.notaPeriodo1}</td>
                     <td class="p-2 text-center">${e.notaPeriodo2 !== null ? e.notaPeriodo2 : '—'}</td>
                     <td class="p-2 text-center bg-gray-50">
-                        <div class="flex items-center justify-center gap-1.5">
-                            <span class="font-bold ${color}">${e.notaFinal}${e.corregida ? ' <i class="fas fa-pen text-[9px] text-amber-500" title="Corregida: ${e.motivoCorreccion}"></i>' : ''}</span>
-                            <button type="button" onclick="app.abrirCorreccionNotaFinal('${idMat}', ${app.jsStr(nomMat)}, '${e.id}', ${app.jsStr(e.nombre)}, ${e.notaFinal}, '')" class="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-bold" title="Corregir nota final con motivo"><i class="fas fa-pen mr-0.5"></i>Corregir</button>
-                        </div>
+                        ${app.celdaNotaFinal({ idMat, nomMat, idEst: e.id, nombre: e.nombre, nota: e.notaFinal, calculada: e.notaFinalCalculada, corregida: e.corregida, motivo: e.motivoCorreccion, cambio: e.cambioDesdeCorreccion, calcAlCorregir: e.calculadaAlCorregir, periodo: '', parcial: e.notaParcial, infoPendiente })}
                     </td>
                     <td class="p-2">${detalle}</td>
                 </tr>`;
