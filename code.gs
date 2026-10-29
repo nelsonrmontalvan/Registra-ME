@@ -799,6 +799,10 @@ function clonarIndicadores(idMateria, periodoOrigen, periodoDestino, idsIndicado
 // siempre re-congela todo con el peso de HOY, es seguro repetirlo.
 // ==========================================
 function recalcularPesoCotidiano(idMateria, periodo) {
+  return conCandadoNotas(() => recalcularPesoCotidianoInterno(idMateria, periodo));
+}
+
+function recalcularPesoCotidianoInterno(idMateria, periodo) {
   try {
     const ss = SpreadsheetApp.openById(SHEET_ID);
     const peso = calcularPesoCotidianoVigente(ss, idMateria, periodo);
@@ -833,8 +837,12 @@ function recalcularPesoCotidiano(idMateria, periodo) {
       actualizadas++;
     }
 
-    if (actualizadas > 0) {
-      sheet.getRange(1, 1, data.length, data[0].length).setValues(data);
+    // Solo se reescribe la columna D (%_OBTENIDO), que es lo unico que cambia.
+    // Antes se reescribia la hoja NOTAS completa: si alguien guardaba notas en
+    // esos segundos, se le podian pisar. (Ademas ahora corre bajo candado.)
+    if (actualizadas > 0 && data.length > 1) {
+      const colD = data.slice(1).map(fila => [fila[3]]);
+      sheet.getRange(2, 4, colD.length, 1).setValues(colD);
     }
 
     return { success: true, actualizadas: actualizadas, pesoNuevo: parseFloat(peso.toFixed(2)) };
@@ -957,14 +965,17 @@ function calcularPesoCotidianoVigente(ss, idMateria, periodo) {
 // un rastro: quien, cuando, y el valor anterior -> nuevo. Se puede consultar
 // despues con obtenerBitacoraCambios(idMateria).
 // ==========================================
-function registrarBitacoraCambio(ss, tipo, referencia, valorAnterior, valorNuevo, usuario) {
+// motivo (opcional): solo lo mandan las correcciones ("Corregir" con motivo).
+// Va en una 8va columna MOTIVO; los guardados normales siguen escribiendo
+// exactamente las mismas 7 columnas de siempre.
+function registrarBitacoraCambio(ss, tipo, referencia, valorAnterior, valorNuevo, usuario, motivo) {
   try {
     let sheet = ss.getSheetByName("BITACORA_CAMBIOS");
     if (!sheet) {
       sheet = ss.insertSheet("BITACORA_CAMBIOS");
-      sheet.appendRow(["ID", "FECHA_HORA", "USUARIO", "TIPO", "REFERENCIA", "VALOR_ANTERIOR", "VALOR_NUEVO"]);
+      sheet.appendRow(["ID", "FECHA_HORA", "USUARIO", "TIPO", "REFERENCIA", "VALOR_ANTERIOR", "VALOR_NUEVO", "MOTIVO"]);
     }
-    sheet.appendRow([
+    const fila = [
       "BIT-" + Date.now() + Math.floor(Math.random() * 1000),
       new Date(),
       usuario || "desconocido",
@@ -972,11 +983,57 @@ function registrarBitacoraCambio(ss, tipo, referencia, valorAnterior, valorNuevo
       referencia,
       valorAnterior === undefined || valorAnterior === null ? "" : valorAnterior,
       valorNuevo === undefined || valorNuevo === null ? "" : valorNuevo
-    ]);
+    ];
+    if (motivo) {
+      asegurarColumnaMotivoBitacora(sheet);
+      fila.push(motivo);
+    }
+    sheet.appendRow(fila);
   } catch (e) {
     // La bitacora nunca debe romper el guardado real -- si falla, solo se pierde el rastro, no la nota/asistencia.
     Logger.log("Error registrando bitacora: " + e.toString());
   }
+}
+
+// Hojas viejas de BITACORA_CAMBIOS tienen solo 7 columnas de encabezado.
+// Se agrega "MOTIVO" en H1 la primera vez que hace falta (no toca datos).
+function asegurarColumnaMotivoBitacora(sheet) {
+  const h = sheet.getRange(1, 8).getValue();
+  if (String(h).trim() === "") sheet.getRange(1, 8).setValue("MOTIVO");
+}
+
+// ==========================================
+// CANDADO PARA ESCRITURAS DE NOTAS
+// Todo lo que ESCRIBE en NOTAS pasa por aqui, para que dos guardados al mismo
+// tiempo (doble envio, reintento automatico de app.api, dos pestañas, dos
+// docentes) no creen filas duplicadas ni se pisen. Es el mismo ScriptLock que
+// ya usa Asistencia. Si en 30 s no se consigue, se devuelve un error amable
+// SIN escribir nada (mejor reintentar que guardar a medias).
+// ==========================================
+function conCandadoNotas(fn) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) {
+    return { success: false, message: "El sistema está ocupado guardando otras notas. Espera unos segundos e intenta de nuevo." };
+  }
+  try {
+    return fn();
+  } finally {
+    SpreadsheetApp.flush(); // asegura que lo escrito quede en la hoja antes de soltar el candado
+    lock.releaseLock();
+  }
+}
+
+// Mapa (idIndicador||idEstudiante) -> {fila (1-based), nivel} de la ULTIMA fila
+// que coincide. Es la misma regla que usan la pantalla de calificar
+// (obtenerDatosEvaluacion), el cuadro (obtenerCuadroMateria) y
+// limpiarDuplicadosNotas: si hay duplicados, la que cuenta es la ultima.
+function mapaUltimaFilaNotas(dataNotas, indId) {
+  const map = {};
+  for (let r = 1; r < dataNotas.length; r++) {
+    if (String(dataNotas[r][1]).trim() !== indId) continue;
+    map[String(dataNotas[r][2]).trim()] = { fila: r + 1, nivel: dataNotas[r][5] };
+  }
+  return map;
 }
 
 // Historial completo (Notas + Asistencia) de una materia, mas reciente primero.
@@ -1019,11 +1076,30 @@ function obtenerBitacoraCambios(idMateria) {
           coincide = true;
           detalle = `Asistencia ${fecha} — ${mapEstNombre[idEst] || idEst}`;
         }
+      } else if (tipo === "NOTA_FINAL") {
+        // Correcciones de nota final (corregirNotaFinal): referencia = idMateria|idEst|periodo
+        const [idMat, idEst, per] = referencia.split("|");
+        if (String(idMat).trim() === String(idMateria).trim()) {
+          coincide = true;
+          detalle = `Nota final${per ? " (Periodo " + per + ")" : " anual"} — ${mapEstNombre[idEst] || idEst}`;
+        }
       }
 
+      // Las correcciones traen motivo (columna 8). Se agrega al detalle para que
+      // se vea en pantalla y en el PDF sin tener que tocar el frontend.
+      const motivoFila = data[i].length > 7 ? String(data[i][7] || "").trim() : "";
+      if (coincide && motivoFila) detalle += ` · ${motivoFila}`;
+
       if (coincide) {
+        // Una fecha mala en UNA fila no debe tumbar todo el historial.
+        let fechaTxt;
+        try {
+          fechaTxt = Utilities.formatDate(new Date(data[i][1]), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss");
+        } catch (errFecha) {
+          fechaTxt = String(data[i][1]);
+        }
         lista.push({
-          fecha: Utilities.formatDate(new Date(data[i][1]), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm:ss"),
+          fecha: fechaTxt,
           usuario: data[i][2],
           tipo: tipo,
           detalle: detalle,
@@ -1050,7 +1126,7 @@ function generarPdfBitacoraCambios(idMateria) {
       if (String(dataMat[i][0]) === String(idMateria)) { nombreMateria = dataMat[i][2]; break; }
     }
 
-    const ETIQUETA_TIPO = { NOTA: "Nota", ASISTENCIA: "Asistencia" };
+    const ETIQUETA_TIPO = { NOTA: "Nota", ASISTENCIA: "Asistencia", NOTA_FINAL: "Nota final" };
 
     let filas = "";
     datos.lista.forEach(h => {
@@ -1098,7 +1174,14 @@ function generarPdfBitacoraCambios(idMateria) {
   }
 }
 
+// Todo el guardado corre bajo el candado de NOTAS (ver conCandadoNotas): la
+// lectura de NOTAS y las escrituras pasan juntas, sin que otro guardado se meta
+// en medio y cree una fila duplicada.
 function guardarCalificaciones(data) {
+  return conCandadoNotas(() => guardarCalificacionesInterno(data));
+}
+
+function guardarCalificacionesInterno(data) {
   const ss = SpreadsheetApp.openById(SHEET_ID);
   const sheet = ss.getSheetByName("NOTAS");
   const fechaActual = formatearFechaInput(new Date());
@@ -1125,6 +1208,10 @@ function guardarCalificaciones(data) {
   const pesoCotFijo = esCotidianoInd ? calcularPesoCotidianoVigente(ss, idMateriaInd, periodoInd) : 0;
 
   const dataNotas = sheet.getDataRange().getValues();
+  // Si hay duplicados se escribe en la ULTIMA fila: es la que muestran la
+  // pantalla y los reportes. Antes se escribia en la primera (break) y el
+  // cambio "no se reflejaba".
+  const ultimaFila = mapaUltimaFilaNotas(dataNotas, indId);
 
   data.lista.forEach(i => {
     let fila = -1;
@@ -1140,12 +1227,9 @@ function guardarCalificaciones(data) {
     }
 
     let nivelAnterior = null;
-    for(let r = 1; r < dataNotas.length; r++) {
-      if(String(dataNotas[r][1]).trim() === indId && String(dataNotas[r][2]).trim() === estId) {
-        fila = r + 1;
-        nivelAnterior = dataNotas[r][5];
-        break;
-      }
+    if (ultimaFila[estId]) {
+      fila = ultimaFila[estId].fila;
+      nivelAnterior = ultimaFila[estId].nivel;
     }
 
     if(fila > -1) {
@@ -1175,7 +1259,9 @@ function guardarCalificaciones(data) {
       sheet.getRange(filaNueva, 4).setNumberFormat('0.00');
       sheet.getRange(filaNueva, 6).setNumberFormat('0.00');
 
-      dataNotas.push(["", indId, estId, "", "", ""]);
+      // Si el mismo estudiante viniera dos veces en la lista, la 2da vez
+      // actualiza esta fila nueva en vez de crear otra.
+      ultimaFila[estId] = { fila: filaNueva, nivel: nivelBruto };
     }
   });
   return {success: true, message: "Notas guardadas correctamente"};
@@ -1395,6 +1481,10 @@ function obtenerDiasNoLectivos(idMateria) {
 }
 
 function corregirNota(data) {
+  return conCandadoNotas(() => corregirNotaInterno(data));
+}
+
+function corregirNotaInterno(data) {
   try {
     const ss = SpreadsheetApp.openById(SHEET_ID);
     const sheet = ss.getSheetByName("NOTAS");
@@ -1438,15 +1528,10 @@ function corregirNota(data) {
     }
 
     const dataNotas = sheet.getDataRange().getValues();
-    let fila = -1;
-    let nivelAnterior = null;
-    for (let r = 1; r < dataNotas.length; r++) {
-      if (String(dataNotas[r][1]).trim() === indId && String(dataNotas[r][2]).trim() === estId) {
-        fila = r + 1;
-        nivelAnterior = dataNotas[r][5];
-        break;
-      }
-    }
+    // Misma regla que la pantalla: si hay duplicados, se corrige la ULTIMA fila.
+    const ultima = mapaUltimaFilaNotas(dataNotas, indId)[estId];
+    let fila = ultima ? ultima.fila : -1;
+    let nivelAnterior = ultima ? ultima.nivel : null;
 
     if (fila > -1) {
       sheet.getRange(fila, 4).setNumberFormat('0.00').setValue(porcObtenido);
@@ -1466,15 +1551,11 @@ function corregirNota(data) {
 
     let motivoFull = "CORRECCIÓN | Motivo: " + motivo;
     if (detalle) motivoFull += " | Detalle: " + detalle;
-    try {
-      const bitSheet = ss.getSheetByName("BITACORA_CAMBIOS");
-      if (bitSheet) {
-        const fechaHora = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
-        bitSheet.appendRow([fechaHora, usuario, "NOTA", indId + "|" + estId, nivelAnterior, nivelBruto, motivoFull]);
-      }
-    } catch (e) {
-      Logger.log("Error registrando motivo de corrección: " + e.toString());
-    }
+    // Antes se hacia appendRow sin la columna ID (todo quedaba corrido una
+    // columna y la correccion no salia en el historial). Ahora usa el mismo
+    // registrador que el resto, con el motivo en la columna MOTIVO. Si la hoja
+    // no existe, se crea (antes se perdia el rastro en silencio).
+    registrarBitacoraCambio(ss, "NOTA", indId + "|" + estId, nivelAnterior, nivelBruto, usuario, motivoFull);
 
     return { success: true, message: "Nota corregida correctamente" };
   } catch (e) {
@@ -3631,7 +3712,86 @@ function getSectionKPIs(idSeccion) {
 // el límite de 6 minutos de ejecución de Apps Script).
 // Hacer una copia del Sheets antes de correrlo.
 // ==========================================
+// ==========================================
+// MANTENIMIENTO ÚNICO: REPARAR BITÁCORA CORRIDA (correcciones del 26-oct-2026 en adelante)
+// corregirNota / corregirNotaFinal escribian en BITACORA_CAMBIOS sin la columna
+// ID, asi que esas filas quedaron corridas una columna:
+//   A=fecha  B=usuario  C=tipo  D=referencia  E=anterior  F=nuevo  G=motivo
+// Esta funcion las endereza a:
+//   A=ID  B=fecha  C=usuario  D=tipo  E=referencia  F=anterior  G=nuevo  H=motivo
+// Solo toca filas cuya columna A NO empieza con "BIT-" y cuya columna C es
+// NOTA o NOTA_FINAL (las demas no se tocan). Es idempotente: una fila ya
+// reparada empieza con "BIT-" y se salta.
+//
+// PASO 1: Run -> repararBitacoraCorrida        (SIMULACION: solo muestra en el log que haria)
+// PASO 2: hacer copia del Sheets
+// PASO 3: Run -> repararBitacoraCorrida_APLICAR (escribe de verdad)
+// ==========================================
+function repararBitacoraCorrida(aplicar) {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const sheet = ss.getSheetByName("BITACORA_CAMBIOS");
+  if (!sheet) { Logger.log("No existe BITACORA_CAMBIOS. Nada que reparar."); return { success: true, reparadas: 0 }; }
+
+  const ultimaCol = Math.max(sheet.getLastColumn(), 8);
+  const data = sheet.getRange(1, 1, sheet.getLastRow(), ultimaCol).getValues();
+  const tz = Session.getScriptTimeZone();
+
+  const reparaciones = [];
+  for (let i = 1; i < data.length; i++) {
+    const a = data[i][0];
+    const tipoEnC = String(data[i][2]).trim();
+    if (String(a).indexOf("BIT-") === 0) continue;
+    if (tipoEnC !== "NOTA" && tipoEnC !== "NOTA_FINAL") continue;
+
+    // La fecha se escribio como texto "yyyy-MM-dd HH:mm:ss"; Sheets pudo haberla convertido a fecha sola.
+    let fecha = a;
+    if (!(a instanceof Date)) {
+      const m = String(a).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+      fecha = m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : String(a);
+    }
+
+    const nueva = [
+      "BIT-FIX-" + (i + 1) + "-" + Date.now(),
+      fecha,
+      data[i][1],   // usuario
+      tipoEnC,      // tipo
+      data[i][3],   // referencia
+      data[i][4],   // anterior
+      data[i][5],   // nuevo
+      data[i][6]    // motivo
+    ];
+    reparaciones.push({ fila: i + 1, nueva: nueva });
+  }
+
+  reparaciones.forEach(r => {
+    const f = r.nueva[1] instanceof Date ? Utilities.formatDate(r.nueva[1], tz, "dd/MM/yyyy HH:mm:ss") : r.nueva[1];
+    Logger.log("Fila " + r.fila + ": " + f + " | " + r.nueva[2] + " | " + r.nueva[3] + " | " + r.nueva[4] + " | " + r.nueva[5] + " -> " + r.nueva[6] + " | " + r.nueva[7]);
+  });
+
+  if (!aplicar) {
+    Logger.log("SIMULACION: se repararian " + reparaciones.length + " filas. No se escribio nada. Para aplicar: Run -> repararBitacoraCorrida_APLICAR");
+    return { success: true, simulacion: true, reparadas: reparaciones.length };
+  }
+
+  return conCandadoNotas(() => {
+    if (reparaciones.length > 0) {
+      asegurarColumnaMotivoBitacora(sheet);
+      reparaciones.forEach(r => sheet.getRange(r.fila, 1, 1, 8).setValues([r.nueva]));
+    }
+    Logger.log("Filas reparadas: " + reparaciones.length);
+    return { success: true, reparadas: reparaciones.length };
+  });
+}
+
+function repararBitacoraCorrida_APLICAR() {
+  return repararBitacoraCorrida(true);
+}
+
 function limpiarDuplicadosNotas() {
+  return conCandadoNotas(() => limpiarDuplicadosNotasInterno());
+}
+
+function limpiarDuplicadosNotasInterno() {
   const ss = SpreadsheetApp.openById(SHEET_ID);
   const sheet = ss.getSheetByName("NOTAS");
   const data = sheet.getDataRange().getValues();
@@ -3698,6 +3858,10 @@ function migrarIndicadoresAPeriodo1() {
 // Correr desde el editor de Apps Script (Run -> migrarNotasAMotorV2).
 // ==========================================
 function migrarNotasAMotorV2() {
+  return conCandadoNotas(() => migrarNotasAMotorV2Interno());
+}
+
+function migrarNotasAMotorV2Interno() {
   const ss = SpreadsheetApp.openById(SHEET_ID);
   const sheet = ss.getSheetByName("NOTAS");
   const data = sheet.getDataRange().getValues();
@@ -3753,6 +3917,10 @@ function migrarNotasAMotorV2() {
 // ==========================================
 
 function corregirNotaFinal(data) {
+  return conCandadoNotas(() => corregirNotaFinalInterno(data));
+}
+
+function corregirNotaFinalInterno(data) {
   try {
     const ss = SpreadsheetApp.openById(SHEET_ID);
     const idMateria = String(data.idMateria).trim();
@@ -3778,11 +3946,13 @@ function corregirNotaFinal(data) {
 
     const dataSheet = sheet.getDataRange().getValues();
     let fila = -1;
+    let notaAnteriorCorregida = "";
     for (let r = 1; r < dataSheet.length; r++) {
       if (String(dataSheet[r][1]).trim() === idMateria &&
           String(dataSheet[r][2]).trim() === idEstudiante &&
           String(dataSheet[r][3]).trim() === periodo) {
         fila = r + 1;
+        notaAnteriorCorregida = dataSheet[r][4];
         break;
       }
     }
@@ -3798,16 +3968,11 @@ function corregirNotaFinal(data) {
       sheet.appendRow(["CNF-" + Date.now(), idMateria, idEstudiante, periodo, notaCorregida, motivo, detalle, usuario, fechaActual]);
     }
 
-    // Bitácora
-    try {
-      const bitSheet = ss.getSheetByName("BITACORA_CAMBIOS");
-      if (bitSheet) {
-        const fechaHora = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss");
-        bitSheet.appendRow([fechaHora, usuario, "NOTA_FINAL", idMateria + "|" + idEstudiante + "|" + periodo, "", notaCorregida, "CORRECCIÓN NOTA FINAL | Motivo: " + motivo + (detalle ? " | Detalle: " + detalle : "")]);
-      }
-    } catch (e) {
-      Logger.log("Error bitacora corregirNotaFinal: " + e.toString());
-    }
+    // Bitácora (mismo arreglo que corregirNota: con columna ID y MOTIVO en su lugar).
+    // valor anterior = la correccion previa si existia, si no queda vacio.
+    registrarBitacoraCambio(ss, "NOTA_FINAL", idMateria + "|" + idEstudiante + "|" + periodo,
+      notaAnteriorCorregida, notaCorregida, usuario,
+      "CORRECCIÓN NOTA FINAL | Motivo: " + motivo + (detalle ? " | Detalle: " + detalle : ""));
 
     return { success: true, message: "Nota final corregida correctamente" };
   } catch (e) {
