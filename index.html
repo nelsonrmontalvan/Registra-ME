@@ -699,6 +699,10 @@
                     <i class="fas fa-users-cog w-6 sb-icon transition"></i>
                     <span class="font-medium text-sm">Usuarios</span>
                 </a>
+                <a onclick="app.avisosAdmin()" class="menu-item sb-item flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition group">
+                    <i class="fas fa-bullhorn w-6 sb-icon transition"></i>
+                    <span class="font-medium text-sm">Avisos de Soporte</span>
+                </a>
             </div>
 
 
@@ -734,6 +738,10 @@
                 <h2 id="page-title" class="text-base md:text-xl font-bold text-gray-800 truncate">Dashboard</h2>
             </div>
             <div class="flex items-center gap-2 md:gap-4 shrink-0">
+                <button onclick="app.avisosHistorial()" aria-label="Avisos de soporte" title="Avisos de soporte" class="relative h-9 w-9 md:h-10 md:w-10 rounded-full flex items-center justify-center text-slate-500 hover:text-teal-600 hover:bg-teal-50 transition shrink-0">
+                    <i class="fas fa-bell"></i>
+                    <span id="avisos-badge" class="hidden absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">0</span>
+                </button>
                 <div class="hidden md:flex flex-col text-right mr-2">
                     <span id="user-name" class="text-sm font-bold text-gray-700">Cargando...</span>
                     <span id="user-role" class="text-xs text-gray-500 uppercase">Docente</span>
@@ -1593,6 +1601,9 @@ enterApp: async () => {
             // Y luego revisamos cada 20 minutos mientras la pestaña siga abierta
             if (app.state.alertaAsistenciaInterval) clearInterval(app.state.alertaAsistenciaInterval);
             app.state.alertaAsistenciaInterval = setInterval(() => app.checkAlertasDelDia(), 20 * 60 * 1000);
+
+            // --- AVISOS DE SOPORTE: ~10 s después de entrar (espera si hay otro mensaje abierto) ---
+            setTimeout(() => app.avisosCheck(), 10000);
         },
 
         // Junta asistencia pendiente + incidencias pendientes y las muestra en UN solo mensaje
@@ -2757,6 +2768,7 @@ openStudents: async (idSec, nombreSec) => {
                             <button onclick="app.modalEstudiante('${est.id}')" class="h-8 w-8 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition flex items-center justify-center" title="Editar"><i class="fas fa-pen"></i></button>
                             <button onclick="app.verNotasEstudiante('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition flex items-center justify-center" title="Ver notas"><i class="fas fa-eye"></i></button>
                             <button onclick="app.verAsistenciaEstudiante('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-amber-50 text-amber-600 hover:bg-amber-100 transition flex items-center justify-center" title="Ver asistencia"><i class="fas fa-calendar-check"></i></button>
+                            <button onclick="app.verExpedienteEstudiante('${est.id}', ${app.jsStr(est.nombre)})" class="h-8 w-8 rounded bg-teal-50 text-teal-600 hover:bg-teal-100 transition flex items-center justify-center" title="Expediente: asistencia, evaluaciones e incidencias"><i class="fas fa-folder-open"></i></button>
                             <button onclick="app.modalTraslado('${est.id}', '${est.nombre}')" class="h-8 w-8 rounded bg-slate-100 text-slate-500 hover:bg-slate-200 transition flex items-center justify-center" title="Trasladar"><i class="fas fa-exchange-alt"></i></button>
                             <button onclick="app.deleteStudent('${est.id}')" class="h-8 w-8 rounded bg-red-50 text-red-500 hover:bg-red-100 transition flex items-center justify-center" title="Eliminar"><i class="fas fa-trash"></i></button>
                         </div>
@@ -7408,6 +7420,412 @@ adminLoadUsers: async () => {
         },
 
         // 2. VER ASISTENCIA DEL ESTUDIANTE (MODAL CON SELECTOR DE MATERIA)
+        // ==========================================
+        // EXPEDIENTE DEL ESTUDIANTE (por materia, solo lectura)
+        // Todo lo que el sistema registro de un estudiante en una materia, con
+        // fecha, usuario y la referencia del grupo (sin nombres de compañeros),
+        // para atender reclamos con datos claros y objetivos.
+        // ==========================================
+        // ==========================================
+        // AVISOS DE SOPORTE
+        // El admin publica avisos (nivel, titulo, texto, hasta 2 fotos). Cada
+        // usuario los ve en el centro de la pantalla ~10 s despues de entrar,
+        // y se repiten en cada ingreso HASTA que toca "Entendido". La campanita
+        // del encabezado guarda el historial.
+        // ==========================================
+        AVISO_NIVEL: {
+            URGENTE: { label: 'URGENTE', icon: 'fa-bolt', banda: 'bg-red-600', chip: 'bg-red-50 text-red-700 border-red-200' },
+            MEJORA:  { label: 'MEJORA NUEVA', icon: 'fa-wand-magic-sparkles', banda: 'bg-emerald-600', chip: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+            INFO:    { label: 'INFORMACIÓN', icon: 'fa-circle-info', banda: 'bg-sky-600', chip: 'bg-sky-50 text-sky-700 border-sky-200' }
+        },
+
+        avisosCheck: async (intento = 0) => {
+            if (!app.user || !app.user.email) return;
+            // Si hay otro mensaje abierto (ej. alertas del día), esperamos a que se cierre.
+            if (Swal.isVisible()) {
+                if (intento < 20) setTimeout(() => app.avisosCheck(intento + 1), 15000);
+                return;
+            }
+            const res = await app.api({ action: 'getAvisos' }, { silent: true });
+            if (!res || !res.success) return;
+            app.state.avisos = res.lista;
+            app.avisosActualizarBadge();
+            const pendiente = res.lista.find(a => !a.leido);
+            if (pendiente && !Swal.isVisible()) app.avisosMostrar(pendiente.id, { encadenar: true });
+        },
+
+        avisosActualizarBadge: () => {
+            const n = (app.state.avisos || []).filter(a => !a.leido).length;
+            const b = document.getElementById('avisos-badge');
+            if (!b) return;
+            b.textContent = n > 9 ? '9+' : String(n);
+            b.classList.toggle('hidden', n === 0);
+        },
+
+        avisosHtml: (a) => {
+            const esc = app.escapeHtml;
+            const nv = app.AVISO_NIVEL[a.nivel] || app.AVISO_NIVEL.INFO;
+            const fotos = (a.imagenes || []).slice(0, 2);
+            const collage = fotos.length === 0 ? '' : `
+                <div class="grid ${fotos.length === 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-2 mt-4">
+                    ${fotos.map(u => `
+                        <button type="button" onclick="app.avisosZoom('${esc(u)}')" class="group relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50 ${fotos.length === 2 ? 'h-40' : 'h-56'}">
+                            <img src="${esc(u)}" alt="Captura del ajuste" class="w-full h-full object-contain group-hover:scale-105 transition duration-300" referrerpolicy="no-referrer">
+                            <span class="absolute bottom-2 right-2 text-[10px] font-bold bg-black/60 text-white px-2 py-0.5 rounded-full"><i class="fas fa-magnifying-glass-plus mr-1"></i>Ampliar</span>
+                        </button>`).join('')}
+                </div>`;
+            return `
+                <div class="text-left -mx-2">
+                    <div class="${nv.banda} text-white rounded-xl px-4 py-2.5 flex items-center justify-between ${a.nivel === 'URGENTE' ? 'animate-pulse' : ''}">
+                        <span class="font-extrabold tracking-widest text-sm"><i class="fas ${nv.icon} mr-2"></i>${nv.label}</span>
+                        <span class="text-[11px] opacity-80">${esc(a.fecha)}</span>
+                    </div>
+                    <div class="text-[11px] font-bold uppercase tracking-wide text-slate-400 mt-4"><i class="fas fa-headset mr-1"></i>Mensaje de Soporte RegistraME</div>
+                    <h3 class="text-xl font-extrabold text-slate-800 leading-tight mt-1">${esc(a.titulo)}</h3>
+                    ${a.texto ? `<p class="text-sm text-slate-600 mt-2 whitespace-pre-line">${esc(a.texto)}</p>` : ''}
+                    ${collage}
+                </div>`;
+        },
+
+        // encadenar: al tocar "Entendido" se muestra el siguiente aviso sin leer (si hay).
+        avisosMostrar: async (idAviso, { encadenar = false } = {}) => {
+            const a = (app.state.avisos || []).find(x => x.id === idAviso);
+            if (!a) return;
+            const r = await Swal.fire({
+                html: app.avisosHtml(a),
+                width: '640px',
+                showCloseButton: true,
+                allowOutsideClick: false,
+                confirmButtonText: a.leido ? 'Cerrar' : '<i class="fas fa-check mr-1"></i> Entendido',
+                confirmButtonColor: '#0f766e',
+                footer: a.leido ? '' : '<span class="text-[11px] text-slate-400">Este aviso se volverá a mostrar hasta que toques "Entendido".</span>'
+            });
+            if (r.isConfirmed && !a.leido) {
+                a.leido = true;
+                app.avisosActualizarBadge();
+                app.api({ action: 'marcarAvisoLeido', idAviso: a.id }, { silent: true });
+                if (encadenar) {
+                    const sig = (app.state.avisos || []).find(x => !x.leido);
+                    if (sig) setTimeout(() => app.avisosMostrar(sig.id, { encadenar: true }), 400);
+                }
+            }
+        },
+
+        // Foto en grande, por encima de cualquier modal. Click o Esc para cerrar.
+        avisosZoom: (url) => {
+            const ov = document.createElement('div');
+            ov.className = 'fixed inset-0 bg-black/80 flex items-center justify-center p-4 cursor-zoom-out';
+            ov.style.zIndex = 100000;
+            ov.innerHTML = `<img src="${app.escapeHtml(url)}" class="max-w-full max-h-full rounded-xl shadow-2xl" referrerpolicy="no-referrer"><span class="absolute top-4 right-5 text-white text-2xl"><i class="fas fa-xmark"></i></span>`;
+            const cerrar = () => { ov.remove(); document.removeEventListener('keydown', esc, true); };
+            const esc = (e) => { if (e.key === 'Escape') { e.stopPropagation(); cerrar(); } };
+            ov.addEventListener('click', cerrar);
+            document.addEventListener('keydown', esc, true);
+            document.body.appendChild(ov);
+        },
+
+        // Campanita: historial de avisos
+        avisosHistorial: async () => {
+            Swal.fire({ title: 'Cargando avisos...', didOpen: () => Swal.showLoading() });
+            const res = await app.api({ action: 'getAvisos' });
+            if (!res || !res.success) return;
+            app.state.avisos = res.lista;
+            app.avisosActualizarBadge();
+            const esc = app.escapeHtml;
+            const filas = res.lista.length === 0
+                ? '<p class="text-sm text-slate-400 text-center py-6">No hay avisos de soporte por ahora.</p>'
+                : res.lista.map(a => {
+                    const nv = app.AVISO_NIVEL[a.nivel] || app.AVISO_NIVEL.INFO;
+                    return `<button type="button" onclick="app.avisosMostrar('${a.id}')" class="w-full text-left flex items-center gap-3 p-3 rounded-xl border ${a.leido ? 'border-slate-100 bg-white' : 'border-teal-200 bg-teal-50/40'} hover:bg-slate-50 transition">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${nv.chip} shrink-0"><i class="fas ${nv.icon} mr-1"></i>${nv.label}</span>
+                        <span class="flex-1 min-w-0"><span class="block text-sm font-semibold text-slate-800 truncate">${esc(a.titulo)}</span><span class="block text-[11px] text-slate-400">${esc(a.fecha)}</span></span>
+                        ${a.leido ? '<i class="fas fa-check text-slate-300"></i>' : '<span class="h-2.5 w-2.5 rounded-full bg-teal-500 shrink-0" title="Sin leer"></span>'}
+                    </button>`;
+                }).join('');
+            Swal.fire({
+                title: '<i class="fas fa-bell mr-2 text-teal-600"></i>Avisos de Soporte',
+                html: `<div class="space-y-2 max-h-[60vh] overflow-y-auto text-left">${filas}</div>`,
+                width: '560px',
+                showCloseButton: true,
+                showConfirmButton: false
+            });
+        },
+
+        // ---------- ADMIN ----------
+        avisosAdmin: async () => {
+            Swal.fire({ title: 'Cargando avisos...', didOpen: () => Swal.showLoading() });
+            const res = await app.api({ action: 'getAvisosAdmin' });
+            if (!res || !res.success) return Swal.fire('Error', (res && res.error) || 'No se pudo cargar', 'error');
+            app.state.avisosAdmin = res.lista;
+            const esc = app.escapeHtml;
+            const filas = res.lista.length === 0
+                ? '<p class="text-sm text-slate-400 text-center py-6">Todavía no has publicado avisos.</p>'
+                : res.lista.map(a => {
+                    const nv = app.AVISO_NIVEL[a.nivel] || app.AVISO_NIVEL.INFO;
+                    const pct = a.totalUsuarios ? Math.round(a.leidos.length / a.totalUsuarios * 100) : 0;
+                    return `<div class="p-3 rounded-xl border border-slate-100 bg-white ${a.activo ? '' : 'opacity-60'}">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${nv.chip}">${nv.label}</span>
+                            <span class="text-sm font-semibold text-slate-800 truncate flex-1">${esc(a.titulo)}</span>
+                            <span class="text-[11px] text-slate-400">${esc(a.fecha)}</span>
+                        </div>
+                        <div class="flex items-center gap-2 mt-2">
+                            <div class="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full bg-teal-500" style="width:${pct}%"></div></div>
+                            <span class="text-[11px] font-bold text-slate-600 whitespace-nowrap">Leído por ${a.leidos.length} de ${a.totalUsuarios}</span>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 mt-2">
+                            <button onclick="app.avisosLectores('${a.id}')" class="text-[11px] px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 font-bold"><i class="fas fa-users mr-1"></i>Quién lo leyó</button>
+                            <button onclick="app.avisosForm('${a.id}')" class="text-[11px] px-2 py-1 rounded-lg bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 font-bold"><i class="fas fa-pen mr-1"></i>Editar</button>
+                            <button onclick="app.avisosCambiarEstado('${a.id}', ${a.activo ? 'false' : 'true'})" class="text-[11px] px-2 py-1 rounded-lg ${a.activo ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-emerald-50 border-emerald-200 text-emerald-700'} border font-bold"><i class="fas ${a.activo ? 'fa-box-archive' : 'fa-rotate-left'} mr-1"></i>${a.activo ? 'Archivar' : 'Reactivar'}</button>
+                        </div>
+                    </div>`;
+                }).join('');
+            Swal.fire({
+                title: '<i class="fas fa-bullhorn mr-2 text-teal-600"></i>Avisos de Soporte',
+                html: `<div class="text-left"><p class="text-xs text-slate-500 mb-3">Cada usuario verá el aviso al entrar, hasta que toque "Entendido". Archivar lo oculta sin borrarlo.</p><div class="space-y-2 max-h-[55vh] overflow-y-auto">${filas}</div></div>`,
+                width: '680px',
+                showCloseButton: true,
+                confirmButtonText: '<i class="fas fa-plus mr-1"></i> Nuevo aviso',
+                confirmButtonColor: '#0f766e'
+            }).then(r => { if (r.isConfirmed) app.avisosForm(); });
+        },
+
+        avisosLectores: (idAviso) => {
+            const a = (app.state.avisosAdmin || []).find(x => x.id === idAviso);
+            if (!a) return;
+            const esc = app.escapeHtml;
+            Swal.fire({
+                title: esc(a.titulo),
+                width: '680px',
+                showCloseButton: true,
+                confirmButtonText: 'Volver',
+                html: `<div class="grid md:grid-cols-2 gap-3 text-left">
+                    <div><div class="text-xs font-bold uppercase text-emerald-600 mb-1"><i class="fas fa-check mr-1"></i>Leído (${a.leidos.length})</div>
+                        <div class="max-h-[50vh] overflow-y-auto space-y-1">${a.leidos.map(u => `<div class="text-xs p-2 rounded-lg bg-emerald-50/50"><b class="text-slate-700">${esc(u.nombre)}</b><br><span class="text-slate-400">${esc(u.fecha)}</span></div>`).join('') || '<p class="text-xs text-slate-400">Nadie todavía.</p>'}</div></div>
+                    <div><div class="text-xs font-bold uppercase text-amber-600 mb-1"><i class="fas fa-hourglass-half mr-1"></i>Pendiente (${a.pendientes.length})</div>
+                        <div class="max-h-[50vh] overflow-y-auto space-y-1">${a.pendientes.map(u => `<div class="text-xs p-2 rounded-lg bg-amber-50/50"><b class="text-slate-700">${esc(u.nombre)}</b><br><span class="text-slate-400">${esc(u.email)}</span></div>`).join('') || '<p class="text-xs text-slate-400">¡Todos lo leyeron!</p>'}</div></div>
+                </div>`
+            }).then(() => app.avisosAdmin());
+        },
+
+        avisosCambiarEstado: async (idAviso, activo) => {
+            Swal.fire({ title: 'Guardando...', didOpen: () => Swal.showLoading() });
+            const res = await app.api({ action: 'cambiarEstadoAviso', idAviso, activo });
+            if (!res || !res.success) return Swal.fire('Error', (res && res.message) || 'No se pudo guardar', 'error');
+            app.avisosAdmin();
+        },
+
+        // Reduce la foto en el navegador (max 1600 px, JPEG) para que suba rapido.
+        avisosComprimir: (file) => new Promise((resolve, reject) => {
+            const fr = new FileReader();
+            fr.onload = () => {
+                const img = new Image();
+                img.onload = () => {
+                    const max = 1600, k = Math.min(1, max / Math.max(img.width, img.height));
+                    const c = document.createElement('canvas');
+                    c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+                    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+                    const dataUrl = c.toDataURL('image/jpeg', 0.85);
+                    resolve({ base64: dataUrl.split(',')[1], mime: 'image/jpeg', nombre: (file.name || 'captura').replace(/\.[^.]+$/, '') + '.jpg' });
+                };
+                img.onerror = reject;
+                img.src = fr.result;
+            };
+            fr.onerror = reject;
+            fr.readAsDataURL(file);
+        }),
+
+        avisosForm: async (idAviso) => {
+            const a = idAviso ? (app.state.avisosAdmin || []).find(x => x.id === idAviso) : null;
+            const esc = app.escapeHtml;
+            const { value: form } = await Swal.fire({
+                title: a ? 'Editar aviso' : 'Nuevo aviso de soporte',
+                width: '620px',
+                showCancelButton: true,
+                confirmButtonText: a ? 'Guardar cambios' : '<i class="fas fa-paper-plane mr-1"></i> Publicar',
+                confirmButtonColor: '#0f766e',
+                html: `<div class="text-left space-y-3">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase">Nivel</label>
+                        <select id="av-nivel" class="w-full p-2 border rounded bg-white mt-1">
+                            <option value="URGENTE" ${a && a.nivel === 'URGENTE' ? 'selected' : ''}>🔴 URGENTE</option>
+                            <option value="MEJORA" ${!a || a.nivel === 'MEJORA' ? 'selected' : ''}>🟢 Mejora nueva</option>
+                            <option value="INFO" ${a && a.nivel === 'INFO' ? 'selected' : ''}>🔵 Información</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase">Título de la mejora</label>
+                        <input id="av-titulo" class="w-full p-2 border rounded bg-white mt-1" maxlength="120" placeholder="Ej: Nuevo botón de Expediente del estudiante" value="${a ? esc(a.titulo) : ''}">
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase">Texto (opcional)</label>
+                        <textarea id="av-texto" rows="4" class="w-full p-2 border rounded bg-white mt-1" placeholder="Qué cambió, dónde está y para qué sirve.">${a ? esc(a.texto) : ''}</textarea>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase">Fotos (máximo 2)</label>
+                        ${a && a.imagenes.length ? `<p class="text-[11px] text-slate-400 mt-1">Este aviso ya tiene ${a.imagenes.length} foto(s). Si elegís nuevas, reemplazan a las actuales.</p>` : ''}
+                        <input id="av-fotos" type="file" accept="image/*" multiple class="w-full text-sm mt-1">
+                        <div id="av-prev" class="grid grid-cols-2 gap-2 mt-2"></div>
+                    </div>
+                </div>`,
+                didOpen: () => {
+                    const inp = document.getElementById('av-fotos');
+                    inp.addEventListener('change', () => {
+                        const prev = document.getElementById('av-prev');
+                        prev.innerHTML = '';
+                        Array.from(inp.files).slice(0, 2).forEach(f => {
+                            const u = URL.createObjectURL(f);
+                            prev.insertAdjacentHTML('beforeend', `<img src="${u}" class="h-28 w-full object-cover rounded-lg border">`);
+                        });
+                    });
+                },
+                preConfirm: async () => {
+                    const titulo = document.getElementById('av-titulo').value.trim();
+                    if (!titulo) { Swal.showValidationMessage('Poné un título'); return false; }
+                    const files = Array.from(document.getElementById('av-fotos').files || []);
+                    if (files.length > 2) { Swal.showValidationMessage('Máximo 2 fotos'); return false; }
+                    try {
+                        const imagenes = await Promise.all(files.map(f => app.avisosComprimir(f)));
+                        return { titulo, nivel: document.getElementById('av-nivel').value, texto: document.getElementById('av-texto').value, imagenes };
+                    } catch (e) { Swal.showValidationMessage('No se pudo leer una de las fotos'); return false; }
+                }
+            });
+            if (!form) return app.avisosAdmin();
+            Swal.fire({ title: a ? 'Guardando...' : 'Publicando...', didOpen: () => Swal.showLoading() });
+            const res = await app.api({ action: 'guardarAviso', idAviso: a ? a.id : '', ...form });
+            if (!res || !res.success) return Swal.fire('Error', (res && res.message) || 'No se pudo guardar el aviso', 'error');
+            app.toast('success', res.message);
+            app.avisosAdmin();
+        },
+
+        verExpedienteEstudiante: async (idEst, nombreEst, idMateria) => {
+            Swal.fire({ title: 'Cargando expediente...', didOpen: () => Swal.showLoading() });
+            const x = await app.api({ action: 'getExpediente', idEstudiante: idEst, idMateria: idMateria || '' });
+            if (!x || x.error) return Swal.fire('Error', (x && x.error) || 'No se pudo cargar el expediente', 'error');
+
+            const esc = app.escapeHtml;
+            const r = x.resumen;
+
+            const selector = x.materias.length > 1
+                ? `<select onchange="app.verExpedienteEstudiante('${idEst}', ${app.jsStr(nombreEst)}, this.value)" class="border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-teal-300">
+                        ${x.materias.map(m => `<option value="${esc(m.id)}" ${m.id === x.materia.id ? 'selected' : ''}>${esc(m.nombre)}</option>`).join('')}
+                   </select>`
+                : `<span class="text-sm text-slate-600"><i class="fas fa-book mr-1 text-teal-500"></i>${esc(x.materia.nombre)}</span>`;
+
+            // Tarjeta de resumen: dato del estudiante vs. promedio del grupo
+            const tarjeta = (titulo, valor, grupo, icono, tono) => {
+                const alto = grupo !== null && grupo !== undefined && valor > 0 && valor >= Math.max(2, grupo * 2);
+                return `<div class="rounded-2xl bg-white border border-slate-100 shadow-sm p-3">
+                    <div class="flex items-center gap-2 text-[11px] font-bold uppercase text-slate-400"><span class="h-6 w-6 rounded-lg ${tono} flex items-center justify-center"><i class="fas ${icono} text-[11px]"></i></span>${titulo}</div>
+                    <div class="text-2xl font-extrabold mt-1 ${alto ? 'text-amber-600' : 'text-slate-800'}">${valor}</div>
+                    ${grupo !== null && grupo !== undefined ? `<div class="text-[11px] text-slate-400">Promedio del grupo: <b class="text-slate-500">${grupo}</b></div>` : ''}
+                </div>`;
+            };
+            const resumenHtml = `
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+                    ${tarjeta('Ausencias', r.ai, r.grupoAi, 'fa-user-xmark', 'bg-red-50 text-red-500')}
+                    ${tarjeta('Tardías', r.t, r.grupoT, 'fa-clock', 'bg-amber-50 text-amber-500')}
+                    ${tarjeta('Escapadas', r.e, r.grupoE, 'fa-person-running', 'bg-violet-50 text-violet-500')}
+                    <div class="rounded-2xl bg-white border border-slate-100 shadow-sm p-3">
+                        <div class="flex items-center gap-2 text-[11px] font-bold uppercase text-slate-400"><span class="h-6 w-6 rounded-lg bg-rose-50 text-rose-500 flex items-center justify-center"><i class="fas fa-file-circle-xmark text-[11px]"></i></span>Evaluaciones</div>
+                        <div class="text-2xl font-extrabold mt-1 text-slate-800">${r.ceros} <span class="text-xs font-bold text-slate-400">en 0</span></div>
+                        <div class="text-[11px] text-slate-400">${r.parciales} parciales · ${r.sinNota} sin nota · <b class="text-slate-500">-${r.puntosPerdidos}%</b></div>
+                    </div>
+                </div>`;
+
+            const colorAsist = { AI: 'bg-red-50 text-red-700 border-red-100', T: 'bg-amber-50 text-amber-700 border-amber-100', E: 'bg-violet-50 text-violet-700 border-violet-100', J: 'bg-slate-50 text-slate-600 border-slate-200' };
+            const asistHtml = x.asistencia.length === 0
+                ? `<p class="text-xs text-slate-400 py-3 text-center">Sin ausencias, tardías ni escapadas registradas.</p>`
+                : x.asistencia.map(a => `
+                    <div class="flex items-start justify-between gap-3 py-2 border-b border-slate-100 last:border-0">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <span class="text-xs font-mono text-slate-500 w-20 shrink-0">${esc(a.fecha)}</span>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${colorAsist[a.estado] || 'bg-slate-50 text-slate-600 border-slate-200'}">${esc(a.label)}</span>
+                            <span class="text-[11px] text-slate-500">${a.lecciones === null ? 'día completo' : `${a.lecciones} de ${a.totalLecciones} lecciones`}</span>
+                            ${a.restaPuntos ? '' : '<span class="text-[10px] text-slate-400 italic">no resta puntos</span>'}
+                        </div>
+                        <div class="text-right text-[10px] text-slate-400 shrink-0">
+                            ${esc(a.registradoPor)}${a.registradoEl ? `<br>${esc(a.registradoEl)}` : ''}
+                            ${a.modificaciones.length ? `<details class="text-amber-600 cursor-pointer"><summary>Modificado ${a.modificaciones.length} vez/veces</summary>${a.modificaciones.map(m => `<div class="text-slate-500">${esc(m.fecha)} · ${esc(m.usuario)}: ${esc(m.anterior)} → ${esc(m.nuevo)}</div>`).join('')}</details>` : ''}
+                        </div>
+                    </div>`).join('');
+
+            const resultado = (e) => {
+                if (e.estado === 'cero') return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-700 border border-red-100">0 · no presentó / sin puntos</span>`;
+                if (e.estado === 'sin_nota') return `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-50 text-slate-600 border border-slate-200">Sin nota registrada</span>`;
+                return `<span class="text-xs font-bold text-slate-700">${esc(e.obtenido)} de ${esc(e.maximo)} ${e.escala === 'nivel' ? '(nivel)' : 'pts'}</span> <span class="text-[11px] text-slate-400">· ${e.logro === null ? '—' : e.logro + '%'}</span>`;
+            };
+            const evalHtml = x.evaluaciones.length === 0
+                ? `<p class="text-xs text-slate-400 py-3 text-center">No perdió puntos en ninguna evaluación calificada.</p>`
+                : x.evaluaciones.map(e => {
+                    const prom = e.grupo.promedio === null ? 0 : e.grupo.promedio;
+                    return `
+                    <div class="py-2.5 border-b border-slate-100 last:border-0">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <div class="text-[10px] font-bold uppercase text-teal-600">P${esc(e.periodo)} · ${esc(e.catLabel)} <span class="text-slate-400 normal-case font-medium">· vale ${esc(e.peso)}%</span></div>
+                                <div class="text-sm font-semibold text-slate-800 truncate">${esc(e.descripcion)}</div>
+                                <div class="mt-1">${resultado(e)} ${e.perdido ? `<span class="text-[11px] font-bold text-red-600 ml-1">-${e.perdido}% de la nota</span>` : ''}</div>
+                            </div>
+                            <div class="w-44 shrink-0">
+                                <div class="text-[10px] text-slate-400 mb-1">Grupo: <b class="text-slate-600">${e.grupo.promedio === null ? '—' : e.grupo.promedio + '%'}</b> promedio</div>
+                                <div class="h-1.5 rounded-full bg-slate-100 overflow-hidden"><div class="h-full bg-teal-400" style="width:${Math.max(0, Math.min(100, prom))}%"></div></div>
+                                <div class="text-[10px] text-slate-400 mt-1">${e.grupo.ceros} de ${e.grupo.calificados} calificados con 0</div>
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-1">
+                            ${e.fechaRegistro ? `Registrada ${esc(e.fechaRegistro)}` : ''}${e.registradoPor ? ` · ${esc(e.registradoPor)}` : ''}
+                            ${e.historial.length > 1 ? `<details class="inline-block ml-2 text-amber-600 cursor-pointer"><summary>${e.historial.length - 1} cambio(s) posterior(es)</summary>${e.historial.map(h => `<div class="text-slate-500">${esc(h.fecha)} · ${esc(h.usuario)}: ${esc(h.anterior)} → ${esc(h.nuevo)}${h.motivo ? ` · <i>${esc(h.motivo)}</i>` : ''}</div>`).join('')}</details>` : ''}
+                        </div>
+                    </div>`;
+                }).join('');
+
+            const incHtml = x.incidencias.length === 0 ? '' : `
+                <h5 class="text-xs font-bold uppercase text-slate-500 mt-5 mb-1"><i class="fas fa-book-open mr-1 text-slate-400"></i>Incidencias registradas (${x.incidencias.length})</h5>
+                <div class="rounded-xl border border-slate-100 bg-white px-3">${x.incidencias.map(i => `
+                    <div class="py-2 border-b border-slate-100 last:border-0 text-xs">
+                        <span class="font-mono text-slate-500">${esc(i.fecha)}</span> · <b class="text-slate-700">${esc(i.tipo)}</b>${i.general ? ' <span class="text-[10px] text-slate-400">(general)</span>' : ''} · <span class="text-slate-400">${esc(i.estado)}</span>
+                        <div class="text-slate-600 mt-0.5">${esc(i.descripcion)}</div>
+                        <div class="text-[10px] text-slate-400">${esc(i.registradoPor)}</div>
+                    </div>`).join('')}</div>`;
+
+            const alHtml = x.alertas.length === 0 ? '' : `
+                <h5 class="text-xs font-bold uppercase text-slate-500 mt-5 mb-1"><i class="fas fa-triangle-exclamation mr-1 text-slate-400"></i>Alertas tempranas del estudiante (${x.alertas.length})</h5>
+                <div class="rounded-xl border border-slate-100 bg-white px-3">${x.alertas.map(a => `
+                    <div class="py-2 border-b border-slate-100 last:border-0 text-xs">
+                        <span class="font-mono text-slate-500">${esc(a.fecha)}</span> · <b class="text-slate-700">${esc(a.nombre)}</b> <span class="text-slate-400">· ${esc(a.dimension)} · ${esc(a.estado)}</span>
+                        <div class="text-[10px] text-slate-400">${esc(a.registradoPor)}</div>
+                    </div>`).join('')}</div>`;
+
+            Swal.fire({
+                width: '1000px',
+                showCloseButton: true,
+                showConfirmButton: false,
+                html: `
+                <div class="text-left">
+                    <div class="flex flex-wrap items-end justify-between gap-2 mb-3 pr-6">
+                        <div>
+                            <div class="text-[11px] font-bold uppercase tracking-wide text-teal-600"><i class="fas fa-folder-open mr-1"></i>Expediente del estudiante</div>
+                            <h4 class="font-extrabold text-slate-800 text-lg leading-tight">${esc(x.estudiante.nombre)}</h4>
+                            <div class="text-[11px] text-slate-400">Cédula ${esc(x.estudiante.cedula)} · Generado ${esc(x.generado)}</div>
+                        </div>
+                        ${selector}
+                    </div>
+                    ${resumenHtml}
+                    <div class="max-h-[52vh] overflow-y-auto pr-1">
+                        <h5 class="text-xs font-bold uppercase text-slate-500 mb-1"><i class="fas fa-calendar-xmark mr-1 text-slate-400"></i>Asistencia (${x.asistencia.length})</h5>
+                        <div class="rounded-xl border border-slate-100 bg-white px-3">${asistHtml}</div>
+                        <h5 class="text-xs font-bold uppercase text-slate-500 mt-5 mb-1"><i class="fas fa-clipboard-list mr-1 text-slate-400"></i>Evaluaciones con pérdida de puntos (${x.evaluaciones.length})</h5>
+                        <div class="rounded-xl border border-slate-100 bg-white px-3">${evalHtml}</div>
+                        ${incHtml}
+                        ${alHtml}
+                        <p class="text-[10px] text-slate-400 mt-4">Datos tal como se registraron en el sistema, con fecha y usuario. La referencia del grupo (${r.tamanoGrupo} estudiantes) usa solo promedios y conteos, sin datos de otros estudiantes. Un 0 puede ser una evaluación no presentada o presentada sin puntos.</p>
+                    </div>
+                </div>`,
+                footer: `<button onclick="app.downloadPdf('pdfExpediente', '${idEst}', { idMateria: '${x.materia.id}' })" class="bg-teal-600 text-white px-4 py-2 rounded font-bold shadow hover:bg-teal-700 w-full"><i class="fas fa-file-pdf mr-2"></i> Descargar expediente en PDF</button>`
+            });
+        },
+
         verAsistenciaEstudiante: async (idEst, nombreEst) => {
             // Cargar materias de la sección actual
             Swal.fire({ title: 'Cargando...', didOpen: () => Swal.showLoading() });

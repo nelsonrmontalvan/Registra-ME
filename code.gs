@@ -24,6 +24,13 @@ function doPost(e) {
     if(action === "getPrefs") return response(obtenerPreferencias(data.email));
     if(action === "savePrefs") return response(guardarPreferencias(data.email, data.prefs));
 
+    // --- AVISOS DE SOPORTE ---
+    if(action === "getAvisos") return response(obtenerAvisos(data.email));
+    if(action === "marcarAvisoLeido") return response(marcarAvisoLeido(data.email, data.idAviso));
+    if(action === "guardarAviso") return response(guardarAviso(data));
+    if(action === "cambiarEstadoAviso") return response(cambiarEstadoAviso(data.email, data.idAviso, data.activo));
+    if(action === "getAvisosAdmin") return response(obtenerAvisosAdmin(data.email));
+
     // --- DASHBOARD ---
     if(action === "getInitialData") return response(obtenerDatosDocente(data.email));
 
@@ -112,6 +119,8 @@ function doPost(e) {
 
     // --- ASISTENCIA ESTUDIANTE ---
     if(action === "getStudentAttendance") return response(obtenerAsistenciaEstudiante(data.idEstudiante, data.idMateria));
+    if(action === "getExpediente") return response(obtenerExpedienteEstudiante(data.idEstudiante, data.idMateria));
+    if(action === "pdfExpediente") return response(generarPdfExpedienteEstudiante(data.id, data.idMateria));
 
     // --- NUEVAS ACCIONES ---
     if(action === "toggleExempt") return response(toggleExemptStatus(data.id, data.status));
@@ -5233,6 +5242,559 @@ function obtenerHistorialEximiciones(idMateria) {
       });
     }
     lista.sort((a, b) => new Date(b.fechaRegistro) - new Date(a.fechaRegistro));
+    return { success: true, lista: lista };
+  } catch (e) { return { error: e.toString() }; }
+}
+
+// ==========================================
+// EXPEDIENTE DEL ESTUDIANTE (por materia) -- SOLO LECTURA
+// Junta en un solo lugar todo lo que el sistema registro de un estudiante en
+// UNA materia: ausencias/tardias/escapadas con fecha, evaluaciones donde perdio
+// puntos (ceros destacados), quien y cuando registro cada cosa (BITACORA_CAMBIOS),
+// incidencias (BITACORAS) y alertas tempranas. Cada dato va acompañado de la
+// referencia del grupo (promedios, cuantos compañeros tambien tienen 0), sin
+// nombres de otros estudiantes, para mostrar que se aplico el mismo criterio a
+// todos. No escribe NADA en ninguna hoja.
+// ==========================================
+const EXP_CAT_LABEL = { TRAB_COT: "Cotidiano", TAREAS: "Tareas", PRUEBAS: "Pruebas", PROYECTOS: "Proyectos", ASIST: "Asistencia" };
+const EXP_ASIST_LABEL = { AI: "Ausencia injustificada", T: "Tardía", E: "Escapada", J: "Ausencia justificada", P: "Presente" };
+
+function obtenerExpedienteEstudiante(idEstudiante, idMateria) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const tz = Session.getScriptTimeZone();
+    const idEst = String(idEstudiante || "").trim();
+    if (!idEst) return { error: "Falta el estudiante" };
+
+    const fmtFecha = (f) => {
+      if (!f) return "";
+      if (typeof f === "string" && /^\d{4}-\d{2}-\d{2}/.test(f)) return f.substring(8, 10) + "/" + f.substring(5, 7) + "/" + f.substring(0, 4);
+      try { return Utilities.formatDate(new Date(f), tz, "dd/MM/yyyy"); } catch (e) { return String(f); }
+    };
+    const fmtFechaHora = (f) => {
+      if (!f) return "";
+      try { const d = f instanceof Date ? f : new Date(f); if (isNaN(d.getTime())) return String(f); return Utilities.formatDate(d, tz, "dd/MM/yyyy HH:mm"); } catch (e) { return String(f); }
+    };
+    const isoFecha = (f) => formatearFechaInput(f);
+
+    // --- Estudiante y su seccion ---
+    const dataEst = ss.getSheetByName("ESTUDIANTES").getDataRange().getValues();
+    let est = null;
+    for (let i = 1; i < dataEst.length; i++) {
+      if (String(dataEst[i][0]).trim() === idEst) { est = { id: idEst, idSec: String(dataEst[i][1]).trim(), cedula: dataEst[i][2], nombre: dataEst[i][3] }; break; }
+    }
+    if (!est) return { error: "Estudiante no encontrado" };
+    const companeros = [];
+    for (let i = 1; i < dataEst.length; i++) {
+      if (String(dataEst[i][1]).trim() === est.idSec) companeros.push(String(dataEst[i][0]).trim());
+    }
+    const setGrupo = new Set(companeros);
+
+    // --- Materias de la seccion (para el selector) ---
+    const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+    const materias = [];
+    for (let i = 1; i < dataMat.length; i++) {
+      if (String(dataMat[i][1]).trim() === est.idSec) materias.push({ id: String(dataMat[i][0]).trim(), nombre: dataMat[i][2] });
+    }
+    if (materias.length === 0) return { error: "La sección no tiene materias" };
+    const idMat = String(idMateria || "").trim() && materias.some(m => m.id === String(idMateria).trim())
+      ? String(idMateria).trim() : materias[0].id;
+    const materia = materias.find(m => m.id === idMat);
+
+    // --- Usuarios (id/email -> nombre) para "quien registro" ---
+    const nombrePorId = {}, nombrePorEmail = {};
+    try {
+      const dataUsr = ss.getSheetByName("USUARIOS").getDataRange().getValues();
+      for (let i = 1; i < dataUsr.length; i++) {
+        nombrePorId[String(dataUsr[i][0]).trim()] = dataUsr[i][1];
+        nombrePorEmail[String(dataUsr[i][2]).trim().toLowerCase()] = dataUsr[i][1];
+      }
+    } catch (e) {}
+    const nombreUsuario = (u) => {
+      const k = String(u || "").trim();
+      return nombrePorEmail[k.toLowerCase()] || nombrePorId[k] || k || "—";
+    };
+
+    // --- Bitacora de cambios de este estudiante en esta materia ---
+    // NOTA: ref idInd|idEst   ASISTENCIA: ref idMat|idEst|yyyy-MM-dd
+    const bitNotaPorInd = {}, bitAsistPorFecha = {};
+    const shBit = ss.getSheetByName("BITACORA_CAMBIOS");
+    if (shBit) {
+      const dataBit = shBit.getDataRange().getValues();
+      for (let i = 1; i < dataBit.length; i++) {
+        const tipo = String(dataBit[i][3]).trim();
+        const ref = String(dataBit[i][4]).split("|");
+        const reg = {
+          fecha: fmtFechaHora(dataBit[i][1]),
+          usuario: nombreUsuario(dataBit[i][2]),
+          anterior: dataBit[i][5],
+          nuevo: dataBit[i][6],
+          motivo: dataBit[i].length > 7 ? String(dataBit[i][7] || "") : ""
+        };
+        if (tipo === "NOTA" && String(ref[1]).trim() === idEst) {
+          const k = String(ref[0]).trim();
+          (bitNotaPorInd[k] = bitNotaPorInd[k] || []).push(reg);
+        } else if (tipo === "ASISTENCIA" && String(ref[0]).trim() === idMat && String(ref[1]).trim() === idEst) {
+          const k = String(ref[2]).trim();
+          (bitAsistPorFecha[k] = bitAsistPorFecha[k] || []).push(reg);
+        }
+      }
+    }
+
+    // --- ASISTENCIA (estudiante + promedio del grupo) ---
+    const asistencia = [];
+    const conteoEst = { AI: 0, T: 0, E: 0, J: 0 };
+    const conteoGrupo = {}; // idEst -> {AI,T,E,J}
+    const shAs = ss.getSheetByName("ASISTENCIA_DATA");
+    if (shAs) {
+      const dataAs = shAs.getDataRange().getValues();
+      const ultimaPorClave = {}; // (est|fecha) -> fila (si hubiera duplicados, cuenta la ultima)
+      for (let i = 1; i < dataAs.length; i++) {
+        if (String(dataAs[i][3]).trim() !== idMat) continue;
+        const e = String(dataAs[i][2]).trim();
+        if (!setGrupo.has(e)) continue;
+        ultimaPorClave[e + "|" + isoFecha(dataAs[i][1])] = i;
+      }
+      Object.keys(ultimaPorClave).forEach(clave => {
+        const fila = dataAs[ultimaPorClave[clave]];
+        const e = String(fila[2]).trim();
+        const fechaIso = isoFecha(fila[1]);
+        // Por leccion si hay detalle; si no, el estado del dia cuenta como 1 registro.
+        let estados = null;
+        try { const arr = fila[6] ? JSON.parse(fila[6]) : null; if (Array.isArray(arr) && arr.length) estados = arr.map(x => String(x || "").toUpperCase()); } catch (err) {}
+        const porEstado = {};
+        if (estados) estados.forEach(s => { if (s && s !== "P") porEstado[s] = (porEstado[s] || 0) + 1; });
+        else { const s = String(fila[4] || "").trim().toUpperCase(); if (s && s !== "P") porEstado[s] = 1; }
+
+        const cg = conteoGrupo[e] = conteoGrupo[e] || { AI: 0, T: 0, E: 0, J: 0 };
+        Object.keys(porEstado).forEach(s => { if (cg[s] !== undefined) cg[s]++; });
+
+        if (e !== idEst) return;
+        Object.keys(porEstado).forEach(s => {
+          if (conteoEst[s] !== undefined) conteoEst[s]++;
+          const bits = bitAsistPorFecha[fechaIso] || [];
+          const primero = bits[0], ultimo = bits[bits.length - 1];
+          asistencia.push({
+            fechaIso: fechaIso,
+            fecha: fmtFecha(fechaIso),
+            estado: s,
+            label: EXP_ASIST_LABEL[s] || s,
+            lecciones: estados ? porEstado[s] : null, // null = dia completo (sin detalle por leccion)
+            totalLecciones: estados ? estados.length : null,
+            restaPuntos: s === "AI" || s === "T",
+            registradoPor: primero ? primero.usuario : nombreUsuario(fila[5]),
+            registradoEl: primero ? primero.fecha : "",
+            modificaciones: bits.length > 1 ? bits.slice(1).map(b => ({ fecha: b.fecha, usuario: b.usuario, anterior: b.anterior, nuevo: b.nuevo })) : [],
+            ultimoCambio: ultimo && bits.length > 1 ? ultimo.fecha : ""
+          });
+        });
+      });
+    }
+    asistencia.sort((a, b) => a.fechaIso < b.fechaIso ? -1 : a.fechaIso > b.fechaIso ? 1 : 0);
+    const nGrupo = companeros.length || 1;
+    const promGrupo = (s) => {
+      let tot = 0; companeros.forEach(c => { tot += (conteoGrupo[c] && conteoGrupo[c][s]) || 0; });
+      return Math.round((tot / nGrupo) * 10) / 10;
+    };
+
+    // --- EVALUACIONES ---
+    const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
+    const indicadores = [];
+    for (let i = 1; i < dataInd.length; i++) {
+      if (String(dataInd[i][1]).trim() !== idMat) continue;
+      if (String(dataInd[i][2]).trim() === "ASIST") continue;
+      indicadores.push({
+        id: String(dataInd[i][0]).trim(),
+        categoria: String(dataInd[i][2]).trim(),
+        descripcion: dataInd[i][3],
+        puntaje: parseFloat(dataInd[i][4]) || 0,
+        creado: dataInd[i][5],
+        puntosTotales: parseFloat(dataInd[i][6]) || 100,
+        periodo: dataInd[i][7] || ""
+      });
+    }
+    const idsInd = new Set(indicadores.map(x => x.id));
+
+    // Ultima fila por (indicador, estudiante) -- misma regla que pantalla y reportes.
+    const notas = {}; // idInd -> { idEst -> {porc, fecha, nivel} }
+    const dataNotas = ss.getSheetByName("NOTAS").getDataRange().getValues();
+    for (let n = 1; n < dataNotas.length; n++) {
+      const ind = String(dataNotas[n][1]).trim();
+      if (!idsInd.has(ind)) continue;
+      const e = String(dataNotas[n][2]).trim();
+      if (!setGrupo.has(e)) continue;
+      (notas[ind] = notas[ind] || {})[e] = { porc: extraerPorcentaje(dataNotas[n][3]), fecha: dataNotas[n][4], nivel: dataNotas[n][5] };
+    }
+
+    const pesoCotPorPeriodo = {};
+    const fraccion = (ind, reg) => {
+      const max = ind.categoria === "TRAB_COT" ? 3 : ind.puntosTotales;
+      const nivel = parseFloat(reg.nivel);
+      if (isFinite(nivel) && max > 0) return Math.max(0, Math.min(1, nivel / max));
+      // Notas viejas sin nivel: se estima con el % guardado contra el peso del indicador.
+      const pesoInd = ind.categoria === "TRAB_COT" ? pesoCotPorPeriodo[String(ind.periodo)] : ind.puntaje;
+      if (isFinite(reg.porc) && pesoInd > 0) return Math.max(0, Math.min(1, reg.porc / pesoInd));
+      return null;
+    };
+
+    const evaluaciones = [];
+    let ceros = 0, parciales = 0, sinNota = 0, puntosPerdidos = 0;
+    indicadores.forEach(ind => {
+      const regs = notas[ind.id] || {};
+      const calificados = Object.keys(regs);
+      if (calificados.length === 0) return; // nadie calificado todavia: no aplica
+
+      let peso = ind.puntaje;
+      if (ind.categoria === "TRAB_COT") {
+        const k = String(ind.periodo);
+        if (pesoCotPorPeriodo[k] === undefined) pesoCotPorPeriodo[k] = calcularPesoCotidianoVigente(ss, idMat, ind.periodo);
+        peso = pesoCotPorPeriodo[k];
+      }
+
+      // Referencia del grupo
+      let suma = 0, n = 0, cerosGrupo = 0;
+      calificados.forEach(e => {
+        const f = fraccion(ind, regs[e]);
+        if (f === null) return;
+        suma += f; n++;
+        if (f === 0) cerosGrupo++;
+      });
+      const grupo = {
+        promedio: n ? Math.round((suma / n) * 1000) / 10 : null, // % de logro promedio
+        ceros: cerosGrupo,
+        calificados: calificados.length,
+        total: companeros.length
+      };
+
+      const reg = regs[idEst];
+      const max = ind.categoria === "TRAB_COT" ? 3 : ind.puntosTotales;
+      const base = {
+        idIndicador: ind.id,
+        periodo: ind.periodo,
+        categoria: ind.categoria,
+        catLabel: EXP_CAT_LABEL[ind.categoria] || ind.categoria,
+        descripcion: ind.descripcion instanceof Date ? fmtFecha(ind.descripcion) : String(ind.descripcion || ""),
+        maximo: max,
+        escala: ind.categoria === "TRAB_COT" ? "nivel" : "puntos",
+        peso: Math.round(peso * 100) / 100,
+        grupo: grupo,
+        historial: (bitNotaPorInd[ind.id] || []).map(b => ({ fecha: b.fecha, usuario: b.usuario, anterior: b.anterior, nuevo: b.nuevo, motivo: b.motivo }))
+      };
+
+      if (!reg) {
+        // Compañeros ya calificados y este estudiante no: se muestra, sin asumir nada.
+        sinNota++;
+        evaluaciones.push(Object.assign(base, { estado: "sin_nota", obtenido: null, logro: null, perdido: null, fechaRegistro: "" }));
+        return;
+      }
+      const f = fraccion(ind, reg);
+      if (f !== null && f >= 1) return; // puntaje completo: no perdio puntos
+      const perdido = f !== null ? Math.round((1 - f) * peso * 100) / 100 : null;
+      if (f === 0) ceros++; else parciales++;
+      if (perdido) puntosPerdidos += perdido;
+      const primero = base.historial[0];
+      evaluaciones.push(Object.assign(base, {
+        estado: f === 0 ? "cero" : "parcial",
+        obtenido: parseFloat(reg.nivel),
+        logro: f !== null ? Math.round(f * 1000) / 10 : null,
+        perdido: perdido,
+        fechaRegistro: fmtFecha(reg.fecha),
+        registradoPor: primero ? primero.usuario : "",
+        registradoEl: primero ? primero.fecha : ""
+      }));
+    });
+    evaluaciones.sort((a, b) => String(a.periodo).localeCompare(String(b.periodo)) || (a.estado === "cero" ? -1 : 0) - (b.estado === "cero" ? -1 : 0));
+
+    // --- INCIDENCIAS (BITACORAS): de esta materia o generales ---
+    const incidencias = [];
+    const shInc = ss.getSheetByName("BITACORAS");
+    if (shInc) {
+      const d = shInc.getDataRange().getValues();
+      for (let i = 1; i < d.length; i++) {
+        if (String(d[i][3]).trim() !== idEst) continue;
+        const m = String(d[i][2]).trim();
+        if (m !== idMat && m !== "GENERAL") continue;
+        incidencias.push({ fechaIso: isoFecha(d[i][5]), fecha: fmtFecha(d[i][5]), tipo: d[i][4], descripcion: d[i][6], estado: d[i][7], registradoPor: nombreUsuario(d[i][8]), general: m === "GENERAL" });
+      }
+      incidencias.sort((a, b) => a.fechaIso < b.fechaIso ? -1 : 1);
+    }
+
+    // --- ALERTAS TEMPRANAS (son del estudiante, no de una materia) ---
+    const alertas = [];
+    const shAl = ss.getSheetByName("ALERTAS_TEMPRANAS_SEGUIMIENTO");
+    if (shAl) {
+      const d = shAl.getDataRange().getValues();
+      for (let i = 1; i < d.length; i++) {
+        if (String(d[i][2]).trim() !== idEst) continue;
+        alertas.push({ dimension: d[i][3], nombre: d[i][4], prioridad: d[i][6], estado: d[i][7], fecha: fmtFecha(d[i][9]), registradoPor: nombreUsuario(d[i][10]) });
+      }
+    }
+
+    return {
+      success: true,
+      estudiante: { id: est.id, nombre: est.nombre, cedula: est.cedula },
+      materia: materia,
+      materias: materias,
+      generado: Utilities.formatDate(new Date(), tz, "dd/MM/yyyy HH:mm"),
+      resumen: {
+        ai: conteoEst.AI, t: conteoEst.T, e: conteoEst.E, j: conteoEst.J,
+        grupoAi: promGrupo("AI"), grupoT: promGrupo("T"), grupoE: promGrupo("E"),
+        tamanoGrupo: companeros.length,
+        ceros: ceros, parciales: parciales, sinNota: sinNota,
+        puntosPerdidos: Math.round(puntosPerdidos * 100) / 100
+      },
+      asistencia: asistencia,
+      evaluaciones: evaluaciones,
+      incidencias: incidencias,
+      alertas: alertas
+    };
+  } catch (e) { return { error: e.toString() }; }
+}
+
+// PDF del expediente (mismo contenido que el modal, para reuniones con el encargado o la direccion).
+function generarPdfExpedienteEstudiante(idEstudiante, idMateria) {
+  try {
+    const x = obtenerExpedienteEstudiante(idEstudiante, idMateria);
+    if (x.error) return { success: false, message: x.error };
+    const esc = (v) => String(v === null || v === undefined ? "" : v).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    const r = x.resumen;
+    const th = 'style="background:#334155;color:#fff;padding:5px;font-size:10px;text-align:left;"';
+    const td = 'style="border:1px solid #ddd;padding:5px;font-size:10px;vertical-align:top;"';
+
+    const filasAsist = x.asistencia.length ? x.asistencia.map(a => `<tr>
+        <td ${td}>${esc(a.fecha)}</td>
+        <td ${td}>${esc(a.label)}${a.restaPuntos ? "" : " <i style='color:#888'>(no resta puntos)</i>"}</td>
+        <td ${td}>${a.lecciones === null ? "Día completo" : esc(a.lecciones) + " de " + esc(a.totalLecciones) + " lecciones"}</td>
+        <td ${td}>${esc(a.registradoPor)}${a.registradoEl ? "<br><span style='color:#888'>" + esc(a.registradoEl) + "</span>" : ""}${a.modificaciones.length ? "<br><span style='color:#b45309'>Modificado " + a.modificaciones.length + " vez/veces</span>" : ""}</td>
+      </tr>`).join("") : `<tr><td ${td} colspan="4" style="text-align:center;color:#999;">Sin ausencias, tardías ni escapadas registradas.</td></tr>`;
+
+    const estadoTxt = (e) => e.estado === "cero" ? "<b style='color:#b91c1c'>0 (no presentó / sin puntos)</b>"
+      : e.estado === "sin_nota" ? "<b style='color:#64748b'>Sin nota registrada</b>"
+      : `${esc(e.obtenido)} de ${esc(e.maximo)} ${e.escala === "nivel" ? "(nivel)" : "pts"} · ${esc(e.logro)}%`;
+    const filasEval = x.evaluaciones.length ? x.evaluaciones.map(e => `<tr>
+        <td ${td}>P${esc(e.periodo)} · ${esc(e.catLabel)}</td>
+        <td ${td}>${esc(e.descripcion)}</td>
+        <td ${td}>${estadoTxt(e)}${e.perdido ? "<br><span style='color:#b91c1c'>Perdió " + esc(e.perdido) + "% de la nota</span>" : ""}</td>
+        <td ${td}>Promedio: ${e.grupo.promedio === null ? "—" : esc(e.grupo.promedio) + "%"}<br>Con 0: ${esc(e.grupo.ceros)} de ${esc(e.grupo.calificados)} calificados</td>
+        <td ${td}>${esc(e.fechaRegistro)}${e.registradoPor ? "<br>" + esc(e.registradoPor) : ""}${e.historial.length > 1 ? "<br><span style='color:#b45309'>" + (e.historial.length - 1) + " cambio(s) posterior(es)</span>" : ""}</td>
+      </tr>`).join("") : `<tr><td ${td} colspan="5" style="text-align:center;color:#999;">Sin evaluaciones con pérdida de puntos.</td></tr>`;
+
+    const filasInc = x.incidencias.map(i => `<tr><td ${td}>${esc(i.fecha)}</td><td ${td}>${esc(i.tipo)}${i.general ? " (general)" : ""}</td><td ${td}>${esc(i.descripcion)}</td><td ${td}>${esc(i.estado)}</td><td ${td}>${esc(i.registradoPor)}</td></tr>`).join("");
+    const filasAl = x.alertas.map(a => `<tr><td ${td}>${esc(a.fecha)}</td><td ${td}>${esc(a.dimension)}</td><td ${td}>${esc(a.nombre)}</td><td ${td}>${esc(a.estado)}</td><td ${td}>${esc(a.registradoPor)}</td></tr>`).join("");
+
+    const html = `
+      <div style="font-family:Arial,sans-serif;padding:18px;color:#1e293b;">
+        <h3 style="text-align:center;margin:0;color:#004E64;">EXPEDIENTE DEL ESTUDIANTE</h3>
+        <p style="text-align:center;margin:4px 0 14px;font-size:11px;color:#555;">${esc(x.materia.nombre)} · Generado el ${esc(x.generado)} desde RegistraME</p>
+        <table style="width:100%;font-size:11px;margin-bottom:10px;"><tr>
+          <td><b>Estudiante:</b> ${esc(x.estudiante.nombre)}</td><td><b>Cédula:</b> ${esc(x.estudiante.cedula)}</td>
+        </tr></table>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:12px;"><tr>
+          <td ${td}><b>Ausencias injustificadas:</b> ${r.ai}<br><span style="color:#666">Promedio del grupo: ${r.grupoAi}</span></td>
+          <td ${td}><b>Tardías:</b> ${r.t}<br><span style="color:#666">Promedio del grupo: ${r.grupoT}</span></td>
+          <td ${td}><b>Escapadas:</b> ${r.e}<br><span style="color:#666">Promedio del grupo: ${r.grupoE}</span></td>
+          <td ${td}><b>Evaluaciones en 0:</b> ${r.ceros}<br><b>Con puntaje parcial:</b> ${r.parciales}<br><b>Sin nota:</b> ${r.sinNota}</td>
+        </tr></table>
+        <h4 style="margin:12px 0 4px;color:#004E64;">Asistencia</h4>
+        <table style="width:100%;border-collapse:collapse;"><thead><tr><th ${th}>Fecha</th><th ${th}>Registro</th><th ${th}>Lecciones</th><th ${th}>Registrado por</th></tr></thead><tbody>${filasAsist}</tbody></table>
+        <h4 style="margin:14px 0 4px;color:#004E64;">Evaluaciones con pérdida de puntos</h4>
+        <table style="width:100%;border-collapse:collapse;"><thead><tr><th ${th}>Periodo / Rubro</th><th ${th}>Evaluación</th><th ${th}>Resultado</th><th ${th}>Referencia del grupo (${r.tamanoGrupo} estudiantes)</th><th ${th}>Registro</th></tr></thead><tbody>${filasEval}</tbody></table>
+        ${filasInc ? `<h4 style="margin:14px 0 4px;color:#004E64;">Incidencias registradas</h4><table style="width:100%;border-collapse:collapse;"><thead><tr><th ${th}>Fecha</th><th ${th}>Tipo</th><th ${th}>Descripción</th><th ${th}>Estado</th><th ${th}>Registrado por</th></tr></thead><tbody>${filasInc}</tbody></table>` : ""}
+        ${filasAl ? `<h4 style="margin:14px 0 4px;color:#004E64;">Alertas tempranas (del estudiante)</h4><table style="width:100%;border-collapse:collapse;"><thead><tr><th ${th}>Fecha</th><th ${th}>Dimensión</th><th ${th}>Alerta</th><th ${th}>Estado</th><th ${th}>Registrado por</th></tr></thead><tbody>${filasAl}</tbody></table>` : ""}
+        <p style="margin-top:16px;font-size:9px;color:#777;">Datos tomados tal como fueron registrados en el sistema, con fecha y usuario. La referencia del grupo muestra solo promedios y conteos, sin datos de otros estudiantes. Un 0 puede corresponder a una evaluación no presentada o presentada sin puntos.</p>
+      </div>`;
+
+    const blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
+    const nombreArchivo = `Expediente_${String(x.estudiante.nombre).replace(/\s+/g, "_")}_${String(x.materia.nombre).replace(/\s+/g, "_")}.pdf`;
+    blob.setName(nombreArchivo);
+    return { success: true, base64: Utilities.base64Encode(blob.getBytes()), nombre: nombreArchivo };
+  } catch (e) { return { success: false, message: e.toString() }; }
+}
+
+// ==========================================
+// AVISOS DE SOPORTE (mensajes del ADMIN a todos los usuarios)
+// El admin publica un aviso (nivel, titulo, texto y hasta 2 imagenes que se
+// guardan en la carpeta de Drive). Cada usuario lo ve en el centro de la
+// pantalla al entrar, HASTA que toca "Entendido" (eso queda registrado en
+// AVISOS_LEIDOS). El admin ve quien lo leyo y quien no.
+// Hojas (se crean solas):
+//   AVISOS:        ID | FECHA | NIVEL | TITULO | TEXTO | IMG1 | IMG2 | ACTIVO | CREADO_POR
+//   AVISOS_LEIDOS: ID_AVISO | EMAIL | FECHA
+// ==========================================
+function _hojaAvisos(ss) {
+  let sh = ss.getSheetByName("AVISOS");
+  if (!sh) {
+    sh = ss.insertSheet("AVISOS");
+    sh.appendRow(["ID", "FECHA", "NIVEL", "TITULO", "TEXTO", "IMG1", "IMG2", "ACTIVO", "CREADO_POR"]);
+  }
+  return sh;
+}
+function _hojaAvisosLeidos(ss) {
+  let sh = ss.getSheetByName("AVISOS_LEIDOS");
+  if (!sh) {
+    sh = ss.insertSheet("AVISOS_LEIDOS");
+    sh.appendRow(["ID_AVISO", "EMAIL", "FECHA"]);
+  }
+  return sh;
+}
+function _esAdmin(ss, email) {
+  const d = ss.getSheetByName("USUARIOS").getDataRange().getValues();
+  for (let i = 1; i < d.length; i++) {
+    if (String(d[i][2]).trim().toLowerCase() === String(email || "").trim().toLowerCase()) {
+      return String(d[i][4]).trim().toUpperCase() === "ADMIN";
+    }
+  }
+  return false;
+}
+function _urlImagenAviso(idArchivo) {
+  return idArchivo ? "https://drive.google.com/thumbnail?id=" + encodeURIComponent(idArchivo) + "&sz=w1600" : "";
+}
+function _filaAAviso(r, tz) {
+  let fecha = "";
+  try { fecha = Utilities.formatDate(new Date(r[1]), tz, "dd/MM/yyyy"); } catch (e) { fecha = String(r[1]); }
+  return {
+    id: String(r[0]),
+    fecha: fecha,
+    nivel: String(r[2] || "INFO"),
+    titulo: String(r[3] || ""),
+    texto: String(r[4] || ""),
+    imagenes: [r[5], r[6]].filter(x => String(x || "").trim() !== "").map(x => _urlImagenAviso(String(x).trim())),
+    activo: String(r[7]).toUpperCase() !== "FALSE"
+  };
+}
+
+// Avisos activos para un usuario (mas reciente primero) con su estado de leido.
+function obtenerAvisos(email) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const tz = Session.getScriptTimeZone();
+    const shA = ss.getSheetByName("AVISOS");
+    if (!shA) return { success: true, lista: [], noLeidos: 0 };
+    const leidos = new Set();
+    const shL = ss.getSheetByName("AVISOS_LEIDOS");
+    if (shL) {
+      const dl = shL.getDataRange().getValues();
+      const em = String(email || "").trim().toLowerCase();
+      for (let i = 1; i < dl.length; i++) if (String(dl[i][1]).trim().toLowerCase() === em) leidos.add(String(dl[i][0]));
+    }
+    const d = shA.getDataRange().getValues();
+    const lista = [];
+    for (let i = 1; i < d.length; i++) {
+      const a = _filaAAviso(d[i], tz);
+      if (!a.activo) continue;
+      a.leido = leidos.has(a.id);
+      lista.push(a);
+    }
+    lista.reverse();
+    return { success: true, lista: lista, noLeidos: lista.filter(a => !a.leido).length };
+  } catch (e) { return { error: e.toString() }; }
+}
+
+function marcarAvisoLeido(email, idAviso) {
+  try {
+    if (!email || !idAviso) return { success: false };
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sh = _hojaAvisosLeidos(ss);
+    const d = sh.getDataRange().getValues();
+    const em = String(email).trim().toLowerCase();
+    for (let i = 1; i < d.length; i++) {
+      if (String(d[i][0]) === String(idAviso) && String(d[i][1]).trim().toLowerCase() === em) return { success: true };
+    }
+    sh.appendRow([String(idAviso), em, new Date()]);
+    return { success: true };
+  } catch (e) { return { success: false, message: e.toString() }; }
+}
+
+// ADMIN: crear o editar. imagenes: [{base64, mime, nombre}] (max 2, solo para nuevas o reemplazo).
+function guardarAviso(data) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    if (!_esAdmin(ss, data.email)) return { success: false, message: "Solo un administrador puede publicar avisos." };
+    const titulo = String(data.titulo || "").trim();
+    const texto = String(data.texto || "").trim();
+    const nivel = ["URGENTE", "MEJORA", "INFO"].indexOf(String(data.nivel)) >= 0 ? String(data.nivel) : "INFO";
+    if (!titulo) return { success: false, message: "El aviso necesita un título." };
+
+    const ids = [];
+    const imgs = Array.isArray(data.imagenes) ? data.imagenes.slice(0, 2) : [];
+    if (imgs.length) {
+      const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+      imgs.forEach((im, k) => {
+        if (!im || !im.base64) return;
+        const blob = Utilities.newBlob(Utilities.base64Decode(im.base64), im.mime || "image/jpeg", im.nombre || ("aviso-" + Date.now() + "-" + k + ".jpg"));
+        const file = folder.createFile(blob);
+        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+        ids.push(file.getId());
+      });
+    }
+
+    const sh = _hojaAvisos(ss);
+    if (data.idAviso) {
+      const d = sh.getDataRange().getValues();
+      for (let i = 1; i < d.length; i++) {
+        if (String(d[i][0]) !== String(data.idAviso)) continue;
+        sh.getRange(i + 1, 3, 1, 3).setValues([[nivel, titulo, texto]]);
+        if (ids.length || data.quitarImagenes) sh.getRange(i + 1, 6, 1, 2).setValues([[ids[0] || "", ids[1] || ""]]);
+        return { success: true, message: "Aviso actualizado" };
+      }
+      return { success: false, message: "Aviso no encontrado" };
+    }
+    sh.appendRow(["AV-" + Date.now() + "-" + Math.floor(Math.random() * 1000), new Date(), nivel, titulo, texto, ids[0] || "", ids[1] || "", true, data.email]);
+    return { success: true, message: "Aviso publicado" };
+  } catch (e) { return { success: false, message: e.toString() }; }
+}
+
+// ADMIN: activar / archivar (un aviso archivado deja de mostrarse; no se borra nada).
+function cambiarEstadoAviso(email, idAviso, activo) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    if (!_esAdmin(ss, email)) return { success: false, message: "Solo un administrador puede hacer esto." };
+    const sh = _hojaAvisos(ss);
+    const d = sh.getDataRange().getValues();
+    for (let i = 1; i < d.length; i++) {
+      if (String(d[i][0]) === String(idAviso)) { sh.getRange(i + 1, 8).setValue(!!activo); return { success: true }; }
+    }
+    return { success: false, message: "Aviso no encontrado" };
+  } catch (e) { return { success: false, message: e.toString() }; }
+}
+
+// ADMIN: todos los avisos con estadistica de lectura (quien lo leyo y quien no).
+function obtenerAvisosAdmin(email) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    if (!_esAdmin(ss, email)) return { error: "Solo un administrador puede ver esto." };
+    const tz = Session.getScriptTimeZone();
+    const du = ss.getSheetByName("USUARIOS").getDataRange().getValues();
+    const usuarios = [];
+    for (let i = 1; i < du.length; i++) {
+      const estado = du[i][7] ? String(du[i][7]).toUpperCase() : "ACTIVO";
+      if (estado === "INACTIVO" || !String(du[i][2]).trim()) continue;
+      usuarios.push({ nombre: du[i][1], email: String(du[i][2]).trim().toLowerCase() });
+    }
+    const lecturas = {}; // idAviso -> {email -> fecha}
+    const shL = ss.getSheetByName("AVISOS_LEIDOS");
+    if (shL) {
+      const dl = shL.getDataRange().getValues();
+      for (let i = 1; i < dl.length; i++) {
+        const k = String(dl[i][0]);
+        let f = ""; try { f = Utilities.formatDate(new Date(dl[i][2]), tz, "dd/MM/yyyy HH:mm"); } catch (e) {}
+        (lecturas[k] = lecturas[k] || {})[String(dl[i][1]).trim().toLowerCase()] = f;
+      }
+    }
+    const shA = ss.getSheetByName("AVISOS");
+    const lista = [];
+    if (shA) {
+      const d = shA.getDataRange().getValues();
+      for (let i = 1; i < d.length; i++) {
+        const a = _filaAAviso(d[i], tz);
+        const lec = lecturas[a.id] || {};
+        a.leidos = usuarios.filter(u => lec[u.email] !== undefined).map(u => ({ nombre: u.nombre, email: u.email, fecha: lec[u.email] }));
+        a.pendientes = usuarios.filter(u => lec[u.email] === undefined).map(u => ({ nombre: u.nombre, email: u.email }));
+        a.totalUsuarios = usuarios.length;
+        lista.push(a);
+      }
+    }
+    lista.reverse();
     return { success: true, lista: lista };
   } catch (e) { return { error: e.toString() }; }
 }
