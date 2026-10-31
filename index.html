@@ -108,6 +108,167 @@
     }
     .sb-item.sb-active .sb-icon { color: #C96442; }
 
+    /* ===== PROPUESTA V5.1 (2026-10-31) — ÍCONOS CON VIDA =====
+       Cada sección tiene su color (--c fuerte, --s suave). Se usa en:
+       menú lateral (chip por ítem), título de la barra superior y encabezado
+       de cada pantalla. Un solo lugar para cambiar los colores: esta lista. */
+    .sec-dashboard,    .sb-item[onclick*="loadDashboardData"], #view-dashboard    { --c:#C96442; --s:#FBE7DE; }
+    .sec-asistencia,   .sb-item[onclick*="'asistencia'"],      #view-asistencia   { --c:#15803D; --s:#DCFCE7; }
+    .sec-planeamientos,.sb-item[onclick*="'planeamientos'"],   #view-planeamientos{ --c:#6D28D9; --s:#EDE9FE; }
+    .sec-bitacoras,    .sb-item[onclick*="'bitacoras'"],       #view-bitacoras    { --c:#1D4ED8; --s:#DBEAFE; }
+    .sec-sea,          .sb-item[onclick*="'sea'"],             #view-sea          { --c:#4D7C0F; --s:#ECFCCB; }
+    .sec-alertas,      .sb-item[onclick*="'alertas'"],         #view-alertas      { --c:#B45309; --s:#FEF3C7; }
+    .sec-miaula,       .sb-item[onclick*="'miaula'"],          #view-miaula       { --c:#0F766E; --s:#CCFBF1; }
+    .sec-config,       .sb-item[onclick*="'config'"],          #view-config       { --c:#475569; --s:#E2E8F0; }
+    .sec-horarios,     .sb-item[onclick*="'horarios'"],        #view-horarios     { --c:#0369A1; --s:#E0F2FE; }
+    .sec-ayuda,        .sb-item[onclick*="'ayuda'"],           #view-ayuda        { --c:#BE185D; --s:#FCE7F3; }
+    .sec-admin-users,  .sb-item[onclick*="'admin-users'"],     #view-admin-users  { --c:#4338CA; --s:#E0E7FF; }
+    .sec-avisos,       .sb-item[onclick*="avisosAdmin"]                            { --c:#C2410C; --s:#FFEDD5; }
+    .sec-estudiantes,  #view-estudiantes                                           { --c:#0E7490; --s:#CFFAFE; }
+    .sec-materias,     #view-materias                                              { --c:#B45309; --s:#FEF3C7; }
+    .sec-indicadores,  #view-indicadores, .sec-evaluar, #view-evaluar             { --c:#C96442; --s:#FBE7DE; }
+    .sec-auditoria,    #view-auditoria                                             { --c:#4338CA; --s:#E0E7FF; }
+
+    /* Menú lateral: chip de color por ítem */
+    .sb-item > i.fas:first-child {
+        width: 32px !important; height: 32px; min-width: 32px; margin-right: 10px;
+        display: inline-flex; align-items: center; justify-content: center;
+        border-radius: 10px; font-size: 14px;
+        background: var(--s); color: var(--c) !important;
+        transition: transform .3s cubic-bezier(.34,1.56,.64,1), background .2s, color .2s, box-shadow .25s;
+    }
+    .sb-item:hover { background: color-mix(in srgb, var(--s) 45%, transparent); color: var(--c); }
+    .sb-item:hover > i.fas:first-child {
+        transform: translateY(-1px) scale(1.1) rotate(-7deg);
+        box-shadow: 0 6px 12px -4px color-mix(in srgb, var(--c) 55%, transparent);
+    }
+    .sb-item.sb-active {
+        background: color-mix(in srgb, var(--s) 70%, transparent);
+        color: var(--c); border-right: 3px solid var(--c);
+    }
+    .sb-item.sb-active > i.fas:first-child {
+        background: var(--c); color: #fff !important;
+        box-shadow: 0 8px 16px -6px color-mix(in srgb, var(--c) 70%, transparent);
+        animation: chip-in .45s cubic-bezier(.34,1.56,.64,1);
+    }
+    html[data-theme="dark"] .sb-item > i.fas:first-child { background: color-mix(in srgb, var(--c) 24%, transparent); color: color-mix(in srgb, var(--c) 55%, #fff) !important; }
+    html[data-theme="dark"] .sb-item:hover { background: color-mix(in srgb, var(--c) 14%, transparent); color: #f1f5f9; }
+    html[data-theme="dark"] .sb-item.sb-active { background: color-mix(in srgb, var(--c) 18%, transparent); color: #f1f5f9; }
+    html[data-theme="dark"] .sb-item.sb-active > i.fas:first-child { background: var(--c); color: #fff !important; }
+
+    /* Encabezado de cada pantalla y título de la barra superior: chip grande */
+    .view h3.text-2xl > i.fas:first-child,
+    .view h3.text-xl > i.fas:first-child,
+    #page-title-chip {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 42px; height: 42px; border-radius: 14px; font-size: 18px;
+        margin-right: 12px !important; vertical-align: middle;
+        background: var(--s); color: var(--c) !important;
+        box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--c) 60%, transparent);
+        animation: chip-in .5s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    #page-title-chip { width: 34px; height: 34px; border-radius: 11px; font-size: 15px; margin-right: 0 !important; flex-shrink: 0; }
+    html[data-theme="dark"] .view h3.text-2xl > i.fas:first-child,
+    html[data-theme="dark"] .view h3.text-xl > i.fas:first-child,
+    html[data-theme="dark"] #page-title-chip { background: color-mix(in srgb, var(--c) 24%, transparent); color: color-mix(in srgb, var(--c) 55%, #fff) !important; }
+
+        /* ===== [V5.1] CAMPANA: resplandor solo si hay notificaciones sin leer ===== */
+    #btn-campana.campana-viva { color: #e11d48; }
+    #btn-campana.campana-viva::before, #btn-campana.campana-viva::after {
+        content: ""; position: absolute; inset: 0; border-radius: 999px; pointer-events: none;
+        border: 2px solid rgba(244, 63, 94, .55); animation: campana-onda 1.8s ease-out infinite;
+    }
+    #btn-campana.campana-viva::after { animation-delay: .9s; }
+    #btn-campana.campana-viva > i.fa-bell { animation: campana-mueve 3.2s ease-in-out infinite; transform-origin: 50% 0; }
+    #btn-campana.campana-viva #avisos-badge { box-shadow: 0 0 0 3px rgba(244, 63, 94, .25), 0 0 12px rgba(244, 63, 94, .7); }
+    @keyframes campana-onda { 0% { transform: scale(.85); opacity: .9; } 100% { transform: scale(1.75); opacity: 0; } }
+    @keyframes campana-mueve { 0%, 70%, 100% { transform: rotate(0); } 74% { transform: rotate(16deg); } 80% { transform: rotate(-14deg); } 86% { transform: rotate(9deg); } 92% { transform: rotate(-5deg); } }
+    @media (prefers-reduced-motion: reduce) { #btn-campana.campana-viva::before, #btn-campana.campana-viva::after, #btn-campana.campana-viva > i { animation: none !important; } }
+
+    @keyframes chip-in { 0% { transform: scale(.6) rotate(-12deg); opacity: 0; } 100% { transform: none; opacity: 1; } }
+    @keyframes icon-pop { 0% { transform: scale(1); } 40% { transform: scale(1.22) rotate(-8deg); } 70% { transform: scale(.94) rotate(3deg); } 100% { transform: scale(1); } }
+
+    /* Micro-animación global: el ícono de cualquier botón "salta" al pasar el mouse */
+    button:hover > i:is(.fas,.far,.fab):not(.fa-spin),
+    a:not(.sb-item):hover > i:is(.fas,.far,.fab):not(.fa-spin),
+    [data-kpi-key]:hover .fas:not(.fa-chevron-right) { animation: icon-pop .45s ease; }
+
+    @media (prefers-reduced-motion: reduce) {
+        .sb-item > i.fas:first-child, .view h3 > i.fas:first-child, #page-title-chip,
+        button:hover > i, a:hover > i, [data-kpi-key]:hover .fas { animation: none !important; transition: none !important; transform: none !important; }
+    }
+
+    
+    /* ===== PROPUESTA V5.1 (2026-10-31) — CELULAR ===== */
+    #nav-movil { display: none; }
+    @media (max-width: 767px) {
+        #main-content > footer { display: none !important; }
+
+        /* Barra de navegación inferior */
+        #nav-movil {
+            display: grid; grid-template-columns: repeat(5, 1fr); flex-shrink: 0; z-index: 25;
+            background: rgba(255,255,255,.92); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid #e2e8f0; padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+            box-shadow: 0 -6px 18px -12px rgba(15,23,42,.25);
+        }
+        #nav-movil button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; color: #64748b; padding: 2px 0; min-height: 48px; }
+        #nav-movil button > i { width: 34px; height: 28px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; color: var(--c); transition: background .2s, transform .25s cubic-bezier(.34,1.56,.64,1); }
+        #nav-movil button.nav-movil-activo { color: var(--c); }
+        #nav-movil button.nav-movil-activo > i { background: var(--s); transform: translateY(-2px); }
+        #nav-movil .nav-badge { position: absolute; top: 0; left: 55%; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: #ef4444; color: #fff; font-size: 9px; display: flex; align-items: center; justify-content: center; }
+        #nav-movil button.campana-viva > i { animation: campana-mueve 3.2s ease-in-out infinite; transform-origin: 50% 10%; color: #e11d48; }
+        #nav-movil button.campana-viva .nav-badge { box-shadow: 0 0 0 3px rgba(244,63,94,.25), 0 0 10px rgba(244,63,94,.7); }
+        html[data-theme="dark"] #nav-movil { background: rgba(15,23,42,.92); border-top-color: #1e293b; }
+        html[data-theme="dark"] #nav-movil button.nav-movil-activo > i { background: color-mix(in srgb, var(--c) 24%, transparent); }
+
+        /* Ventanitas como hoja que sube desde abajo */
+        .swal2-container.swal2-center { padding: 0 !important; }
+        .swal2-container.swal2-center > .swal2-popup:not(.swal2-toast) {
+            grid-column: 1 / 4 !important; grid-row: 3 !important; align-self: end !important; justify-self: stretch !important;
+            width: 100% !important; max-width: 100% !important; margin: 0 !important;
+            border-radius: 22px 22px 0 0 !important; max-height: 92vh; overflow-y: auto;
+            padding-bottom: calc(1.25em + env(safe-area-inset-bottom)) !important;
+            animation: hoja-sube .28s cubic-bezier(.2,.9,.3,1.05) !important;
+        }
+        .swal2-container.swal2-center > .swal2-popup:not(.swal2-toast)::before {
+            content: ""; display: block; width: 42px; height: 4px; border-radius: 4px; background: #cbd5e1; margin: 0 auto 6px;
+        }
+        .swal2-actions { width: 100%; }
+        .swal2-actions button { min-height: 46px; flex: 1 1 auto; }
+
+        /* El iPhone no hace zoom al escribir (pasa con letra menor a 16px) */
+        input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea { font-size: 16px !important; }
+
+        /* Tablas con desplazamiento lateral */
+        .tabla-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
+
+        /* Asignaturas como tarjetas: nombre arriba, acciones abajo (sin la columna de rubros, se ve en Editar) */
+        #view-materias table thead { display: none; }
+        #view-materias table, #view-materias table tbody, #view-materias table tr, #view-materias table td { display: block; width: 100%; }
+        #view-materias table td:nth-child(2) { display: none; }
+        #view-materias table tr { padding: 8px 4px; }
+        #view-materias table td { padding: 4px 10px !important; text-align: left !important; }
+        #view-materias table td:last-child > div { flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
+
+                #nav-movil .nav-badge.hidden { display: none; }
+
+        /* Calificar: la nota baja debajo del nombre (antes quedaba fuera de la pantalla) */
+        #view-evaluar table { table-layout: fixed; width: 100% !important; }
+        #view-evaluar table th:first-child, #view-evaluar table td:first-child { width: 2.25rem; padding-left: 8px !important; padding-right: 0 !important; }
+        #view-evaluar table td { padding: 12px 8px !important; }
+        #table-eval-body td:last-child > div { flex-direction: column; align-items: stretch; gap: 8px; }
+        #table-eval-body td:last-child > div > div { justify-content: flex-start; }
+
+        /* Asistencia: filtros compactos */
+        #view-asistencia > .bg-white:first-child { padding: 10px; margin-bottom: 10px; }
+    }
+    @media (max-width: 639px) {
+        /* Formularios de 3 o más columnas pasan a 2 */
+        .grid-cols-3, .grid-cols-4, .grid-cols-5, .grid-cols-6 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+    }
+    @keyframes hoja-sube { from { transform: translateY(48px); opacity: .5; } to { transform: none; opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .swal2-popup { animation: none !important; } #nav-movil button > i { animation: none !important; transition: none !important; } }
+
     /* Inputs más cómodos en mobile */
     @media (max-width: 767px) {
         select, input[type="date"], input[type="text"], input[type="email"], input[type="password"] {
@@ -668,7 +829,7 @@
                 </a>
 
                 <a onclick="app.nav('miaula')" class="menu-item sb-item flex items-center px-3 py-2.5 rounded-lg cursor-pointer transition group">
-                    <i class="fas fa-cloud-upload-alt w-6 sb-icon transition"></i>
+                    <i class="fas fa-chalkboard-teacher w-6 sb-icon transition"></i>
                     <span class="font-medium text-sm">Mi Aula</span>
                 </a>
 
@@ -735,11 +896,12 @@
                 <button onclick="app.toggleSidebar()" aria-label="Abrir menú de navegación" class="md:hidden flex items-center justify-center w-11 h-11 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition shrink-0">
                     <i class="fas fa-bars text-lg"></i>
                 </button>
+                <i id="page-title-chip" class="fas fa-home sec-dashboard" aria-hidden="true"></i><!-- [V5.1] chip de la sección actual -->
                 <h2 id="page-title" class="text-base md:text-xl font-bold text-gray-800 truncate">Dashboard</h2>
             </div>
             <div class="flex items-center gap-2 md:gap-4 shrink-0">
-                <button onclick="app.avisosHistorial()" aria-label="Avisos de soporte" title="Avisos de soporte" class="relative h-9 w-9 md:h-10 md:w-10 rounded-full flex items-center justify-center text-slate-500 hover:text-teal-600 hover:bg-teal-50 transition shrink-0">
-                    <i class="fas fa-bell"></i>
+                <button id="btn-campana" onclick="app.abrirNotificaciones()" aria-label="Notificaciones" title="Notificaciones" class="relative h-9 w-9 md:h-10 md:w-10 rounded-full flex items-center justify-center text-slate-500 hover:text-teal-600 hover:bg-teal-50 transition shrink-0">
+                    <i class="fas fa-bell"></i><!-- [V5.1] centro de notificaciones: pendientes del día + avisos de soporte -->
                     <span id="avisos-badge" class="hidden absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">0</span>
                 </button>
                 <div class="hidden md:flex flex-col text-right mr-2">
@@ -987,8 +1149,11 @@
         </div>
     </div>
 
+        <!-- [V5.1] PASAR LISTA EN CELULAR (un día a la vez, botones grandes) -->
+    <div id="lista-movil" class="hidden md:hidden"></div>
+
     <!-- 2. MATRIZ SCROLLEABLE (AQUÍ ES SU LUGAR CORRECTO) -->
-    <div class="flex-1 bg-white rounded-xl shadow overflow-hidden relative border border-gray-300">
+    <div id="matriz-wrap" class="flex-1 bg-white rounded-xl shadow overflow-hidden relative border border-gray-300">
         <div class="overflow-auto h-full w-full" id="matrix-container">
             <!-- AQUÍ SE DIBUJA LA TABLA GIGANTE -->
             <div class="text-center py-10 text-gray-400">Selecciona los filtros y consulta.</div>
@@ -1057,6 +1222,15 @@
             <!-- ... -->
             
         </div>
+
+                <!-- [V5.1] BARRA DE NAVEGACIÓN INFERIOR (solo celular) -->
+        <nav id="nav-movil" aria-label="Navegación principal">
+            <button data-nav="dashboard" class="sec-dashboard" onclick="app.loadDashboardData()"><i class="fas fa-home"></i>Inicio</button>
+            <button data-nav="asistencia" class="sec-asistencia" onclick="app.nav('asistencia')"><i class="fas fa-calendar-check"></i>Asistencia</button>
+            <button data-nav="miaula" class="sec-miaula" onclick="app.nav('miaula')"><i class="fas fa-chalkboard-teacher"></i>Mi Aula</button>
+            <button id="nav-movil-campana" class="sec-avisos" onclick="app.abrirNotificaciones()"><i class="fas fa-bell"></i>Avisos<span id="nav-movil-badge" class="nav-badge hidden">0</span></button>
+            <button class="sec-config" onclick="app.toggleSidebar()"><i class="fas fa-bars"></i>Más</button>
+        </nav>
 
         <!-- ========================================== -->
         <!-- FOOTER PROFESIONAL (ULTRA COMPACTO) -->
@@ -1493,6 +1667,8 @@
         // 2. AUTENTICACIÓN Y NAVEGACIÓN
         // ==========================================
 init: () => {
+                        app.instalarCargaGeneralSwal(); // [V5.1] leyenda de tiempo en todas las ventanitas de espera
+            app.instalarObservadorMovil();  // [V5.1] tablas con desplazamiento en celular
             // 1. PRIMERO: Construimos el HTML (Inyectar vistas)
             app.injectDynamicViews(); 
 
@@ -1606,27 +1782,47 @@ enterApp: async () => {
             setTimeout(() => app.avisosCheck(), 10000);
         },
 
-        // Junta asistencia pendiente + incidencias pendientes y las muestra en UN solo mensaje
+        // ===== PROPUESTA V5.1 (2026-10-31) — ALERTAS DEL DÍA SIN SER NECIAS =====
+        // Antes: el mensaje volvía cada 20-60 min hasta resolverlo todo.
+        // Ahora: aparece UNA vez por cada pendiente nuevo; al tocar "Entendido"
+        // queda marcado como visto en este dispositivo y desde ahí solo vive en
+        // la campana (centro de notificaciones). Si aparece un pendiente nuevo,
+        // el mensaje sale de nuevo, solo por ese.
+        _alertaClave: (tipo, x) => tipo === 'asistencia' ? `a|${x.idMateria}|${x.fecha}` : `i|${x.id}`,
+        _alertasVistasKey: () => `alertas_vistas_${(app.user && app.user.email) || 'anon'}`,
+        alertasVistas: () => {
+            try { return new Set(JSON.parse(localStorage.getItem(app._alertasVistasKey()) || '[]')); } catch (e) { return new Set(); }
+        },
+        marcarAlertasVistas: () => {
+            const d = app.state.alertasDia || { asistencia: [], incidencias: [] };
+            // Solo se guardan las claves que siguen pendientes: la lista no crece sin fin
+            const claves = [...d.asistencia.map(x => app._alertaClave('asistencia', x)), ...d.incidencias.map(x => app._alertaClave('incidencia', x))];
+            try { localStorage.setItem(app._alertasVistasKey(), JSON.stringify(claves)); } catch (e) {}
+            app.actualizarCampana();
+        },
+        alertasNoVistas: () => {
+            const d = app.state.alertasDia || { asistencia: [], incidencias: [] };
+            const vistas = app.alertasVistas();
+            return {
+                asistencia: d.asistencia.filter(x => !vistas.has(app._alertaClave('asistencia', x))),
+                incidencias: d.incidencias.filter(x => !vistas.has(app._alertaClave('incidencia', x)))
+            };
+        },
+
         checkAlertasDelDia: async () => {
             if (!app.user || !app.user.email) return;
-
             const hoy = new Date();
             const fechaHoy = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
-            const ahora = Date.now();
-
             const [pendAsist, pendIncid] = await Promise.all([
-                app.api({ action: 'getPendingAttendanceAlerts', email: app.user.email, hoy: fechaHoy }),
-                app.api({ action: 'getPendingIncidentAlerts', email: app.user.email })
+                app.api({ action: 'getPendingAttendanceAlerts', email: app.user.email, hoy: fechaHoy }, { silent: true }),
+                app.api({ action: 'getPendingIncidentAlerts', email: app.user.email }, { silent: true })
             ]);
-
-            const asistencia = (pendAsist || []).filter(b =>
-                ahora >= Number(localStorage.getItem(`snooze_asist_${b.idMateria}_${b.fecha}`) || 0));
-            const incidencias = (pendIncid || []).filter(inc =>
-                ahora >= Number(localStorage.getItem(`snooze_incid_${inc.id}`) || 0));
-
-            if (!asistencia.length && !incidencias.length) return;
-
-            app.mostrarAlertaDelDia(asistencia, incidencias);
+            app.state.alertasDia = { asistencia: Array.isArray(pendAsist) ? pendAsist : [], incidencias: Array.isArray(pendIncid) ? pendIncid : [] };
+            app.actualizarCampana();
+            const nuevas = app.alertasNoVistas();
+            if (!nuevas.asistencia.length && !nuevas.incidencias.length) return; // nada nuevo: solo la campana
+            if (Swal.isVisible()) return; // no interrumpir; queda en la campana y se reintenta en el próximo chequeo
+            app.mostrarAlertaDelDia(nuevas.asistencia, nuevas.incidencias);
         },
 
         mostrarAlertaDelDia: async (asistencia, incidencias) => {
@@ -1661,20 +1857,16 @@ enterApp: async () => {
                 ${incidencias.length ? `<p class="text-[10px] font-bold text-rose-500 uppercase tracking-wide mt-3 mb-1">Incidencias pendientes</p>${incidencias.map(filaIncidencia).join('')}` : ''}
             `;
 
-            let accionTomada = false;
-
+                        let accionTomada = false;
             const res = await Swal.fire({
                 icon: 'warning',
                 title: `Alerta del Día (${totalAlertas})`,
-                html: `<div class="text-left max-h-80 overflow-y-auto">${listaHtml}</div>`,
-                showDenyButton: true,
-                showCancelButton: true,
-                showConfirmButton: false,
-                denyButtonText: 'Recordar todo en 1 hora',
-                cancelButtonText: 'Cerrar',
-                denyButtonColor: '#f59e0b',
-                cancelButtonColor: '#94a3b8',
-                reverseButtons: true,
+                html: `<div class="text-left max-h-80 overflow-y-auto">${listaHtml}</div>
+                       <p class="text-[11px] text-slate-400 mt-3"><i class="fas fa-bell mr-1"></i>Después de "Entendido" estos pendientes quedan en la campana de notificaciones.</p>`,
+                showConfirmButton: true,
+                confirmButtonText: '<i class="fas fa-check mr-1"></i> Entendido',
+                confirmButtonColor: '#0f766e',
+                allowOutsideClick: false,
                 didOpen: (modal) => {
                     modal.querySelectorAll('.btn-ir-alerta').forEach(btn => {
                         btn.addEventListener('click', () => {
@@ -1684,12 +1876,12 @@ enterApp: async () => {
 
                             if (tipo === 'asistencia') {
                                 const b = asistencia[idx];
-                                localStorage.removeItem(`snooze_asist_${b.idMateria}_${b.fecha}`);
+                                
                                 Swal.close();
                                 app.irAPasarLista(b, b.fecha);
                             } else {
                                 const inc = incidencias[idx];
-                                localStorage.removeItem(`snooze_incid_${inc.id}`);
+                                
                                 Swal.close();
                                 app.nav('bitacoras');
                                 app.loadBitacoras().then(() => app.editBitacora(inc.id));
@@ -1699,16 +1891,8 @@ enterApp: async () => {
                 }
             });
 
-            if (accionTomada) return; // el docente ya está resolviendo una alerta puntual; no tocamos las demás
-
-            if (res.isDenied) {
-                asistencia.forEach(b => localStorage.setItem(`snooze_asist_${b.idMateria}_${b.fecha}`, String(Date.now() + 60 * 60 * 1000)));
-                incidencias.forEach(inc => localStorage.setItem(`snooze_incid_${inc.id}`, String(Date.now() + 60 * 60 * 1000)));
-            } else {
-                // Cerrado sin elegir nada: posponemos todo 30 min para no ser invasivos
-                asistencia.forEach(b => localStorage.setItem(`snooze_asist_${b.idMateria}_${b.fecha}`, String(Date.now() + 30 * 60 * 1000)));
-                incidencias.forEach(inc => localStorage.setItem(`snooze_incid_${inc.id}`, String(Date.now() + 30 * 60 * 1000)));
-            }
+            // [V5.1] Visto = Entendido o "Ir" a resolver uno: desde ahora solo vive en la campana
+            app.marcarAlertasVistas();
         },
 
         logout: () => {
@@ -1793,13 +1977,20 @@ enterApp: async () => {
                 'bitacoras': 'Bitácora de Incidencias',
                 'miaula': 'Mi Aula Virtual', 
                 'config': 'Configuración',
-                'sea': 'Informe Oficial SEA'
+                                'sea': 'Informe Oficial SEA',
+                // [V5.1] títulos que faltaban (antes salía "Panel de Control")
+                'indicadores': 'Evaluación', 'evaluar': 'Calificar', 'alertas': 'Alertas Tempranas',
+                'ayuda': 'Centro de Ayuda', 'auditoria': 'Auditoría'
             };
             const pageTitle = document.getElementById('page-title');
             if(pageTitle) pageTitle.innerText = titles[viewId] || 'Panel de Control';
+            app.pintarChipTitulo(viewId); // [V5.1] ícono con color de la sección
+            app.marcarNavMovil(viewId);   // [V5.1] barra inferior del celular
 
             // 4. CERRAR SIDEBAR (En Móvil)
-            if(window.innerWidth < 768) app.toggleSidebar();
+            // [V5.1] Antes: toggleSidebar() -- si el menú estaba cerrado (ej. al entrar desde una
+            // tarjeta del Dashboard o la barra inferior) lo ABRÍA. Ahora solo cierra.
+            app.closeSidebarMobile();
 
             // ----------------------------------------------------
             // 5. INICIALIZADORES (Intactos)
@@ -1860,7 +2051,7 @@ enterApp: async () => {
             const grid = document.getElementById('grid-secciones');
             
             // Asegurar que el spinner se vea al iniciar
-            if(grid) grid.innerHTML = '<div class="col-span-full text-center py-20"><i class="fas fa-spinner fa-spin text-4xl text-indigo-500 mb-4"></i><p class="text-gray-500 animate-pulse">Cargando tus datos...</p></div>';
+            if(grid) app.cargaGeneral(grid, 'Cargando tus datos...', { clase: 'col-span-full' }); // [V5.1] carga general
 
             try {
                 const res = await app.api({ action: 'getInitialData' });
@@ -2373,96 +2564,429 @@ enterApp: async () => {
             app.renderDashboard(app.state.currentDashFilter || 'TODAS');
         },
 
-        // ── KPIs con detalle clickeable ──────────────────────────────
+                // ===== PROPUESTA V5.1 (2026-10-31) — CELULAR =====
+        esCelular: () => window.matchMedia('(max-width: 767px)').matches,
+
+        // Barra inferior: resalta la sección actual
+        marcarNavMovil: (viewId) => {
+            document.querySelectorAll('#nav-movil [data-nav]').forEach(b => {
+                b.classList.toggle('nav-movil-activo', b.dataset.nav === viewId);
+            });
+        },
+
+        // En celular, toda tabla que no tenga desplazamiento lateral propio se
+        // envuelve en un contenedor que sí lo tiene (así nada se sale de la pantalla).
+        envolverTablasMovil: () => {
+            if (!app.esCelular()) return;
+            document.querySelectorAll('table').forEach(t => {
+                if (t.closest('.tabla-scroll, .overflow-x-auto, .overflow-auto, .overflow-x-scroll')) return;
+                const w = document.createElement('div');
+                w.className = 'tabla-scroll';
+                t.parentNode.insertBefore(w, t);
+                w.appendChild(t);
+            });
+        },
+        instalarObservadorMovil: () => {
+            if (app._obsMovil) return;
+            let pendiente = false;
+            app._obsMovil = new MutationObserver(() => {
+                if (pendiente) return;
+                pendiente = true;
+                requestAnimationFrame(() => { pendiente = false; app.envolverTablasMovil(); });
+            });
+            app._obsMovil.observe(document.body, { childList: true, subtree: true });
+            window.addEventListener('resize', () => { if (app.state.matrixData) app.renderListaMovil(); });
+        },
+
+        // ---------- PASAR LISTA EN CELULAR ----------
+        // Misma información y mismo guardado que la matriz (saveMark / saveMarkBatch),
+        // pero un día a la vez, con botones grandes por estudiante.
+        ASIS_ESTADOS: [
+            { k: 'P',  txt: 'Presente',    c: '#15803d', s: '#dcfce7' },
+            { k: 'AI', txt: 'Ausente',     c: '#dc2626', s: '#fee2e2' },
+            { k: 'T',  txt: 'Tardía',      c: '#ca8a04', s: '#fef9c3' },
+            { k: 'E',  txt: 'Escapada',    c: '#ea580c', s: '#ffedd5' },
+            { k: 'J',  txt: 'Justificada', c: '#2563eb', s: '#dbeafe' }
+        ],
+        cambiarModoAsistencia: (modo) => { app.state.asisModoMovil = modo; app.renderListaMovil(); },
+
+        renderListaMovil: (fecha) => {
+            const cont = document.getElementById('lista-movil');
+            const wrap = document.getElementById('matriz-wrap');
+            const md = app.state.matrixData;
+            if (!cont || !wrap || !md || !md.estudiantes) return;
+            if (!app.esCelular()) { cont.classList.add('hidden'); wrap.classList.remove('hidden'); return; }
+            const modo = app.state.asisModoMovil || 'lista';
+            cont.classList.remove('hidden');
+            const toggle = `
+                <div class="flex bg-slate-100 rounded-xl p-1 mb-3">
+                    <button onclick="app.cambiarModoAsistencia('lista')" class="flex-1 py-2 rounded-lg text-sm font-bold ${modo === 'lista' ? 'bg-white shadow text-emerald-700' : 'text-slate-500'}"><i class="fas fa-list-check mr-1"></i>Lista del día</button>
+                    <button onclick="app.cambiarModoAsistencia('matriz')" class="flex-1 py-2 rounded-lg text-sm font-bold ${modo === 'matriz' ? 'bg-white shadow text-emerald-700' : 'text-slate-500'}"><i class="fas fa-table-cells mr-1"></i>Matriz</button>
+                </div>`;
+            if (modo === 'matriz') { cont.innerHTML = toggle; wrap.classList.remove('hidden'); return; }
+            wrap.classList.add('hidden');
+
+            const dias = md.dateCols || [];
+            if (!dias.length) { cont.innerHTML = toggle + '<p class="text-center text-slate-400 py-8">No hay días de clase en ese rango.</p>'; return; }
+            const hoy = app._hoyYmd();
+            fecha = fecha || app.state.asisFechaMovil;
+            if (!fecha || !dias.some(d => d.dateStr === fecha)) {
+                fecha = (dias.find(d => d.dateStr === hoy) || dias.filter(d => d.dateStr <= hoy).pop() || dias[0]).dateStr;
+            }
+            app.state.asisFechaMovil = fecha;
+            const col = dias.find(d => d.dateStr === fecha);
+            const noLect = (md.noLectivos || {})[fecha];
+            const esc = app.escapeHtml;
+            const dsem = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+            const pills = dias.map(d => {
+                const act = d.dateStr === fecha, nl = (md.noLectivos || {})[d.dateStr];
+                const [y, m, dd] = d.dateStr.split('-').map(Number);
+                return `<button data-fecha-pill="${d.dateStr}" onclick="app.renderListaMovil('${d.dateStr}')" class="shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold border transition ${act ? 'bg-emerald-600 text-white border-emerald-600 shadow' : nl ? 'bg-slate-50 text-slate-300 border-slate-100' : 'bg-white text-slate-600 border-slate-200'}">
+                    <span class="block text-[10px] font-semibold opacity-80">${dsem[new Date(y, m - 1, dd).getDay()]}${d.dateStr === hoy ? ' · hoy' : ''}</span>${d.label}${nl ? ' <i class="fas fa-ban"></i>' : ''}</button>`;
+            }).join('');
+
+            let cuerpo;
+            if (noLect) {
+                cuerpo = `<div class="text-center py-8 text-slate-400"><i class="fas fa-ban text-2xl mb-2"></i><p class="text-sm">Día sin clases: ${esc(noLect)}</p></div>`;
+            } else {
+                const cuenta = { '': 0 };
+                app.ASIS_ESTADOS.forEach(e => cuenta[e.k] = 0);
+                md.estudiantes.forEach(est => { const v = md.marcas[est.id + '|' + fecha] || ''; cuenta[v] = (cuenta[v] || 0) + 1; });
+                const resumen = app.ASIS_ESTADOS.map(e => cuenta[e.k] ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold" style="background:${e.s};color:${e.c}">${e.k} ${cuenta[e.k]}</span>` : '').join('')
+                    + (cuenta[''] ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500">Sin marcar ${cuenta['']}</span>` : '');
+                const filas = md.estudiantes.map(est => {
+                    const key = est.id + '|' + fecha;
+                    const v = md.marcas[key] || '';
+                    const conDetalle = !!app.parseDetalleLecciones((md.detalles || {})[key]);
+                    const botones = app.ASIS_ESTADOS.map(e => {
+                        const on = v === e.k;
+                        return `<button onclick="app.setMarcaMovil('${est.id}','${fecha}','${e.k}')" title="${e.txt}" class="flex-1 h-11 rounded-xl text-sm font-black border-2 transition active:scale-95" style="${on ? `background:${e.c};border-color:${e.c};color:#fff;box-shadow:0 6px 12px -6px ${e.c}` : `background:${e.s};border-color:transparent;color:${e.c}`}">${e.k}</button>`;
+                    }).join('');
+                    return `
+                    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-3">
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <button onclick="app.verFichaAsistencia('${est.id}', ${app.jsStr(est.nombre)})" class="text-sm font-bold text-slate-700 text-left truncate">${esc(est.nombre)}</button>
+                            ${Number(col.lessons) > 1 ? `<button onclick="app.openLessonDetail('${est.id}','${md.idMat}','${fecha}', ${app.jsStr(est.nombre)})" class="shrink-0 text-[11px] font-bold px-2 py-1 rounded-lg ${conDetalle ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-50 text-slate-500'}"><i class="fas fa-layer-group mr-1"></i>${conDetalle ? 'Detalle' : 'Por lección'}</button>` : ''}
+                        </div>
+                        <div class="flex gap-1.5">${botones}</div>
+                    </div>`;
+                }).join('');
+                cuerpo = `
+                    <div class="flex items-center justify-between gap-2 mb-2">
+                        <div class="flex flex-wrap gap-1">${resumen}</div>
+                        ${cuenta[''] ? `<button onclick="app.presentesFaltantesMovil('${fecha}')" class="shrink-0 text-xs font-bold px-3 py-2 rounded-xl bg-emerald-600 text-white shadow"><i class="fas fa-check-double mr-1"></i>Presentes (${cuenta['']})</button>` : ''}
+                    </div>
+                    <p class="text-[11px] text-slate-400 mb-2">${col.lessons} lección${Number(col.lessons) > 1 ? 'es' : ''} · tocá un estado para marcar, otra vez para quitar. Se guarda solo.</p>
+                    <div class="space-y-2">${filas}</div>`;
+            }
+            cont.innerHTML = toggle + `<div class="flex gap-2 overflow-x-auto pb-2 mb-2 -mx-1 px-1" id="lista-movil-dias">${pills}</div>` + cuerpo;
+            const act = cont.querySelector(`[data-fecha-pill="${fecha}"]`);
+            if (act) act.scrollIntoView({ block: 'nearest', inline: 'center' });
+        },
+
+        // Pinta la celda equivalente en la matriz (para que ambas vistas coincidan)
+        pintarCeldaMatriz: (idEst, fecha, v) => {
+            const cell = document.querySelector(`td[data-fecha="${fecha}"][data-est="${idEst}"]`);
+            if (!cell) return;
+            const stateEl = cell.querySelector('.cell-state') || cell;
+            stateEl.innerText = v;
+            cell.className = cell.className.replace(/bg-\w+-100/g, '');
+            const cls = { P: 'bg-green-100', AI: 'bg-red-100', T: 'bg-yellow-100', E: 'bg-orange-100', J: 'bg-blue-100' }[v];
+            if (cls) cell.classList.add(cls);
+        },
+
+        // Marca (o quita, si se toca el mismo) el estado del día. Mismo guardado que la matriz.
+        setMarcaMovil: async (idEst, fecha, estado) => {
+            const md = app.state.matrixData;
+            if (!md) return;
+            const key = idEst + '|' + fecha;
+            const prev = md.marcas[key] || '';
+            const prevDet = (md.detalles || {})[key];
+            const nuevo = prev === estado ? '' : estado;
+            md.marcas[key] = nuevo;
+            if (md.detalles) delete md.detalles[key];
+            app.pintarCeldaMatriz(idEst, fecha, nuevo);
+            app.renderListaMovil(fecha);
+            const res = await app.api({ action: 'saveMark', email: app.user.email, idEst, idMateria: md.idMat, fecha, estado: nuevo }, { silent: true });
+            if (!res || !res.success) {
+                md.marcas[key] = prev;
+                if (prevDet !== undefined && md.detalles) md.detalles[key] = prevDet;
+                app.pintarCeldaMatriz(idEst, fecha, prev);
+                app.renderListaMovil(fecha);
+                Swal.fire('No se guardó', 'No se pudo registrar esa marca. Revisá la conexión e intentá de nuevo.', 'error');
+            }
+        },
+
+        // Marca Presente SOLO a quienes no tienen marca ese día (no pisa ausencias ya puestas)
+        presentesFaltantesMovil: async (fecha) => {
+            const md = app.state.matrixData;
+            if (!md) return;
+            const sinMarca = md.estudiantes.filter(est => !(md.marcas[est.id + '|' + fecha]));
+            if (!sinMarca.length) return;
+            const marcas = sinMarca.map(est => ({ idEst: est.id, idMateria: md.idMat, fecha, estado: 'P' }));
+            sinMarca.forEach(est => { md.marcas[est.id + '|' + fecha] = 'P'; app.pintarCeldaMatriz(est.id, fecha, 'P'); });
+            app.renderListaMovil(fecha);
+            const res = await app.api({ action: 'saveMarkBatch', email: app.user.email, marcas });
+            if (!res || !res.success) {
+                sinMarca.forEach(est => { md.marcas[est.id + '|' + fecha] = ''; app.pintarCeldaMatriz(est.id, fecha, ''); });
+                app.renderListaMovil(fecha);
+                return Swal.fire('No se guardó', 'No se pudo registrar la asistencia de este día. Intentá de nuevo.', 'error');
+            }
+            app.toast('success', `${sinMarca.length} marcados como presentes`);
+        },
+
+        // ===== PROPUESTA V5.1 (2026-10-31) — CHIP DE LA SECCIÓN EN LA BARRA SUPERIOR =====
+        // Mismo ícono y color que el menú lateral (colores en el CSS "ÍCONOS CON VIDA").
+        ICONO_SECCION: {
+            dashboard: 'fa-home', asistencia: 'fa-calendar-check', planeamientos: 'fa-clipboard-list',
+            bitacoras: 'fa-book-open', sea: 'fa-file-excel', alertas: 'fa-triangle-exclamation',
+            miaula: 'fa-chalkboard-teacher', config: 'fa-cog', horarios: 'fa-clock', ayuda: 'fa-life-ring',
+            'admin-users': 'fa-users-cog', estudiantes: 'fa-user-graduate', materias: 'fa-book',
+            indicadores: 'fa-pen-to-square', evaluar: 'fa-pen-to-square', auditoria: 'fa-search'
+        },
+        pintarChipTitulo: (viewId) => {
+            const chip = document.getElementById('page-title-chip');
+            if (!chip) return;
+            const icono = app.ICONO_SECCION[viewId] || 'fa-home';
+            chip.className = `fas ${icono} sec-${app.ICONO_SECCION[viewId] ? viewId : 'dashboard'}`;
+            chip.style.animation = 'none'; void chip.offsetWidth; chip.style.animation = ''; // re-dispara la entrada
+        },
+
+        // ===== PROPUESTA V5.1 (2026-10-31) — CARGA GENERAL DE LA APP =====
+        // Un solo diseño de "esperando al servidor" para toda la app: spinner
+        // violeta + leyenda con el tiempo esperado + barra que se llena en ese
+        // tiempo. Si se pasa, la leyenda cambia a ámbar ("ya casi...").
+        // SOLO VISUAL: no toca ninguna lógica de guardado ni de datos.
+        //
+        // Tiempo según el tipo de tarea (se deduce del texto, o se fuerza con opts.tipo):
+        //   guardar  -> menos de 10 s   (Guardando, Eliminando, Corrigiendo, Actualizando...)
+        //   cargar   -> menos de 15 s   (Cargando, Calculando... = valor por defecto)
+        //   generar  -> hasta 1 minuto  (PDF, Excel, envíos, subidas, clonado, recálculos)
+        CARGA_TIPOS: {
+            guardar: { seg: 10, txt: 'Esto tarda menos de 10 segundos' },
+            cargar:  { seg: 15, txt: 'Esto tarda menos de 15 segundos' },
+            generar: { seg: 60, txt: 'Puede tardar hasta 1 minuto' }
+        },
+        tipoDeCarga: (texto) => {
+            const t = String(texto || '');
+            if (/generando|pdf|excel|enviando|correos|subiendo|clonando|recalculando|radiograf/i.test(t)) return 'generar';
+            if (/guardando|eliminando|corrigiendo|actualizando|creando|verificando|deshaciendo|registrando/i.test(t)) return 'guardar';
+            return 'cargar';
+        },
+        // Devuelve el HTML de la leyenda + barra (lo usan la carga en contenedores y la de Swal).
+        _cargaLeyendaHtml: (cfg, idCarga, compacto) => `
+            <div class="${compacto ? 'inline-flex items-center gap-2 ml-2 align-middle' : 'mt-3 flex flex-col items-center'}" data-carga-id="${idCarga}">
+                <span data-carga-leyenda class="${compacto ? 'text-[10px]' : 'text-[11px]'} font-bold px-3 py-1 rounded-full" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe">
+                    <i class="far fa-clock mr-1"></i>${cfg.txt}
+                </span>
+                <div class="${compacto ? 'w-20' : 'mt-3 w-48'} h-1.5 rounded-full overflow-hidden" style="background:#ede9fe">
+                    <div data-carga-barra class="h-1.5 rounded-full" style="width:0%;background:linear-gradient(90deg,#8b5cf6,#6366f1);transition:width ${cfg.seg}s linear"></div>
+                </div>
+            </div>`,
+        // Anima la barra y programa el aviso ámbar. Solo afecta a ESTA carga (idCarga),
+        // así una carga nueva en el mismo lugar nunca hereda el aviso de una anterior.
+        _cargaArrancar: (raiz, cfg, idCarga) => {
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                const barra = raiz.querySelector(`[data-carga-id="${idCarga}"] [data-carga-barra]`);
+                if (barra) barra.style.width = '100%';
+            }));
+            const t = setTimeout(() => {
+                const ley = raiz.querySelector(`[data-carga-id="${idCarga}"] [data-carga-leyenda]`);
+                if (ley && ley.isConnected) {
+                    ley.style.background = '#fffbeb'; ley.style.color = '#b45309'; ley.style.borderColor = '#fde68a';
+                    ley.innerHTML = '<i class="fas fa-hourglass-half mr-1"></i>Está tardando un poco más de lo normal, ya casi...';
+                }
+            }, cfg.seg * 1000);
+            return () => clearTimeout(t);
+        },
+        // opts: { tipo, tarjeta (caja blanca), fila (colspan para <tbody>), compacto (en línea), clase (extra) }
+        // Devuelve una función para detener el aviso ámbar (opcional llamarla).
+        cargaGeneral: (contenedor, texto, opts = {}) => {
+            if (!contenedor) return () => {};
+            const cfg = app.CARGA_TIPOS[opts.tipo || app.tipoDeCarga(texto)] || app.CARGA_TIPOS.cargar;
+            const idCarga = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            let html;
+            if (opts.compacto) {
+                html = `<span class="text-xs text-slate-400 inline-flex items-center flex-wrap gap-1"><i class="fas fa-spinner fa-spin" style="color:#8b5cf6"></i> ${texto}${app._cargaLeyendaHtml(cfg, idCarga, true)}</span>`;
+            } else {
+                const caja = `
+                    <div class="${opts.tarjeta ? 'bg-white rounded-2xl shadow-sm border border-gray-200 p-8' : 'py-10'} text-center text-slate-400 ${opts.clase || ''}">
+                        <i class="fas fa-spinner fa-spin text-2xl" style="color:#8b5cf6"></i><br>
+                        <span class="text-xs">${texto}</span>
+                        ${app._cargaLeyendaHtml(cfg, idCarga, false)}
+                    </div>`;
+                html = opts.fila ? `<tr><td colspan="${opts.fila}">${caja}</td></tr>` : caja;
+            }
+            contenedor.innerHTML = html;
+            return app._cargaArrancar(contenedor, cfg, idCarga);
+        },
+        // Compatibilidad con los paneles de rendimiento (V5.1).
+        cargaRendimiento: (contenedor, texto, conTarjeta) => app.cargaGeneral(contenedor, texto, { tarjeta: !!conTarjeta, tipo: 'cargar' }),
+
+        // Ventanitas de espera (SweetAlert): se adaptan TODAS solas, sin tocar
+        // cada llamada. Se envuelve Swal.showLoading para agregar la leyenda y la
+        // barra debajo del título; se quitan al cerrar o al abrir otra ventana.
+        instalarCargaGeneralSwal: () => {
+            if (!window.Swal || Swal.__cargaGeneral) return;
+            Swal.__cargaGeneral = true;
+            const limpiar = () => {
+                const pop = Swal.getPopup && Swal.getPopup();
+                if (pop) pop.querySelectorAll('[data-carga-swal]').forEach(n => n.remove());
+                if (app._cargaSwalFin) { app._cargaSwalFin(); app._cargaSwalFin = null; }
+            };
+            const envolver = (nombre) => {
+                const orig = Swal[nombre];
+                if (typeof orig !== 'function') return;
+                Swal[nombre] = function () { limpiar(); return orig.apply(this, arguments); };
+            };
+            ['fire', 'close', 'hideLoading', 'update'].forEach(envolver);
+            const origShow = Swal.showLoading;
+            Swal.showLoading = function (boton) {
+                const r = origShow.apply(this, arguments);
+                try {
+                    if (boton) return r; // loader dentro de un botón de formulario: se deja igual
+                    limpiar();
+                    const pop = Swal.getPopup && Swal.getPopup();
+                    if (!pop) return r;
+                    const texto = [(Swal.getTitle() || {}).textContent, (Swal.getHtmlContainer() || {}).textContent].join(' ');
+                    const cfg = app.CARGA_TIPOS[app.tipoDeCarga(texto)];
+                    const idCarga = 's' + Date.now().toString(36);
+                    const nodo = document.createElement('div');
+                    nodo.setAttribute('data-carga-swal', '');
+                    nodo.style.cssText = 'display:flex;justify-content:center;padding:0 1em 1em;';
+                    nodo.innerHTML = app._cargaLeyendaHtml(cfg, idCarga, false);
+                    const actions = Swal.getActions && Swal.getActions();
+                    if (actions && actions.parentNode === pop) pop.insertBefore(nodo, actions.nextSibling); else pop.appendChild(nodo);
+                    app._cargaSwalFin = app._cargaArrancar(pop, cfg, idCarga);
+                } catch (e) { /* nunca romper una ventana por la leyenda */ }
+                return r;
+            };
+        },
+
+        // ===== PROPUESTA V5.1 (2026-10-31) — PULSO DE LA SECCIÓN =====
+        // Responde "¿qué tengo que atender hoy con este grupo?" cruzando TODAS
+        // las materias del periodo vigente. Usa el mismo motor de estado que el
+        // panel de cada materia (backend getSectionKPIs V5.1, solo lectura).
         openSectionKPIs: async (idSeccion, nombre) => {
             const modal = document.getElementById('modal-kpis');
             const body  = document.getElementById('kpi-body');
+            const esc = app.escapeHtml;
             document.getElementById('kpi-title').innerText = nombre;
+            document.getElementById('kpi-kicker').innerHTML = 'Pulso de la sección <span class="ml-1 text-[9px] font-black bg-indigo-600 text-white px-1.5 py-0.5 rounded-full align-middle">V5.1</span>';
             modal.classList.remove('hidden');
-            body.innerHTML = `<div class="flex justify-center py-10"><i class="fas fa-spinner fa-spin text-3xl text-indigo-400"></i></div>`;
+            const finCarga = app.cargaRendimiento(body, 'Cruzando materias, notas y asistencia...', false); // [V5.1] carga uniforme
 
             const res = await app.api({ action: 'getSectionKPIs', idSeccion });
+            finCarga();
             if (!res || res.error) {
-                body.innerHTML = `<p class="text-center text-red-400 py-6">Error al cargar datos.</p>`;
+                body.innerHTML = `<p class="text-center text-red-400 py-6">Error al cargar datos.${res && res.error ? `<br><span class="text-xs">${esc(res.error)}</span>` : ''}</p>`;
                 return;
             }
 
-            const kpis = [
-                { icon: 'fa-users',               color: '#6366f1', bg: '#eef2ff', label: 'Total Estudiantes',          value: res.totalEst,        suffix: '',     alert: false,                   detalles: null },
-                { icon: 'fa-exclamation-triangle', color: '#ef4444', bg: '#fef2f2', label: 'Bajo mínimo (< 65)',         value: res.estBajoMinimo,   suffix: ' est', alert: res.estBajoMinimo > 0,   detalles: res.detallesBajoMinimo },
-                { icon: 'fa-clipboard-list',       color: '#f59e0b', bg: '#fffbeb', label: 'Indicadores sin calificar',  value: res.indSinCalificar, suffix: '',     alert: res.indSinCalificar > 0, detalles: res.detallesIndSinCalificar },
-                { icon: 'fa-user-times',           color: '#f43f5e', bg: '#fff1f2', label: 'Con ausencias injust. (AI)', value: res.estConAI,        suffix: ' est', alert: res.estConAI > 0,        detalles: res.detallesEstConAI },
-                { icon: 'fa-bell',                 color: '#8b5cf6', bg: '#f5f3ff', label: 'Bitácoras pendientes',       value: res.bitPendientes,   suffix: '',     alert: res.bitPendientes > 0,   detalles: res.detallesBitPendientes },
-                { icon: 'fa-chart-line',           color: '#10b981', bg: '#ecfdf5', label: 'Promedio general sección',   value: res.promedioSeccion, suffix: '%',    alert: false,                   detalles: null },
+            const perTxt = res.periodo === '1' ? 'I Periodo' : res.periodo === '2' ? 'II Periodo' : `Periodo ${esc(res.periodo)}`;
+            const refLabel = res.cerrado ? 'Nota promedio' : 'Proyección promedio';
+            const colorNota = (n, min) => n === null || n === undefined ? '#94a3b8' : n < min ? '#e11d48' : n < min + 5 ? '#d97706' : '#059669';
+
+            const tiles = [
+                { key: 'riesgo', icon: 'fa-triangle-exclamation', color: '#e11d48', bg: '#fff1f2',
+                  label: res.cerrado ? 'Estudiantes reprobando' : 'Estudiantes en riesgo', value: res.enRiesgo.length, suffix: ` / ${res.totalEst}`,
+                  sub: res.enRiesgo3 > 0 ? `${res.enRiesgo3} en 3 o más materias` : 'en al menos una materia', alert: res.enRiesgo.length > 0, n: res.enRiesgo.length },
+                { key: 'aus', icon: 'fa-user-clock', color: '#ea580c', bg: '#fff7ed',
+                  label: 'Ausentismo ≥ 10%', value: res.ausentismo.length, suffix: ' est',
+                  sub: 'injustificadas sobre lecciones (Art. 37)', alert: res.ausentismo.length > 0, n: res.ausentismo.length },
+                { key: 'materias', icon: 'fa-book-open', color: '#4f46e5', bg: '#eef2ff',
+                  label: refLabel, value: res.promedioReferencia === null ? '—' : res.promedioReferencia, suffix: res.promedioReferencia === null ? '' : '',
+                  sub: `${res.totalMaterias} materias · ver cuál preocupa más`, alert: false, n: res.materias.length },
+                { key: 'incompletos', icon: 'fa-clipboard-list', color: '#d97706', bg: '#fffbeb',
+                  label: 'Evaluaciones con notas faltantes', value: res.incompletos.length, suffix: '',
+                  sub: 'indicadores del periodo sin completar', alert: res.incompletos.length > 0, n: res.incompletos.length },
+                { key: 'bit', icon: 'fa-bell', color: '#7c3aed', bg: '#f5f3ff',
+                  label: 'Bitácoras pendientes', value: res.bitacoras.length, suffix: '',
+                  sub: 'seguimientos abiertos', alert: res.bitacoras.length > 0, n: res.bitacoras.length },
             ];
 
-            const renderResumen = () => {
-                body.innerHTML = kpis.map((k, idx) => {
-                    const clickable = k.detalles && k.detalles.length > 0;
-                    return `
-                    <div class="rounded-xl border p-4 transition ${clickable ? 'cursor-pointer hover:shadow-md hover:-translate-y-1' : ''} ${k.alert ? 'border-red-100 bg-red-50' : 'border-slate-100 bg-slate-50'}"
-                         ${clickable ? `data-kpi-idx="${idx}"` : ''}>
-                        <div class="flex items-center gap-4">
-                            <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style="background:${k.bg}">
-                                <i class="fas ${k.icon} text-lg" style="color:${k.color}"></i>
-                            </div>
-                            <div class="flex-1">
-                                <p class="text-xs text-slate-500 font-medium">${k.label}</p>
-                                <p class="text-2xl font-black" style="color:${k.alert ? '#ef4444' : k.color}">${k.value}${k.suffix}</p>
-                            </div>
-                            ${k.alert ? `<span class="text-xs font-bold text-red-400 bg-red-100 px-2 py-1 rounded-full">Atención</span>` : ''}
-                            ${clickable ? `<i class="fas fa-chevron-right text-slate-300 text-xs"></i>` : ''}
+            const tileHtml = (k) => {
+                const clickable = k.n > 0;
+                return `
+                <div class="rounded-2xl border p-4 transition ${clickable ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5' : ''} ${k.alert ? 'border-rose-100 bg-rose-50/60' : 'border-slate-100 bg-slate-50'}" ${clickable ? `data-kpi-key="${k.key}"` : ''}>
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style="background:${k.bg}"><i class="fas ${k.icon}" style="color:${k.color}"></i></div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-[11px] text-slate-500 font-semibold leading-tight">${k.label}</p>
+                            <p class="text-2xl font-black leading-tight" style="color:${k.alert ? '#e11d48' : k.color}">${k.value}<span class="text-sm font-bold text-slate-400">${k.suffix}</span></p>
+                            <p class="text-[10px] text-slate-400 truncate">${k.sub}</p>
                         </div>
-                    </div>`;
-                }).join('');
-
-                body.querySelectorAll('[data-kpi-idx]').forEach(el => {
-                    el.addEventListener('click', () => renderDetalle(parseInt(el.dataset.kpiIdx)));
-                });
+                        ${clickable ? `<i class="fas fa-chevron-right text-slate-300 text-xs"></i>` : ''}
+                    </div>
+                </div>`;
             };
 
-            const renderDetalle = (idx) => {
-                const k = kpis[idx];
-                let filas = '';
-                if (idx === 1) {
-                    filas = k.detalles.map(d => `
-                        <div class="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0">
-                            <span class="text-sm text-slate-700 font-medium">${d.nombre}</span>
-                            <span class="text-sm font-black" style="color:#ef4444">${d.total}%</span>
-                        </div>`).join('');
-                } else if (idx === 2) {
-                    filas = k.detalles.map(d => `
-                        <div class="flex items-start justify-between py-2.5 border-b border-slate-100 last:border-0 gap-3">
-                            <span class="text-sm text-slate-700 flex-1">${d.desc}</span>
-                            <span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded-full shrink-0">${d.materia}</span>
-                        </div>`).join('');
-                } else if (idx === 3) {
-                    filas = k.detalles.map(d => `
-                        <div class="flex items-center justify-between py-2.5 border-b border-slate-100 last:border-0">
-                            <span class="text-sm text-slate-700 font-medium">${d.nombre}</span>
-                            <span class="text-sm font-black" style="color:#f43f5e">${d.cant} AI</span>
-                        </div>`).join('');
-                } else if (idx === 4) {
-                    filas = k.detalles.map(d => `
-                        <div class="flex items-start justify-between py-2.5 border-b border-slate-100 last:border-0 gap-3">
-                            <span class="text-sm text-slate-700 flex-1">${d.desc}</span>
-                            <span class="text-[10px] text-slate-400 shrink-0">${d.fecha}</span>
-                        </div>`).join('');
-                }
-
-                body.innerHTML = `
-                    <button id="kpi-back" class="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:text-indigo-800 mb-3 transition">
-                        <i class="fas fa-arrow-left"></i> Volver al resumen
-                    </button>
-                    <div class="flex items-center gap-3 mb-4 p-3 rounded-xl" style="background:${k.bg}">
-                        <i class="fas ${k.icon} text-xl" style="color:${k.color}"></i>
-                        <div>
-                            <p class="text-xs text-slate-500">${k.label}</p>
-                            <p class="text-xl font-black" style="color:${k.color}">${k.value}${k.suffix}</p>
-                        </div>
+            const materiasTop = res.materias.slice(0, 3).map(m => {
+                const pct = m.total ? Math.round((m.enRiesgo / m.total) * 100) : 0;
+                return `
+                <div class="mb-2">
+                    <div class="flex justify-between text-[11px] font-bold text-slate-500 mb-0.5">
+                        <span class="truncate">${esc(m.nombre)}</span>
+                        <span>${m.enRiesgo}/${m.total} en riesgo</span>
                     </div>
-                    <div>${filas}</div>`;
+                    <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden"><div class="h-2 rounded-full ${pct >= 30 ? 'bg-rose-500' : pct > 0 ? 'bg-amber-400' : 'bg-emerald-500'}" style="width:${Math.max(pct, 3)}%"></div></div>
+                </div>`;
+            }).join('');
 
+            const renderResumen = () => {
+                body.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full"><i class="far fa-calendar mr-1"></i>${perTxt} · ${res.cerrado ? 'cerrado' : 'en curso'}</span>
+                        <span class="text-[10px] text-slate-400">${res.totalEst} estudiantes · ${res.totalMaterias} materias</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">${tiles.map(tileHtml).join('')}</div>
+                    ${res.materias.length ? `
+                    <div class="rounded-2xl border border-slate-100 p-4">
+                        <p class="text-[11px] font-bold text-slate-500 uppercase mb-2">Materias que más preocupan</p>
+                        ${materiasTop}
+                    </div>` : ''}`;
+                body.querySelectorAll('[data-kpi-key]').forEach(el => el.addEventListener('click', () => renderDetalle(el.dataset.kpiKey)));
+            };
+
+            const fila = (izq, der) => `<div class="flex items-start justify-between py-2.5 border-b border-slate-100 last:border-0 gap-3">${izq}${der}</div>`;
+
+            const renderDetalle = (key) => {
+                const k = tiles.find(t => t.key === key);
+                let filas = '', nota = '';
+                if (key === 'riesgo') {
+                    nota = res.cerrado ? 'Nota real del periodo bajo la mínima de cada materia.' : 'Proyección bajo la mínima de cada materia: cómo terminaría si mantiene el rendimiento que lleva en lo ya evaluado.';
+                    filas = res.enRiesgo.map(e => fila(
+                        `<div class="flex-1 min-w-0"><p class="text-sm text-slate-700 font-semibold">${esc(e.nombre)}</p>
+                         <div class="flex flex-wrap gap-1 mt-1">${e.materias.map(m => `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600">${esc(m.materia)} · ${m.nota}</span>`).join('')}</div></div>`,
+                        `<span class="text-xs font-black text-rose-600 shrink-0">${e.materias.length} mat.</span>`)).join('');
+                } else if (key === 'aus') {
+                    nota = 'Art. 37 Reglamento MEP 2026: % de ausencias injustificadas sobre lecciones programadas a la fecha (tardía = ½). Se muestra la materia donde el % es mayor.';
+                    const colB = { leve: '#d97706', alta: '#ea580c', critica: '#e11d48' };
+                    filas = res.ausentismo.map(a => fila(
+                        `<div class="flex-1 min-w-0"><p class="text-sm text-slate-700 font-semibold">${esc(a.nombre)}</p><p class="text-[10px] text-slate-400">${esc(a.materia)} · ${a.ai} AI · ${a.tardias} tardías · rango Art. 37: ${a.banda.texto}</p></div>`,
+                        `<span class="text-sm font-black shrink-0" style="color:${colB[a.banda.nivel] || '#64748b'}">${a.pct}%</span>`)).join('');
+                } else if (key === 'materias') {
+                    nota = res.cerrado ? 'Nota real promedio del periodo por materia.' : 'Proyección promedio por materia y cuánto del curso ya tiene notas.';
+                    filas = res.materias.map(m => fila(
+                        `<div class="flex-1 min-w-0"><p class="text-sm text-slate-700 font-semibold">${esc(m.nombre)}</p><p class="text-[10px] text-slate-400">${m.enRiesgo}/${m.total} en riesgo · ${m.avanceEval}% del curso evaluado · asistencia ${m.asistenciaReal}%</p></div>`,
+                        `<span class="text-sm font-black shrink-0" style="color:${colorNota(m.promedio, m.notaMinima)}">${m.promedio === null ? '—' : m.promedio}</span>`)).join('');
+                } else if (key === 'incompletos') {
+                    nota = 'Indicadores del periodo donde todavía faltan estudiantes por calificar.';
+                    filas = res.incompletos.map(d => fila(
+                        `<div class="flex-1 min-w-0"><p class="text-sm text-slate-700">${esc(d.desc)}</p><p class="text-[10px] text-slate-400">${esc(d.materia)} · ${esc(d.cat)}</p></div>`,
+                        `<span class="text-[11px] font-bold shrink-0 px-2 py-0.5 rounded-full ${d.calificados === 0 ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-700'}">${d.calificados}/${d.total}</span>`)).join('');
+                } else if (key === 'bit') {
+                    filas = res.bitacoras.map(d => fila(`<span class="text-sm text-slate-700 flex-1">${esc(d.desc)}</span>`, `<span class="text-[10px] text-slate-400 shrink-0">${esc(d.fecha)}</span>`)).join('');
+                }
+                body.innerHTML = `
+                    <button id="kpi-back" class="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:text-indigo-800 transition"><i class="fas fa-arrow-left"></i> Volver al resumen</button>
+                    <div class="flex items-center gap-3 p-3 rounded-xl" style="background:${k.bg}">
+                        <i class="fas ${k.icon} text-xl" style="color:${k.color}"></i>
+                        <div><p class="text-xs text-slate-500">${k.label} · ${perTxt}</p><p class="text-xl font-black" style="color:${k.color}">${k.value}${k.suffix}</p></div>
+                    </div>
+                    ${nota ? `<p class="text-[11px] text-slate-500 bg-slate-50 rounded-lg px-3 py-2"><i class="fas fa-circle-info text-indigo-400 mr-1"></i>${nota}</p>` : ''}
+                    <div>${filas}</div>`;
                 document.getElementById('kpi-back').addEventListener('click', renderResumen);
             };
 
@@ -2680,7 +3204,7 @@ openStudents: async (idSec, nombreSec) => {
             document.getElementById('page-title').innerText = `Estudiantes: ${nombreSec}`;
             
             const tbody = document.getElementById('table-students-body');
-            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center"><i class="fas fa-spinner fa-spin text-indigo-500 text-xl"></i><br><span class="text-slate-400 text-xs">Cargando...</span></td></tr>';
+            app.cargaGeneral(tbody, 'Cargando estudiantes...', { fila: 6 }); // [V5.1] carga general
 
             // Guardamos la lista en memoria para poder editar luego sin ir al server
             const list = await app.api({ action: 'getStudents', idSeccion: idSec });
@@ -3139,11 +3663,12 @@ openStudents: async (idSec, nombreSec) => {
             app.nav('materias');
             document.getElementById('page-title').innerText = `Asignaturas: ${nombreSec}`;
             document.getElementById('materia-kpis-container').innerHTML = '';
+            app.state.kpiAbiertaId = null; // [V5.1]
 
             const tbody = document.getElementById('table-materias-body');
             
             // Spinner moderno
-            tbody.innerHTML = '<tr><td colspan="3" class="p-4 text-center"><i class="fas fa-spinner fa-spin text-indigo-500 text-xl"></i><br><span class="text-slate-400 text-xs">Cargando asignaturas...</span></td></tr>';
+            app.cargaGeneral(tbody, 'Cargando asignaturas...', { fila: 3 }); // [V5.1] carga general
 
             const list = await app.api({ action: 'getSubjects', idSeccion: idSec });
             
@@ -3188,9 +3713,10 @@ openStudents: async (idSec, nombreSec) => {
                 const delay = index * 0.05;
 
                 tbody.innerHTML += `
-                <tr class="fade-in-up hover:bg-indigo-50/50 group border-b border-slate-100 transition-all hover:shadow-[inset_3px_0_0_0_#6366f1]" style="animation-delay: ${delay}s">
+                <tr id="mat-row-${m.id}" class="fade-in-up hover:bg-indigo-50/50 group border-b border-slate-100 transition-all hover:shadow-[inset_3px_0_0_0_#6366f1]" style="animation-delay: ${delay}s">
                     <td class="p-4">
-                        <span class="font-bold text-slate-700 cursor-pointer hover:text-indigo-600 hover:underline" onclick="app.verKPIsMateria('${m.id}', ${app.jsStr(m.nombre)})" title="Ver KPIs de esta materia">${m.nombre}</span>
+                        <!-- [V5.1] el nombre ya no abre el panel: se usa el boton "Rendimiento" (descubrible y tactil) -->
+                        <span class="font-bold text-slate-700">${m.nombre}</span>
                         ${minBadge}
                     </td>
                     <td class="p-4 text-center text-xs text-slate-500">
@@ -3214,6 +3740,11 @@ openStudents: async (idSec, nombreSec) => {
                             <!-- BOTÓN EVALUAR (Resaltado en Azul) -->
                             <button onclick="app.openIndicadores('${m.id}', '${m.nombre}')" class="bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-100 hover:scale-105 border border-indigo-200 shadow-sm transition flex items-center gap-2" title="Evaluar">
                                 <i class="fas fa-edit"></i> <span class="hidden md:inline">Evaluar</span>
+                            </button>
+
+                            <!-- [V5.1] BOTÓN RENDIMIENTO: abre/oculta el panel de la materia (mismo icono que el de la seccion) -->
+                            <button id="btn-rend-${m.id}" onclick="app.toggleRendimientoMateria('${m.id}', ${app.jsStr(m.nombre)})" aria-pressed="false" class="bg-violet-50 text-violet-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-violet-100 hover:scale-105 border border-violet-200 shadow-sm transition flex items-center gap-2" title="Ver rendimiento de la materia">
+                                <i class="fas fa-chart-bar"></i> <span class="hidden md:inline">Rendimiento</span>
                             </button>
                             
                             <!-- CUADRO NOTAS (Verde) -->
@@ -3839,7 +4370,7 @@ saveScheduleConfig: async () => {
         // Vista por defecto: TODOS los horarios del docente (todas las instituciones/secciones)
         loadAllSchedules: async () => {
             const div = document.getElementById('schedule-list');
-            div.innerHTML = '<div class="p-8 text-center text-gray-400 text-sm"><i class="fas fa-spinner fa-spin"></i> Cargando horarios...</div>';
+            app.cargaGeneral(div, 'Cargando horarios...'); // [V5.1] carga general
 
             const list = await app.api({ action: 'getAllConfigHorarios', email: app.user.email });
             app.data.tempScheduleList = list || [];
@@ -4083,7 +4614,7 @@ renderScheduleList: () => {
             const cont = document.getElementById('matrix-container');
             // Preservar el scroll: al re-renderizar (ej. al guardar un detalle) no debe saltar arriba
             const prevScroll = { top: cont.scrollTop, left: cont.scrollLeft };
-            cont.innerHTML = '<div class="text-center py-10"><i class="fas fa-spinner fa-spin text-2xl text-green-600"></i><br>Generando Matriz...</div>';
+            app.cargaGeneral(cont, 'Generando matriz de asistencia...', { tipo: 'cargar' }); // [V5.1] carga general
 
             const [res, diasNoLectivos] = await Promise.all([
                 app.api({ action: 'getMatrixAttendance', idSeccion: idSec, idMateria: idMat, fIni: fIni, fFin: fFin }),
@@ -4131,7 +4662,8 @@ renderScheduleList: () => {
 
             // Guardamos el contexto para poder abrir la Ficha del Estudiante sin otra llamada al backend
             app.state.matrixData = {
-                dateCols, marcas: res.marcas, detalles: res.detalles || {}, idMat, valAsistencia, totalLeccionesPeriodo,
+                                dateCols, marcas: res.marcas, detalles: res.detalles || {}, idMat, valAsistencia, totalLeccionesPeriodo,
+                estudiantes: res.estudiantes, noLectivos: mapaNoLectivos, // [V5.1] para la lista del celular
                 nombreMat: selMat.options[selMat.selectedIndex].text,
                 nombreSec: selSec.options[selSec.selectedIndex].text,
                 fIni, fFin
@@ -4249,8 +4781,9 @@ renderScheduleList: () => {
             cont.innerHTML = leyenda + html;
 
             // Restaurar la posición de scroll tras re-renderizar (el detalle no debe "saltar" la vista)
-            cont.scrollTop = prevScroll.top;
+                        cont.scrollTop = prevScroll.top;
             cont.scrollLeft = prevScroll.left;
+            app.renderListaMovil(); // [V5.1] en celular: lista del día
         },
 
         // Parseo/formato del detalle por lección (JSON guardado en ASISTENCIA_DATA.DETALLE_LECCION)
@@ -4525,7 +5058,7 @@ renderScheduleList: () => {
             if (selPeriodo) selPeriodo.innerHTML = app.buildPeriodoOptions(app.state.currentCantPeriodos, app.state.currentPeriodoFiltro, true);
 
             // 1. Mostrar cargando en las pestañas
-            document.getElementById('dynamic-tabs-container').innerHTML = '<span class="text-xs text-slate-400"><i class="fas fa-spinner fa-spin"></i> Calculando rubros...</span>';
+            app.cargaGeneral(document.getElementById('dynamic-tabs-container'), 'Calculando rubros...', { compacto: true }); // [V5.1] carga general
 
             // 2. Traer los indicadores de esta materia (respetando el filtro de periodo activo)
             app.state.allIndicators = await app.api({ action: 'getIndicators', idMateria: idMat, categoria: 'ALL', periodo: app.state.currentPeriodoFiltro });
@@ -4587,7 +5120,7 @@ renderScheduleList: () => {
         _refrescarChecklistClonar: async (periodo) => {
             const cont = document.getElementById('swal-clonar-lista');
             if (!cont) return;
-            cont.innerHTML = '<p class="text-xs text-gray-400 text-center py-2"><i class="fas fa-spinner fa-spin"></i> Cargando indicadores...</p>';
+            app.cargaGeneral(cont, 'Cargando indicadores...', { compacto: true }); // [V5.1] carga general
 
             const list = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: 'ALL', periodo: periodo }, { silent: true });
 
@@ -5054,7 +5587,7 @@ loadIndicadores: async () => {
                 `;
             }
 
-            tbody.innerHTML = '<tr><td colspan="4" class="p-4 text-center"><i class="fas fa-spinner fa-spin text-indigo-500 text-xl"></i><br><span class="text-slate-400 text-xs">Cargando...</span></td></tr>';
+            app.cargaGeneral(tbody, 'Cargando...', { fila: 4 }); // [V5.1] carga general
 
             const list = await app.api({ action: 'getIndicators', idMateria: app.state.currentMatId, categoria: app.state.currentCat, periodo: app.state.currentPeriodoFiltro });
             
@@ -5224,7 +5757,7 @@ list.forEach(i => {
                 : `${app.state.currentCatLabel} | Valor: ${app.state.currentMaxPts}% | Prueba de: ${app.state.currentPtsTotales} Pts`;
             
             const tbody = document.getElementById('table-eval-body');
-            tbody.innerHTML = '<tr><td colspan="2" class="p-4 text-center"><i class="fas fa-spinner fa-spin text-indigo-500"></i></td></tr>';
+            app.cargaGeneral(tbody, 'Cargando evaluación...', { fila: 2 }); // [V5.1] carga general
 
             // Cargar datos
             const list = await app.api({ action: 'getEvaluationData', idSeccion: app.state.currentSecId, idIndicador: idInd });
@@ -5253,7 +5786,7 @@ list.forEach(i => {
                     
                     inputHtml = `
                         <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded min-w-[60px] text-center" id="pts-view-${e.id}">- pts</span>
-                        <select class="grade-input w-36 p-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-600 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm ${hasNota ? 'opacity-60 cursor-not-allowed bg-slate-100' : ''}"
+                        <select class="grade-input w-36 p-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-600 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm ${hasNota ? 'opacity-60 cursor-not-allowed bg-slate-100' : ''}" 
                             data-id="${e.id}" onchange="app.updatePreviewScore(this)" ${hasNota ? 'disabled' : ''}>
                             <option value="" ${selectedVal === "" ? "selected" : ""}>- Seleccionar -</option>
                             <option value="3" ${selectedVal === 3 ? "selected" : ""}>3 (Logrado)</option>
@@ -5266,7 +5799,7 @@ list.forEach(i => {
                     inputHtml = `
                         <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded min-w-[50px] text-center" id="nota100-view-${e.id}" title="Nota 1-100">Nota: -</span>
                         <span class="text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1 rounded min-w-[60px] text-center" id="pts-view-${e.id}" title="Porcentaje para el reporte">- %</span>
-                        <input type="number" class="grade-input w-20 p-2 border border-rose-300 rounded-lg text-center font-bold text-rose-600 focus:ring-2 focus:ring-rose-500 outline-none shadow-sm ${hasNota ? 'opacity-60 cursor-not-allowed bg-slate-100' : ''}"
+                        <input type="number" class="grade-input w-20 p-2 border border-rose-300 rounded-lg text-center font-bold text-rose-600 focus:ring-2 focus:ring-rose-500 outline-none shadow-sm ${hasNota ? 'opacity-60 cursor-not-allowed bg-slate-100' : ''}" 
                            data-id="${e.id}" value="${inputVal}" onkeyup="app.updatePreviewScore(this)" onchange="app.updatePreviewScore(this)" ${hasNota ? 'disabled' : ''}>
                         `;
                 }
@@ -5482,7 +6015,7 @@ fillMaxScore: async (nivelSeleccionado = null) => {
         // 1. CARGAR DATOS
         loadBitacoras: async () => {
             const tbody = document.getElementById('bitacora-table-body');
-            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+            app.cargaGeneral(tbody, 'Cargando bitácoras...', { fila: 6 }); // [V5.1] carga general
             
             // Traer datos del server
             const list = await app.api({ action: 'getBitacoras' });
@@ -6307,7 +6840,7 @@ fillMaxScore: async (nivelSeleccionado = null) => {
             const cont = document.getElementById('at-resultado');
             if (!idSeccion) { cont.innerHTML = ''; return; }
 
-            cont.innerHTML = `<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-slate-400"><i class="fas fa-spinner fa-spin text-xl"></i><br><span class="text-xs">Calculando alertas...</span></div>`;
+            app.cargaGeneral(cont, 'Calculando alertas...', { tarjeta: true }); // [V5.1] carga general
 
             const [res, seguimiento] = await Promise.all([
                 app.api({ action: 'getAlertasTempranas', idSeccion }),
@@ -6803,90 +7336,176 @@ fillMaxScore: async (nivelSeleccionado = null) => {
         // A. CARGAR LISTA
         loadLecciones: async () => {
             const div = document.getElementById('aula-list');
-            div.innerHTML = '<div class="col-span-full text-center py-10"><i class="fas fa-spinner fa-spin text-teal-600 text-2xl"></i></div>';
+            app.cargaGeneral(div, 'Cargando lecciones...', { clase: 'col-span-full' }); // [V5.1] carga general
             
             const lista = await app.api({ action: 'getLessons' });
-            app.data.lecciones = lista || [];
-            app.renderAulaList(app.data.lecciones);
+            app.data.lecciones = Array.isArray(lista) ? lista : [];
+            app.llenarFiltroMateriasAula(); // [V5.1]
+            app.filterAula();               // [V5.1] respeta los filtros elegidos
         },
 
+        // ===== PROPUESTA V5.1 (2026-10-31) — MI AULA RENOVADA (vista) =====
+        // Tarjetas con fecha de clase / entrega, "Calificados x/y", botón Calificar
+        // que abre directo la evaluación del rubro, filtros por materia y "Esta semana",
+        // y un resumen arriba de lo que necesita atención.
         renderAulaList: (lista) => {
             const div = document.getElementById('aula-list');
+            const esc = app.escapeHtml;
+            app.renderResumenAula();
             div.innerHTML = '';
             if(!lista || lista.length === 0) {
-                div.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400">No hay contenido publicado.</div>`;
+                const hayFiltros = (app.data.lecciones || []).length > 0;
+                div.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400">
+                    <i class="fas fa-chalkboard text-4xl mb-3 text-teal-200"></i><br>
+                    ${hayFiltros ? 'Nada coincide con los filtros elegidos.' : 'Todavía no hay contenido publicado. Creá tu primera clase o tarea.'}</div>`;
                 return;
             }
 
+            let html = '';
             lista.forEach(l => {
-                // Estilos según tipo
                 const isTarea = l.tipo === 'Tarea';
-                const color = isTarea ? 'orange' : 'teal';
-                const icon = isTarea ? 'fa-tasks' : 'fa-book';
-                const badge = isTarea
-                    ? `<span class="bg-orange-100 text-orange-700 px-2 py-1 rounded text-xs font-bold border border-orange-200"><i class="fas fa-link mr-1"></i> ${l.nombreIndicador}</span>`
-                    : `<span class="bg-teal-50 text-teal-700 px-2 py-1 rounded text-xs font-bold border border-teal-100">Material de Clase</span>`;
+                const borde = isTarea ? '#f97316' : '#14b8a6';
+                const icon = isTarea ? 'fa-tasks' : 'fa-book-open';
+                const lineaFecha = `<i class="far fa-paper-plane mr-1"></i>Enviada: ${app.fechaCorta(l.fechaEnvio)}`
+                    + (isTarea ? (l.fechaLimite ? ` · <b class="text-slate-600"><i class="far fa-calendar-check mr-1"></i>Límite: ${app.fechaCorta(l.fechaLimite)}</b>` : ' · Sin fecha límite') : '');
 
-                const vencBadge = isTarea ? app.getVencimientoBadge(l.fecha) : '';
-                const progreso = (isTarea && l.totalEstudiantes > 0)
-                    ? `<div class="bg-gray-50 rounded-lg p-2 mb-3">
-                        <div class="flex justify-between text-xs text-gray-500 mb-1">
-                            <span>Entregado</span>
-                            <span class="font-bold text-gray-700">${l.entregados} / ${l.totalEstudiantes}</span>
-                        </div>
-                        <div class="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                            <div class="h-full bg-orange-500" style="width:${Math.round((l.entregados / l.totalEstudiantes) * 100)}%"></div>
-                        </div>
-                    </div>` : '';
+                const faltan = Math.max(0, (l.totalEstudiantes || 0) - (l.calificados || 0));
+                const vencBadge = isTarea ? app.getVencimientoBadge(l.fechaLimite, faltan, !!l.idIndicador) : '';
 
-                div.innerHTML += `
-                <div class="bg-white p-5 rounded-xl shadow-sm border-l-4 border-${color}-500 hover:shadow-md hover:-translate-y-1 transition-all relative group">
-                    <div class="flex justify-between items-start mb-2">
-                        <div>
-                            <span class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">${l.fecha} | ${l.materia}</span>
-                            <h4 class="font-bold text-gray-800 text-lg flex items-center gap-2">
-                                <i class="fas ${icon} text-${color}-500"></i> ${l.titulo}
-                            </h4>
+                let bloqueTarea = '';
+                if (isTarea && l.idIndicador && l.totalEstudiantes > 0) {
+                    const pct = Math.round((l.calificados / l.totalEstudiantes) * 100);
+                    const completo = l.calificados >= l.totalEstudiantes;
+                    bloqueTarea = `
+                    <div class="bg-slate-50 rounded-xl p-2.5 mb-3">
+                        <div class="flex justify-between text-[11px] text-slate-500 mb-1">
+                            <span title="Estudiantes con nota en el rubro vinculado">Calificados</span>
+                            <span class="font-bold text-slate-700">${l.calificados} / ${l.totalEstudiantes}</span>
                         </div>
+                        <div class="h-1.5 bg-slate-200 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${pct}%;background:${completo ? '#10b981' : '#f97316'}"></div></div>
+                        <div class="mt-2 flex gap-2">
+                            <button onclick="app.irACalificarAula('${l.id}')" class="flex-1 text-xs font-bold py-1.5 rounded-lg transition ${completo ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' : 'bg-orange-500 text-white hover:bg-orange-600'}">
+                                <i class="fas ${completo ? 'fa-check-circle' : 'fa-edit'} mr-1"></i>${completo ? 'Calificado · revisar' : 'Calificar'}
+                            </button>
+                            ${(!completo && l.fechaLimite && app._diasHasta(l.fechaLimite) <= 2) ? `
+                            <button onclick="app.recordarAula('${l.id}')" class="flex-1 text-xs font-bold py-1.5 rounded-lg transition bg-white border border-orange-300 text-orange-700 hover:bg-orange-50" title="Enviar recordatorio a las familias de quienes no tienen nota">
+                                <i class="fas fa-bell mr-1"></i>Recordar (${faltan})
+                            </button>` : ''}
+                        </div>
+                    </div>`;
+                } else if (isTarea && !l.idIndicador) {
+                    bloqueTarea = `<p class="text-[11px] text-amber-700 bg-amber-50 rounded-lg px-2.5 py-1.5 mb-3"><i class="fas fa-link-slash mr-1"></i>Sin rubro vinculado: editala para poder calificarla desde aquí.</p>`;
+                }
 
-                        <div class="flex items-center gap-2">
-                            ${vencBadge}
-                            <!-- Menú acciones (Siempre visible en touch, hover en desktop) -->
-                            <div class="flex gap-2 md:opacity-0 md:group-hover:opacity-100 transition">
-                                <button onclick="app.shareAula('${l.id}')" class="text-gray-400 hover:text-teal-600" title="Compartir por correo"><i class="fas fa-share"></i></button>
-                                <button onclick="app.editAula('${l.id}')" class="text-gray-400 hover:text-blue-600" title="Editar"><i class="fas fa-pen"></i></button>
-                                <button onclick="app.deleteAula('${l.id}')" class="text-gray-400 hover:text-red-600" title="Eliminar"><i class="fas fa-trash"></i></button>
-                            </div>
+                html += `
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:-translate-y-0.5 transition-all relative group" style="border-left:4px solid ${borde}">
+                    <div class="flex justify-between items-start gap-2 mb-1">
+                        <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">${esc(l.materia)}${l.seccion ? ' · ' + esc(l.seccion) : ''}</span>
+                        <div class="flex gap-2 md:opacity-0 md:group-hover:opacity-100 transition shrink-0">
+                            <button onclick="app.shareAula('${l.id}')" class="text-slate-400 hover:text-teal-600" title="Enviar a familias"><i class="fas fa-paper-plane"></i></button>
+                            <button onclick="app.editAula('${l.id}')" class="text-slate-400 hover:text-blue-600" title="Editar"><i class="fas fa-pen"></i></button>
+                            <button onclick="app.deleteAula('${l.id}')" class="text-slate-400 hover:text-red-600" title="Eliminar"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
-
-                    <p class="text-sm text-gray-600 mb-3 line-clamp-2">${l.desc}</p>
-
-                    ${progreso}
-
-                    <div class="flex flex-wrap gap-2 mb-3">
-                        ${badge}
-                        ${l.fileUrl ? `<a href="${l.fileUrl}" target="_blank" class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-gray-700 flex items-center"><i class="fas fa-paperclip mr-1"></i> Ver Archivo</a>` : ''}
-                        ${l.link ? `<a href="${l.link}" target="_blank" class="text-xs bg-gray-100 px-2 py-1 rounded hover:bg-gray-200 text-indigo-600 flex items-center"><i class="fas fa-external-link-alt mr-1"></i> Enlace</a>` : ''}
+                    <h4 class="font-bold text-slate-800 text-base flex items-start gap-2 mb-1"><i class="fas ${icon} mt-1" style="color:${borde}"></i><span class="line-clamp-2">${esc(l.titulo)}</span></h4>
+                    <div class="flex flex-wrap items-center gap-2 mb-2">
+                        <span class="text-[11px] text-slate-500">${lineaFecha}</span>
+                        ${vencBadge}
+                    </div>
+                    ${l.desc ? `<p class="text-sm text-slate-600 mb-3 line-clamp-2">${esc(l.desc)}</p>` : ''}
+                    ${bloqueTarea}
+                    <div class="flex flex-wrap gap-2">
+                        ${isTarea && l.idIndicador ? `<span class="bg-orange-50 text-orange-700 px-2 py-1 rounded-md text-[10px] font-bold border border-orange-100 truncate max-w-full" title="${esc(l.nombreIndicador)}"><i class="fas fa-link mr-1"></i>${esc(l.nombreIndicador)}</span>` : ''}
+                        ${!isTarea ? `<span class="bg-teal-50 text-teal-700 px-2 py-1 rounded-md text-[10px] font-bold border border-teal-100">Material de clase</span>` : ''}
+                        ${l.fileUrl ? `<a href="${esc(l.fileUrl)}" target="_blank" rel="noopener" class="text-[11px] bg-slate-100 px-2 py-1 rounded-md hover:bg-slate-200 text-slate-700 flex items-center"><i class="fas fa-paperclip mr-1"></i>Archivo</a>` : ''}
+                        ${l.link ? `<a href="${esc(l.link)}" target="_blank" rel="noopener" class="text-[11px] bg-slate-100 px-2 py-1 rounded-md hover:bg-slate-200 text-indigo-600 flex items-center"><i class="fas fa-external-link-alt mr-1"></i>Enlace</a>` : ''}
                     </div>
                 </div>`;
             });
+            div.innerHTML = html;
         },
 
-        // Devuelve el badge de vencimiento (Vencida / Vence hoy) para una Tarea, según su fecha
-        getVencimientoBadge: (fechaStr) => {
+        // [V5.1] yyyy-MM-dd -> "lun 3 nov" (sin desfase de zona horaria)
+        fechaCorta: (ymd) => {
+            if (!ymd || !/^\d{4}-\d{2}-\d{2}/.test(ymd)) return ymd || '';
+            const [y, m, d] = ymd.substring(0, 10).split('-').map(Number);
+            const f = new Date(y, m - 1, d);
+            return f.toLocaleDateString('es-CR', { weekday: 'short', day: 'numeric', month: 'short' });
+        },
+        _hoyYmd: () => { const h = new Date(); return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0') + '-' + String(h.getDate()).padStart(2, '0'); },
+        _diasHasta: (ymd) => {
+            const [y, m, d] = ymd.substring(0, 10).split('-').map(Number);
+            const h = new Date(); const hoy = new Date(h.getFullYear(), h.getMonth(), h.getDate());
+            return Math.round((new Date(y, m - 1, d) - hoy) / 86400000);
+        },
+
+        // [V5.1] Vencimiento útil: "Vence en 2 días", "Vence hoy", "Vencida · 5 sin calificar"
+        getVencimientoBadge: (fechaStr, faltan, vinculada) => {
             if (!fechaStr) return '';
-            const hoy = new Date();
-            const hoyStr = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-' + String(hoy.getDate()).padStart(2, '0');
-            if (fechaStr < hoyStr) return `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">Vencida</span>`;
-            if (fechaStr === hoyStr) return `<span class="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold whitespace-nowrap">Vence hoy</span>`;
-            return '';
+            const dias = app._diasHasta(fechaStr);
+            const pill = (txt, bg, fg) => `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap" style="background:${bg};color:${fg}">${txt}</span>`;
+            if (dias < 0) {
+                if (vinculada && faltan === 0) return pill('Cerrada', '#ecfdf5', '#047857');
+                return pill(vinculada ? `Vencida · ${faltan} sin calificar` : 'Vencida', '#fef2f2', '#b91c1c');
+            }
+            if (dias === 0) return pill('Vence hoy', '#fef2f2', '#b91c1c');
+            if (dias <= 3) return pill(`Vence en ${dias} día${dias > 1 ? 's' : ''}`, '#fff7ed', '#c2410c');
+            return pill(`En ${dias} días`, '#f1f5f9', '#475569');
+        },
+
+        // [V5.1] Resumen arriba: lo que necesita atención esta semana
+        renderResumenAula: () => {
+            const cont = document.getElementById('aula-resumen');
+            if (!cont) return;
+            const todas = app.data.lecciones || [];
+            const tareas = todas.filter(l => l.tipo === 'Tarea' && l.fechaLimite);
+            const estaSemana = tareas.filter(l => { const d = app._diasHasta(l.fechaLimite); return d >= 0 && d <= 7; }).length;
+            const porCalificar = tareas.filter(l => l.idIndicador && app._diasHasta(l.fechaLimite) < 0 && l.calificados < l.totalEstudiantes).length;
+            const clasesSemana = todas.filter(l => l.tipo === 'Clase' && l.fechaEnvio && Math.abs(app._diasHasta(l.fechaEnvio)) <= 7).length;
+            const tile = (n, label, icon, color, bg) => `
+                <div class="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background:${bg}"><i class="fas ${icon}" style="color:${color}"></i></div>
+                    <div><p class="text-2xl font-black leading-none" style="color:${color}">${n}</p><p class="text-[11px] text-slate-500 font-semibold mt-1">${label}</p></div>
+                </div>`;
+            cont.innerHTML =
+                tile(estaSemana, 'Tareas que vencen en 7 días', 'fa-hourglass-half', '#ea580c', '#fff7ed') +
+                tile(porCalificar, 'Tareas vencidas por calificar', 'fa-clipboard-check', porCalificar ? '#dc2626' : '#059669', porCalificar ? '#fef2f2' : '#ecfdf5') +
+                tile(clasesSemana, 'Clases enviadas esta semana', 'fa-book-open', '#0d9488', '#f0fdfa');
+        },
+
+        // [V5.1] "Calificar" desde una tarea: abre la evaluación del rubro vinculado
+        // usando el mismo botón de la pantalla Evaluar (mismos pesos y reglas).
+        irACalificarAula: async (id) => {
+            const l = (app.data.lecciones || []).find(x => String(x.id) === String(id));
+            if (!l || !l.idIndicador) return;
+            const sec = (app.data.secciones || []).find(s => String(s.id) === String(l.idSeccion));
+            app.state.currentSecId = l.idSeccion;
+            app.state.currentSecName = sec ? sec.nombre : '';
+            await app.openIndicadores(l.idMateria, l.materia);
+            const LABEL = { TRAB_COT: 'Cotidiano', TAREAS: 'Tareas', PRUEBAS: 'Pruebas', PROYECTOS: 'Proyectos' };
+            let ind = (app.state.allIndicators || []).find(i => String(i.id) === String(l.idIndicador));
+            if (!ind) { // el rubro es de otro periodo: mostrar todos
+                await app.setPeriodoFiltro('');
+                ind = (app.state.allIndicators || []).find(i => String(i.id) === String(l.idIndicador));
+            }
+            if (!ind) return Swal.fire('Rubro no encontrado', 'El rubro vinculado a esta tarea ya no existe. Editá la tarea y vinculala de nuevo.', 'warning');
+            app.setCategory(ind.categoria, LABEL[ind.categoria] || ind.categoria);
+            const btn = document.querySelector(`button[onclick^="app.openEvaluation('${ind.id}'"]`);
+            if (btn) btn.click();
         },
 
         // Comparte una lección/tarea por correo con los encargados de estudiantes puntuales (ej. ausentes por enfermedad)
-        shareAula: async (id) => {
+        // [V5.1] Recordatorio: mismo envío, con los estudiantes SIN NOTA ya marcados
+        recordarAula: (id) => {
+            const l = (app.data.lecciones || []).find(x => String(x.id) === String(id));
+            if (!l) return;
+            app.shareAula(id, { preIds: (l.sinNota || []).map(x => String(x.id)), recordatorio: true });
+        },
+
+        shareAula: async (id, opciones = {}) => {
             const l = app.data.lecciones.find(x => String(x.id) === String(id));
             if (!l) return;
+            const pre = new Set(opciones.preIds || []);
 
             Swal.fire({ title: 'Cargando estudiantes...', didOpen: () => Swal.showLoading() });
             const estudiantes = await app.api({ action: 'getStudents', idSeccion: l.idSeccion });
@@ -6907,9 +7526,9 @@ fillMaxScore: async (nivelSeleccionado = null) => {
 
                 listaHtml += `
                 <div class="p-2.5 bg-white hover:bg-teal-50 flex items-center gap-3 transition">
-                    <input type="checkbox" class="chk-share-student w-4 h-4 accent-teal-600 cursor-pointer" value="${e.id}" ${disabled}>
+                    <input type="checkbox" class="chk-share-student w-4 h-4 accent-teal-600 cursor-pointer" value="${e.id}" ${disabled} ${tieneEmail && pre.has(String(e.id)) ? 'checked' : ''}>
                     <div>
-                        <span class="font-bold text-slate-700 text-xs">${e.nombre}</span>
+                        <span class="font-bold text-slate-700 text-xs">${e.nombre}</span>${pre.has(String(e.id)) ? '<span class="ml-1 text-[9px] font-bold text-orange-600 bg-orange-50 px-1.5 rounded">sin nota</span>' : ''}
                         ${aviso}
                     </div>
                 </div>`;
@@ -6917,9 +7536,14 @@ fillMaxScore: async (nivelSeleccionado = null) => {
             listaHtml += `</div></div>`;
 
             const { value: ids } = await Swal.fire({
-                title: 'Compartir por correo',
+                title: opciones.recordatorio ? 'Recordar tarea pendiente' : 'Compartir por correo',
                 width: '550px',
-                html: `<p class="text-sm text-gray-500 text-left mb-2">Enviar "<b>${l.titulo}</b>" a los encargados de estudiantes específicos (ej. ausentes o enfermos).</p>${listaHtml}`,
+                html: (opciones.recordatorio
+                    ? `<p class="text-sm text-gray-500 text-left mb-2">Recordatorio de "<b>${app.escapeHtml(l.titulo)}</b>" (límite ${app.fechaCorta(l.fechaLimite)}). Ya están marcadas las familias de quienes <b>no tienen nota</b> en el rubro.</p>`
+                    : `<p class="text-sm text-gray-500 text-left mb-2">Enviar "<b>${app.escapeHtml(l.titulo)}</b>" a los encargados de estudiantes específicos (ej. ausentes o enfermos).</p>`)
+                    + listaHtml
+                    + `<textarea id="share-msg" class="w-full mt-3 p-2 border rounded text-sm" rows="2" placeholder="Mensaje opcional para las familias"></textarea>`
+                    + `<p class="text-[11px] text-slate-400 text-left mt-1"><i class="fas fa-circle-info"></i> Gmail limita los correos diarios (unos 100 en una cuenta normal).</p>`,
                 showCancelButton: true,
                 confirmButtonText: '<i class="fas fa-paper-plane mr-1"></i> Enviar',
                 confirmButtonColor: '#0d9488',
@@ -6927,6 +7551,7 @@ fillMaxScore: async (nivelSeleccionado = null) => {
                 preConfirm: () => {
                     const seleccionados = Array.from(document.querySelectorAll('.chk-share-student:checked')).map(c => c.value);
                     if (seleccionados.length === 0) return Swal.showValidationMessage('Selecciona al menos un estudiante');
+                    app.state._shareMsg = (document.getElementById('share-msg') || {}).value || '';
                     return seleccionados;
                 }
             });
@@ -6943,6 +7568,8 @@ fillMaxScore: async (nivelSeleccionado = null) => {
                 action: 'shareLesson',
                 id: l.id,
                 ids: ids,
+                mensaje: app.state._shareMsg || '',          // [V5.1]
+                recordatorio: !!opciones.recordatorio,       // [V5.1]
                 nombreDocente: "Prof. " + nombreDocente,
                 emailDocente: app.user.email
             });
@@ -6951,9 +7578,35 @@ fillMaxScore: async (nivelSeleccionado = null) => {
             else Swal.fire('Error', (res && res.message) || 'Hubo un problema al enviar.', 'error');
         },
 
+        // [V5.1] Filtros combinables: tipo + materia + "Esta semana"
         filterAula: (tipo) => {
-            if(tipo === 'Todos') app.renderAulaList(app.data.lecciones);
-            else app.renderAulaList(app.data.lecciones.filter(x => x.tipo === tipo));
+            if (!app.state.aulaFiltro) app.state.aulaFiltro = { tipo: 'Todos', materia: '', semana: false };
+            if (tipo !== undefined) app.state.aulaFiltro.tipo = tipo;
+            const f = app.state.aulaFiltro;
+            const selMat = document.getElementById('aula-filtro-mat');
+            if (selMat) f.materia = selMat.value;
+            const chkSem = document.getElementById('aula-filtro-semana');
+            if (chkSem) f.semana = chkSem.checked;
+            document.querySelectorAll('[data-aula-tipo]').forEach(b => {
+                const on = b.dataset.aulaTipo === f.tipo;
+                b.style.background = on ? '#0f766e' : ''; b.style.color = on ? '#fff' : '';
+            });
+            let lista = app.data.lecciones || [];
+            if (f.tipo !== 'Todos') lista = lista.filter(x => x.tipo === f.tipo);
+            if (f.materia) lista = lista.filter(x => String(x.idMateria) === String(f.materia));
+            if (f.semana) lista = lista.filter(x => { const fx = x.tipo === 'Tarea' ? (x.fechaLimite || x.fechaEnvio) : x.fechaEnvio; return fx && Math.abs(app._diasHasta(fx)) <= 7; });
+            app.renderAulaList(lista);
+        },
+
+        // [V5.1] Opciones del filtro de materia según lo publicado
+        llenarFiltroMateriasAula: () => {
+            const sel = document.getElementById('aula-filtro-mat');
+            if (!sel) return;
+            const vistos = {};
+            (app.data.lecciones || []).forEach(l => { vistos[l.idMateria] = `${l.materia}${l.seccion ? ' · ' + l.seccion : ''}`; });
+            const actual = sel.value;
+            sel.innerHTML = '<option value="">Todas las materias</option>' + Object.entries(vistos).map(([id, n]) => `<option value="${id}">${app.escapeHtml(n)}</option>`).join('');
+            sel.value = actual;
         },
 
         // B. MODAL PRINCIPAL (CREAR Y EDITAR)
@@ -6986,25 +7639,48 @@ fillMaxScore: async (nivelSeleccionado = null) => {
                             <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="ma-tipo" value="Tarea" onchange="app.toggleRubro(true)"> <span class="text-sm font-bold text-orange-700">Tarea / Entrega</span></label>
                         </div>
 
-                        <!-- Selector de Rubro (Oculto por defecto) -->
-                        <div id="div-rubro" class="hidden bg-orange-50 p-2 rounded border border-orange-200">
-                            <label class="text-xs font-bold text-orange-800">Vincular con Rubro (Calificación)</label>
-                            <select id="ma-ind" class="w-full p-2 border rounded text-xs mt-1"><option value="">Seleccione Materia primero...</option></select>
-                        </div>
-
                         <div><label class="text-xs font-bold text-gray-500">Título</label><input id="ma-tit" class="w-full p-2 border rounded" placeholder="Ej: La Célula"></div>
                         <div><label class="text-xs font-bold text-gray-500">Descripción</label><textarea id="ma-desc" class="w-full p-2 border rounded h-20"></textarea></div>
-                        <div><label class="text-xs font-bold text-gray-500">Fecha</label><input type="date" id="ma-fecha" class="w-full p-2 border rounded"></div>
+
+                        <!-- [V5.1] FECHAS: envío (clase y tarea) + límite de entrega (solo tarea) -->
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="text-xs font-bold text-gray-500">Fecha de envío</label><input type="date" id="ma-fecha" class="w-full p-2 border rounded"></div>
+                            <div id="div-limite" class="hidden"><label class="text-xs font-bold text-orange-700">Fecha límite de entrega</label><input type="date" id="ma-limite" class="w-full p-2 border border-orange-300 rounded bg-orange-50"></div>
+                        </div>
+
+                        <!-- [V5.1] RUBRO DE CALIFICACIÓN (solo tarea): crear / usar existente / sin rubro -->
+                        <div id="div-rubro" class="hidden bg-orange-50 p-3 rounded-lg border border-orange-200 space-y-2">
+                            <div class="flex justify-between items-center">
+                                <label class="text-xs font-bold text-orange-800">Rubro de calificación</label>
+                                <span id="ma-rubro-periodo" class="text-[10px] font-bold text-orange-700"></span>
+                            </div>
+                            <div class="flex flex-wrap gap-3 text-xs">
+                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="ma-rubro-modo" value="crear" checked onchange="app.cambiarModoRubroAula()"> <b>Crear rubro nuevo</b></label>
+                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="ma-rubro-modo" value="existente" onchange="app.cambiarModoRubroAula()"> Usar uno existente</label>
+                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="ma-rubro-modo" value="ninguno" onchange="app.cambiarModoRubroAula()"> Sin rubro</label>
+                            </div>
+                            <div id="ma-rubro-crear" class="grid grid-cols-3 gap-2">
+                                <div><label class="text-[10px] font-bold text-gray-500">Rubro</label><select id="ma-rub-cat" class="w-full p-2 border rounded bg-white text-xs" onchange="app.mostrarDisponibleAula()"></select></div>
+                                <div><label class="text-[10px] font-bold text-gray-500">Valor (%)</label><input id="ma-rub-pts" type="number" min="0" step="0.5" class="w-full p-2 border rounded bg-white text-xs font-bold" placeholder="Ej: 5" oninput="app.mostrarDisponibleAula()"></div>
+                                <div><label class="text-[10px] font-bold text-gray-500">Puntos totales</label><input id="ma-rub-tot" type="number" min="1" value="100" class="w-full p-2 border rounded bg-white text-xs"></div>
+                                <p id="ma-rub-disp" class="col-span-3 text-[11px] font-bold"></p>
+                            </div>
+                            <div id="ma-rubro-exist" class="hidden">
+                                <select id="ma-ind" class="w-full p-2 border rounded text-xs bg-white"><option value="">Seleccione Materia primero...</option></select>
+                            </div>
+                            <p id="ma-rubro-ninguno" class="hidden text-[11px] text-amber-800"><i class="fas fa-triangle-exclamation"></i> Sin rubro no se puede calificar desde Mi Aula ni recordar a quienes faltan.</p>
+                        </div>
                         
                         <div class="grid grid-cols-2 gap-3">
-                            <div><label class="text-xs font-bold text-gray-500">Archivo (PDF/IMG - Max 5MB)</label><input type="file" id="ma-file" class="w-full text-xs border rounded bg-white p-1" accept="image/*,.pdf,.doc,.docx"></div>
+                            <div><label class="text-xs font-bold text-gray-500">Archivo (PDF/IMG - Max 5MB)</label><input type="file" id="ma-file" class="w-full text-xs border rounded bg-white p-1" accept="image/*,.pdf,.doc,.docx">
+                            ${editItem && editItem.fileName ? `<p class="text-[10px] text-teal-700 mt-1"><i class="fas fa-paperclip"></i> Actual: ${app.escapeHtml(editItem.fileName)} (se conserva si no subís otro)</p>` : ''}</div>
                             <div><label class="text-xs font-bold text-gray-500">Enlace Externo</label><input id="ma-link" class="w-full p-2 border rounded" placeholder="https://..."></div>
                         </div>
                     </div>
                 `,
                 didOpen: async () => {
                     document.getElementById('ma-inst').innerHTML = optsInst;
-                    document.getElementById('ma-fecha').valueAsDate = new Date();
+                    document.getElementById('ma-fecha').value = app._hoyYmd(); // [V5.1] fecha local (valueAsDate usa UTC y de noche marcaba mañana)
 
                     // RELLENADO AUTOMÁTICO AL EDITAR
                     if(editItem) {
@@ -7030,15 +7706,26 @@ fillMaxScore: async (nivelSeleccionado = null) => {
                         document.getElementById('ma-tit').value = x.titulo;
                         document.getElementById('ma-desc').value = x.desc;
                         document.getElementById('ma-link').value = x.link;
-                        document.getElementById('ma-fecha').value = x.fecha;
+                        document.getElementById('ma-fecha').value = x.fechaEnvio || ''; // [V5.1]
                         
                         // 5. Tipo y Rubro
                         document.querySelector(`input[name="ma-tipo"][value="${x.tipo}"]`).checked = true;
                         app.toggleRubro(x.tipo === 'Tarea');
                         
                         if(x.tipo === 'Tarea') {
-                            await app.loadIndAula(); // Cargar indicadores
-                            document.getElementById('ma-ind').value = x.idIndicador;
+                            await app.loadIndAula(x.id); // [V5.1] rubros sin contar esta misma tarea como "usada"
+                            document.getElementById('ma-limite').value = x.fechaLimite || '';
+                            const sel = document.getElementById('ma-ind');
+                            if (x.idIndicador) {
+                                if (!Array.from(sel.options).some(o => o.value === x.idIndicador)) {
+                                    sel.innerHTML += `<option value="${x.idIndicador}">${app.escapeHtml(x.nombreIndicador)} (rubro actual)</option>`;
+                                }
+                                sel.value = x.idIndicador;
+                                document.querySelector('input[name="ma-rubro-modo"][value="existente"]').checked = true;
+                            } else {
+                                document.querySelector('input[name="ma-rubro-modo"][value="ninguno"]').checked = true;
+                            }
+                            app.cambiarModoRubroAula();
                         }
                         
                         Swal.hideLoading(); // Listo
@@ -7049,11 +7736,29 @@ fillMaxScore: async (nivelSeleccionado = null) => {
                     if(fileInput.files.length > 0 && fileInput.files[0].size > 5 * 1024 * 1024) {
                         Swal.showValidationMessage('El archivo es muy pesado (Máx 5MB)'); return false;
                     }
+                    // [V5.1] validaciones antes de enviar
+                    if(!document.getElementById('ma-mat').value) { Swal.showValidationMessage('Elegí la materia'); return false; }
+                    if(!document.getElementById('ma-tit').value.trim()) { Swal.showValidationMessage('Escribí un título'); return false; }
+                    const esTarea = document.querySelector('input[name="ma-tipo"]:checked').value === 'Tarea';
+                    const fEnvio = document.getElementById('ma-fecha').value, fLimite = document.getElementById('ma-limite').value;
+                    if(!fEnvio) { Swal.showValidationMessage('Indicá la fecha de envío'); return false; }
+                    if(esTarea && !fLimite) { Swal.showValidationMessage('Una tarea necesita fecha límite de entrega'); return false; }
+                    if(esTarea && fLimite < fEnvio) { Swal.showValidationMessage('La fecha límite no puede ser antes de la fecha de envío'); return false; }
+                    const modoRubro = esTarea ? (document.querySelector('input[name="ma-rubro-modo"]:checked') || {}).value : 'ninguno';
+                    if(esTarea && modoRubro === 'crear') {
+                        const err = app.validarRubroNuevoAula();
+                        if (err) { Swal.showValidationMessage(err); return false; }
+                    }
+                    if(esTarea && modoRubro === 'existente' && !document.getElementById('ma-ind').value) { Swal.showValidationMessage('Elegí el rubro existente'); return false; }
                     return {
                         idLeccion: editItem ? editItem.id : null,
                         idMateria: document.getElementById('ma-mat').value,
                         tipo: document.querySelector('input[name="ma-tipo"]:checked').value,
                         idIndicador: document.getElementById('ma-ind').value,
+                        rubroModo: document.querySelector('input[name="ma-tipo"]:checked').value === 'Tarea' ? document.querySelector('input[name="ma-rubro-modo"]:checked').value : 'ninguno', // [V5.1]
+                        crearRubro: { categoria: document.getElementById('ma-rub-cat').value, puntaje: document.getElementById('ma-rub-pts').value, puntosTotales: document.getElementById('ma-rub-tot').value },
+                        fechaEnvio: document.getElementById('ma-fecha').value,
+                        fechaLimite: document.getElementById('ma-limite').value,
                         titulo: document.getElementById('ma-tit').value,
                         descripcion: document.getElementById('ma-desc').value,
                         fecha: document.getElementById('ma-fecha').value,
@@ -7088,11 +7793,11 @@ fillMaxScore: async (nivelSeleccionado = null) => {
         sendAulaData: async (payload) => {
             delete payload.fileObj; // No enviar objeto DOM al server
             const res = await app.api({ action: 'saveLesson', ...payload });
-            if(res.success) {
+            if(res && res.success) {
                 Swal.fire('Éxito', res.message, 'success');
                 app.loadLecciones();
             } else {
-                Swal.fire('Error', res.message, 'error');
+                Swal.fire('Error', (res && res.message) || 'No se pudo guardar.', 'error');
             }
         },
 
@@ -7103,13 +7808,18 @@ fillMaxScore: async (nivelSeleccionado = null) => {
             if(item) app.modalAula(item);
         },
 
-        deleteAula: async (id) => {
-            if(confirm('¿Borrar contenido?')) {
-                Swal.showLoading();
-                await app.api({action:'deleteLesson', id});
-                app.loadLecciones();
-                Swal.close();
-            }
+        deleteAula: async (id) => { // [V5.1] confirmación con la ventanita de la app
+            const l = (app.data.lecciones || []).find(x => String(x.id) === String(id));
+            const { isConfirmed } = await Swal.fire({
+                title: '¿Eliminar este contenido?',
+                html: `<p class="text-sm text-slate-500">${l ? '<b>' + app.escapeHtml(l.titulo) + '</b><br>' : ''}Se quita de Mi Aula. Las notas del rubro vinculado no se tocan.</p>`,
+                icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar', confirmButtonColor: '#dc2626'
+            });
+            if (!isConfirmed) return;
+            Swal.fire({ title: 'Eliminando...', didOpen: () => Swal.showLoading() });
+            const res = await app.api({ action: 'deleteLesson', id });
+            if (res && res.success) { Swal.close(); app.loadLecciones(); }
+            else Swal.fire('No se pudo eliminar', (res && res.message) || 'Intentá de nuevo.', 'error');
         },
 
         // Funciones auxiliares de carga para los selects
@@ -7126,31 +7836,69 @@ fillMaxScore: async (nivelSeleccionado = null) => {
             if(mats) mats.forEach(m => sel.innerHTML += `<option value="${m.id}">${m.nombre}</option>`);
         },
 
-        loadIndAula: async () => {
+        // [V5.1] Rubros para vincular una tarea: SOLO Tareas y Proyectos del periodo
+        // vigente, con su avance, el % disponible y cuáles ya usa otra tarea.
+        loadIndAula: async (idLeccion) => {
             const idMat = document.getElementById('ma-mat').value;
             const div = document.getElementById('div-rubro');
             const sel = document.getElementById('ma-ind');
-            
-            if(div.classList.contains('hidden')) return; 
+            const selCat = document.getElementById('ma-rub-cat');
+            if (div.classList.contains('hidden') || !idMat) return;
+            sel.innerHTML = '<option value="">Cargando...</option>';
+            const res = await app.api({ action: 'getRubrosTarea', idMateria: idMat, idLeccion: idLeccion || '' });
+            if (!res || res.error) { sel.innerHTML = '<option value="">No se pudieron cargar los rubros</option>'; return; }
+            app.state.aulaRubros = res;
+            document.getElementById('ma-rubro-periodo').innerText = `${app.LABEL_PERIODO && app.LABEL_PERIODO[res.periodo] ? app.LABEL_PERIODO[res.periodo] + ' Periodo' : 'Periodo ' + res.periodo}`;
+            selCat.innerHTML = res.rubros.filter(r => r.peso > 0).map(r => `<option value="${r.cat}">${r.label} (${r.disponible}% libre)</option>`).join('')
+                || '<option value="">La materia no tiene % en Tareas ni Proyectos</option>';
+            const esc = app.escapeHtml;
+            const grupos = res.rubros.map(r => {
+                const items = res.indicadores.filter(i => i.cat === r.cat);
+                if (!items.length) return '';
+                return `<optgroup label="${r.label}">` + items.map(i => {
+                    const usado = i.usadoPor ? ` — ya usado en "${esc(i.usadoPor)}"` : '';
+                    return `<option value="${i.id}" ${i.usadoPor ? 'disabled' : ''}>${esc(i.desc)} · ${i.puntaje}% · ${i.calificados}/${i.totalEst} calificados${usado}</option>`;
+                }).join('') + '</optgroup>';
+            }).join('');
+            sel.innerHTML = '<option value="">Elegí un rubro...</option>' + (grupos || '<option value="" disabled>No hay rubros de Tareas/Proyectos en este periodo</option>');
+            app.mostrarDisponibleAula();
+        },
 
-            sel.innerHTML = '<option>Cargando...</option>';
-            const cats = ['TRAB_COT', 'TAREAS', 'PROYECTOS', 'PRUEBAS'];
-            sel.innerHTML = '<option value="">Sin vincular</option>';
-            
-            for (const cat of cats) {
-                const inds = await app.api({ action: 'getIndicators', idMateria: idMat, categoria: cat });
-                if(inds && inds.length > 0) {
-                    sel.innerHTML += `<optgroup label="${cat}">`;
-                    inds.forEach(i => sel.innerHTML += `<option value="${i.id}">${app.formatearDescripcionInd(i.descripcion)}</option>`);
-                    sel.innerHTML += `</optgroup>`;
-                }
-            }
+        cambiarModoRubroAula: () => {
+            const modo = (document.querySelector('input[name="ma-rubro-modo"]:checked') || {}).value;
+            document.getElementById('ma-rubro-crear').classList.toggle('hidden', modo !== 'crear');
+            document.getElementById('ma-rubro-exist').classList.toggle('hidden', modo !== 'existente');
+            document.getElementById('ma-rubro-ninguno').classList.toggle('hidden', modo !== 'ninguno');
+        },
+
+        // Devuelve un mensaje de error o '' si el rubro nuevo cabe en el % disponible
+        validarRubroNuevoAula: () => {
+            const r = app.state.aulaRubros;
+            const cat = document.getElementById('ma-rub-cat').value;
+            const pts = parseFloat(document.getElementById('ma-rub-pts').value);
+            if (!r || !cat) return 'Esta materia no tiene porcentaje en Tareas ni Proyectos';
+            if (!(pts > 0)) return 'Indicá el valor (%) del rubro';
+            const rb = r.rubros.find(x => x.cat === cat);
+            if (pts > rb.disponible + 0.001) return `En ${rb.label} solo quedan ${rb.disponible}% libres (usado ${rb.usado}% de ${rb.peso}%)`;
+            return '';
+        },
+
+        mostrarDisponibleAula: () => {
+            const r = app.state.aulaRubros, p = document.getElementById('ma-rub-disp');
+            if (!r || !p) return;
+            const cat = document.getElementById('ma-rub-cat').value;
+            const rb = r.rubros.find(x => x.cat === cat);
+            if (!rb) { p.innerText = ''; return; }
+            const pts = parseFloat(document.getElementById('ma-rub-pts').value) || 0;
+            const pasa = pts > rb.disponible + 0.001;
+            p.style.color = pasa ? '#b91c1c' : '#047857';
+            p.innerHTML = `${rb.label}: usado ${rb.usado}% de ${rb.peso}% · disponible ${rb.disponible}%` + (pts ? (pasa ? ' — <u>se pasa del rubro</u>' : ` → quedarían ${Math.round((rb.disponible - pts) * 100) / 100}%`) : '');
         },
 
         toggleRubro: (show) => {
-            const div = document.getElementById('div-rubro');
-            if(show) { div.classList.remove('hidden'); app.loadIndAula(); }
-            else div.classList.add('hidden');
+            document.getElementById('div-rubro').classList.toggle('hidden', !show);
+            document.getElementById('div-limite').classList.toggle('hidden', !show); // [V5.1]
+            if (show) { app.cambiarModoRubroAula(); return app.loadIndAula(); }
         },
 
 // ==========================================
@@ -7167,7 +7915,7 @@ adminLoadUsers: async () => {
             
             if(!tbody) return console.error("No encuentro la tabla 'adm-users-table'");
 
-            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Cargando clientes...</td></tr>';
+            app.cargaGeneral(tbody, 'Cargando clientes...', { fila: 4 }); // [V5.1] carga general
             
             if(!users || users.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-400">No hay usuarios registrados.</td></tr>';
@@ -7454,13 +8202,75 @@ adminLoadUsers: async () => {
             if (pendiente && !Swal.isVisible()) app.avisosMostrar(pendiente.id, { encadenar: true });
         },
 
-        avisosActualizarBadge: () => {
-            const n = (app.state.avisos || []).filter(a => !a.leido).length;
+        avisosActualizarBadge: () => app.actualizarCampana(), // [V5.1] compatibilidad
+
+        // [V5.1] Campana: número = avisos sin leer + pendientes del día no vistos.
+        // Con algo sin leer brilla (ondas + vaivén); sin nada, queda estática.
+        actualizarCampana: () => {
+            const avisos = (app.state.avisos || []).filter(a => !a.leido).length;
+            const nv = app.alertasNoVistas();
+            const n = avisos + nv.asistencia.length + nv.incidencias.length;
             const b = document.getElementById('avisos-badge');
-            if (!b) return;
-            b.textContent = n > 9 ? '9+' : String(n);
-            b.classList.toggle('hidden', n === 0);
+            const btn = document.getElementById('btn-campana');
+            if (b) { b.textContent = n > 9 ? '9+' : String(n); b.classList.toggle('hidden', n === 0); }
+                        const bm = document.getElementById('nav-movil-badge'), cm = document.getElementById('nav-movil-campana'); // [V5.1] barra inferior
+            if (bm) { bm.textContent = n > 9 ? '9+' : String(n); bm.classList.toggle('hidden', n === 0); }
+            if (cm) cm.classList.toggle('campana-viva', n > 0);
+            if (btn) {
+                btn.classList.toggle('campana-viva', n > 0);
+                btn.title = n > 0 ? `${n} notificación${n > 1 ? 'es' : ''} sin leer` : 'Notificaciones';
+            }
         },
+
+        // [V5.1] Centro de notificaciones: pendientes (asistencia, incidencias,
+        // tareas de Mi Aula vencidas por calificar) + avisos de soporte.
+        abrirNotificaciones: async () => {
+            let panelAbierto = false; // evita que el "cargando" se pegue al panel si la respuesta llega muy rápido
+            Swal.fire({ title: 'Cargando notificaciones...', didOpen: () => { if (!panelAbierto) Swal.showLoading(); } });
+            const res = await app.api({ action: 'getAvisos' }, { silent: true });
+            panelAbierto = true;
+            if (res && res.success) app.state.avisos = res.lista;
+            const esc = app.escapeHtml;
+            const d = app.state.alertasDia || { asistencia: [], incidencias: [] };
+            const vistas = app.alertasVistas();
+            const nuevo = (k) => !vistas.has(k) ? '<span class="h-2 w-2 rounded-full bg-rose-500 shrink-0" title="Nuevo"></span>' : '';
+            const meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+            const fmt = (str) => { const [y, m, dd] = String(str).split('-'); return `${dd} ${meses[parseInt(m, 10) - 1] || ''}`; };
+            const fila = (icono, color, texto, accion, punto) => `
+                <button type="button" onclick="${accion}" class="w-full text-left flex items-center gap-3 p-3 rounded-xl border border-slate-100 bg-white hover:bg-slate-50 transition">
+                    <span class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style="background:${color}1f;color:${color}"><i class="fas ${icono} text-sm"></i></span>
+                    <span class="flex-1 min-w-0 text-sm text-slate-700">${texto}</span>${punto}<i class="fas fa-chevron-right text-slate-300 text-xs"></i>
+                </button>`;
+            app.state._notifAsist = d.asistencia; app.state._notifIncid = d.incidencias;
+            const pendientes = [
+                ...d.asistencia.map((x, i) => fila('fa-clipboard-list', '#d97706', `Falta pasar lista de <b>${esc(x.nomMateria)}</b> en <b>${esc(x.nomSeccion)}</b> <span class="text-slate-400">(${fmt(x.fecha)})</span>`, `app.irNotifAsistencia(${i})`, nuevo(app._alertaClave('asistencia', x)))),
+                ...d.incidencias.map((x, i) => fila('fa-book-open', '#e11d48', `Incidencia (<b>${esc(x.tipo)}</b>) pendiente en <b>${esc(x.nombreSeccion)}</b>`, `app.irNotifIncidencia(${i})`, nuevo(app._alertaClave('incidencia', x))))
+            ];
+            const tareas = (app.data.lecciones || []).filter(l => l.tipo === 'Tarea' && l.idIndicador && l.fechaLimite && app._diasHasta(l.fechaLimite) < 0 && l.calificados < l.totalEstudiantes);
+            tareas.forEach(l => pendientes.push(fila('fa-tasks', '#ea580c', `Tarea vencida por calificar: <b>${esc(l.titulo)}</b> <span class="text-slate-400">(${l.calificados}/${l.totalEstudiantes})</span>`, `Swal.close();app.irACalificarAula('${l.id}')`, '')));
+            const avisos = (app.state.avisos || []).map(a => {
+                const nv = app.AVISO_NIVEL[a.nivel] || app.AVISO_NIVEL.INFO;
+                return `<button type="button" onclick="app.avisosMostrar('${a.id}')" class="w-full text-left flex items-center gap-3 p-3 rounded-xl border ${a.leido ? 'border-slate-100 bg-white' : 'border-teal-200 bg-teal-50/40'} hover:bg-slate-50 transition">
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${nv.chip} shrink-0"><i class="fas ${nv.icon} mr-1"></i>${nv.label}</span>
+                    <span class="flex-1 min-w-0"><span class="block text-sm font-semibold text-slate-800 truncate">${esc(a.titulo)}</span><span class="block text-[11px] text-slate-400">${esc(a.fecha)}</span></span>
+                    ${a.leido ? '<i class="fas fa-check text-slate-300"></i>' : '<span class="h-2.5 w-2.5 rounded-full bg-teal-500 shrink-0" title="Sin leer"></span>'}
+                </button>`;
+            });
+            const seccion = (titulo, items, vacio) => `
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 mt-1">${titulo}</p>
+                <div class="space-y-2 mb-4">${items.length ? items.join('') : `<p class="text-sm text-slate-400 text-center py-3">${vacio}</p>`}</div>`;
+            Swal.fire({
+                title: '<i class="fas fa-bell mr-2 text-teal-600"></i>Notificaciones',
+                html: `<div class="text-left max-h-[65vh] overflow-y-auto pr-1">
+                        ${seccion(`Pendientes (${pendientes.length})`, pendientes, '<i class="fas fa-circle-check text-emerald-500 mr-1"></i>Todo al día')}
+                        ${seccion('Avisos de soporte', avisos, 'No hay avisos por ahora.')}
+                       </div>`,
+                width: '580px', showCloseButton: true, showConfirmButton: false
+            });
+            app.marcarAlertasVistas(); // abrir la campana = pendientes vistos (los avisos se leen uno por uno)
+        },
+        irNotifAsistencia: (i) => { const b = (app.state._notifAsist || [])[i]; if (!b) return; Swal.close(); app.irAPasarLista(b, b.fecha); },
+        irNotifIncidencia: (i) => { const x = (app.state._notifIncid || [])[i]; if (!x) return; Swal.close(); app.nav('bitacoras'); app.loadBitacoras().then(() => app.editBitacora(x.id)); },
 
         avisosHtml: (a) => {
             const esc = app.escapeHtml;
@@ -7848,7 +8658,7 @@ adminLoadUsers: async () => {
                 const selectorHtml = materias.length > 1
                     ? `<select id="sel-mat-asist" onchange="(async()=>{
                             const idM = document.getElementById('sel-mat-asist').value;
-                            document.getElementById('asist-body').innerHTML='<p class=\\"text-center text-slate-400 text-xs py-4\\"><i class=\\"fas fa-spinner fa-spin mr-1\\"></i>Cargando...</p>';
+                            app.cargaGeneral(document.getElementById('asist-body'),'Cargando asistencia...');
                             const r = await app.api({action:'getStudentAttendance',idEstudiante:'${idEst}',idMateria:idM});
                             if(!r||r.error)return;
                             const c2=r.conteo;
@@ -7905,7 +8715,7 @@ adminLoadUsers: async () => {
                 showCloseButton: true,
                 showConfirmButton: false,
                 html: '<div class="py-4 text-center"><i class="fas fa-spinner fa-spin text-amber-500 text-xl"></i></div>',
-                didOpen: () => mostrarAsistencia(materias[0].id)
+                didOpen: () => mostrarAsistencia(materias[0].id) // [V5.1] la leyenda la agrega Swal.showLoading (carga general)
             });
         },
 
@@ -8043,137 +8853,180 @@ adminLoadUsers: async () => {
             window.print();
         },
 
-        // PANEL DE KPIs DE LA MATERIA (promedio, riesgo, avance por rubro, asistencia)
-        // Se abre al hacer clic en el nombre de la materia, dentro de la lista de Materias.
-        verKPIsMateria: async (idMat, nomMat) => {
+        // ===== PROPUESTA V5.1 (2026-10-31) — RENDIMIENTO DE LA MATERIA =====
+        // Responde "¿cómo va mi materia en este periodo?". Se abre al hacer clic
+        // en el nombre de la materia. Cambios frente a la versión anterior:
+        //  - Selector de periodo (antes mezclaba I y II Periodo).
+        //  - "En riesgo" por proyección mientras el periodo está en curso;
+        //    "Reprobado" con la nota real cuando el periodo cerró.
+        //  - Asistencia real en % (Art. 37), no en puntos del rubro.
+        //  - Avance por rubro = notas registradas / notas esperadas.
+        //  - Ampliación solo al cerrar el II Periodo (sobre la nota anual).
+        //  - Clic en un estudiante abre su expediente de la materia.
+        verKPIsMateria: async (idMat, nomMat, periodo) => {
             const cont = document.getElementById('materia-kpis-container');
-            cont.innerHTML = `
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-slate-400">
-                    <i class="fas fa-spinner fa-spin text-xl"></i><br>
-                    <span class="text-xs">Calculando KPIs de ${nomMat}...</span>
-                </div>`;
+            const esc = app.escapeHtml;
+            if (periodo === undefined && app.state.kpiMat && app.state.kpiMat.id === idMat) periodo = app.state.kpiMat.periodo;
+            app.marcarMateriaActiva(idMat);
+            // [V5.1] Carga uniforme (misma que el Pulso de la sección)
+            const finCarga = app.cargaRendimiento(cont, `Calculando rendimiento de ${esc(nomMat)}...`, true);
+            cont.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-            const res = await app.api({ action: 'getMateriaKPIs', id: idMat });
+            const res = await app.api({ action: 'getMateriaKPIs', id: idMat, periodo: periodo });
+            finCarga(); // [V5.1]
             if (!res || res.error) {
-                cont.innerHTML = `<div class="bg-white rounded-xl shadow-sm border border-rose-200 p-6 text-center text-rose-500 text-sm">${(res && res.error) || 'No se pudieron cargar los KPIs'}</div>`;
+                cont.innerHTML = `<div class="bg-white rounded-2xl shadow-sm border border-rose-200 p-6 text-center text-rose-500 text-sm">${esc((res && res.error) || 'No se pudieron cargar los KPIs')}</div>`;
                 return;
             }
+            app.state.kpiMat = { id: idMat, periodo: res.periodo };
 
             if (res.totalEstudiantes === 0) {
-                cont.innerHTML = `<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-slate-400 text-sm">Todavía no hay estudiantes en esta sección para calcular KPIs de <b>${nomMat}</b>.</div>`;
+                cont.innerHTML = `<div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center text-slate-400 text-sm">Todavía no hay estudiantes en esta sección para calcular el rendimiento de <b>${esc(nomMat)}</b>.</div>`;
                 return;
             }
 
-            const colorProm = res.promedio >= 90 ? 'text-emerald-600' : res.promedio >= res.notaMinima ? 'text-indigo-600' : 'text-rose-600';
-            const colorAsist = res.asistenciaPromedio >= res.valorAsistTotal * 0.9 ? 'text-emerald-600' : res.asistenciaPromedio >= res.valorAsistTotal * 0.7 ? 'text-amber-600' : 'text-rose-600';
+            const min = res.notaMinima;
+            const perTxt = (p) => p === '1' ? 'I Periodo' : p === '2' ? 'II Periodo' : `Periodo ${esc(p)}`;
+            const colorNota = (n) => n === null || n === undefined ? 'text-slate-400' : n < min ? 'text-rose-600' : n < min + 5 ? 'text-amber-600' : 'text-emerald-600';
+            const pctEval = res.pesoAcademico > 0 ? Math.round((res.pesoEvaluado / res.pesoAcademico) * 100) : 0;
+            const colorAsist = res.asistenciaReal >= 90 ? 'text-emerald-600' : res.asistenciaReal >= 80 ? 'text-amber-600' : 'text-rose-600';
+            const nRiesgo = res.distribucion.riesgo;
 
-            const totalIndAll = res.avancePorRubro.reduce((s, r) => s + r.total, 0);
-            const califIndAll = res.avancePorRubro.reduce((s, r) => s + r.calificados, 0);
-            const avanceGlobal = totalIndAll > 0 ? Math.round((califIndAll / totalIndAll) * 100) : 0;
+            const pills = res.periodos.map(p => `
+                <button onclick="app.verKPIsMateria('${idMat}', ${app.jsStr(nomMat)}, '${p}')"
+                    class="text-[11px] font-bold px-3 py-1 rounded-full transition ${p === res.periodo ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}">
+                    ${perTxt(p)}${p === res.periodoVigente ? ' •' : ''}
+                </button>`).join('');
+
+            const tile = (valor, colorCls, label, sub) => `
+                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-3 text-center">
+                    <div class="text-2xl font-extrabold ${colorCls}">${valor}</div>
+                    <div class="text-[10px] font-bold text-slate-500 mt-1 uppercase">${label}</div>
+                    <div class="text-[10px] text-slate-400 mt-0.5">${sub}</div>
+                </div>`;
 
             const barrasRubro = res.avancePorRubro.map(r => {
-                const pct = r.total > 0 ? Math.round((r.calificados / r.total) * 100) : 0;
-                const color = r.total === 0 ? 'bg-slate-200' : pct === 100 ? 'bg-emerald-500' : pct > 0 ? 'bg-amber-400' : 'bg-rose-400';
+                const pct = r.esperadas > 0 ? Math.round((r.registradas / r.esperadas) * 100) : 0;
+                const color = r.indicadores === 0 ? 'bg-slate-200' : pct === 100 ? 'bg-emerald-500' : pct > 0 ? 'bg-amber-400' : 'bg-rose-400';
                 return `
                     <div class="mb-2.5">
                         <div class="flex justify-between text-[11px] font-bold text-slate-500 mb-0.5">
-                            <span>${r.label}</span>
-                            <span>${r.total > 0 ? `${r.calificados}/${r.total} calificados` : 'Sin indicadores'}</span>
+                            <span>${r.label} <span class="font-normal text-slate-400">· ${r.peso}%</span></span>
+                            <span>${r.indicadores > 0 ? `${r.registradas}/${r.esperadas} notas` : 'Sin indicadores'}</span>
                         </div>
                         <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                            <div class="${color} h-2 rounded-full transition-all" style="width:${r.total > 0 ? pct : 0}%"></div>
+                            <div class="${color} h-2 rounded-full transition-all" style="width:${r.indicadores > 0 ? pct : 0}%"></div>
                         </div>
                     </div>`;
             }).join('');
 
-            const listaRiesgo = res.enRiesgo.length === 0
-                ? `<p class="text-xs text-emerald-600 font-bold flex items-center gap-1"><i class="fas fa-circle-check"></i> Nadie está bajo el mínimo (${res.notaMinima}%).</p>`
-                : res.enRiesgo.slice(0, 6).map(e => {
-                    const badgeAmpliacion = e.ampliacion
-                        ? `<span class="text-[10px] text-slate-400 block mt-0.5">Ampliación intento ${e.ampliacion.intento}: ${e.ampliacion.notaObtenida}% (nota original ${e.totalOriginal}%)</span>`
-                        : '';
-                    const botonAmpliacion = e.intentosRestantes > 0
-                        ? `<button onclick="app.abrirModalAmpliacion('${idMat}','${nomMat.replace(/'/g, "\\'")}','${e.id}','${e.nombre.replace(/'/g, "\\'")}',${res.notaMinima},${e.intentosRestantes})" class="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-full transition whitespace-nowrap ml-2">
-                            <i class="fas fa-plus"></i> Ampliación
-                          </button>`
-                        : `<span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full whitespace-nowrap ml-2">2/2 intentos</span>`;
-                    return `
-                    <div class="flex justify-between items-center text-xs py-1.5 border-b border-slate-50 last:border-0">
-                        <span class="text-slate-600 truncate">
-                            ${e.nombre}
-                            ${badgeAmpliacion}
-                        </span>
-                        <span class="flex items-center shrink-0">
-                            <span class="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">${e.total}%</span>
-                            ${botonAmpliacion}
-                        </span>
+            const ESTADO = {
+                riesgo:    { txt: 'Riesgo',     cls: 'bg-rose-50 text-rose-600' },
+                reprobado: { txt: 'Reprobado',  cls: 'bg-rose-50 text-rose-600' },
+                atencion:  { txt: 'Atención',   cls: 'bg-amber-50 text-amber-700' },
+                al_dia:    { txt: res.cerrado ? 'Aprobado' : 'Al día', cls: 'bg-emerald-50 text-emerald-700' },
+                sin_eval:  { txt: 'Sin notas',  cls: 'bg-slate-100 text-slate-500' }
+            };
+            const listaEst = res.estudiantes.map(e => {
+                const st = ESTADO[e.estado] || ESTADO.sin_eval;
+                const ref = res.cerrado ? e.total : e.proyeccion;
+                const aus = e.pctAusencia >= 10 ? `<span class="text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full" title="${e.ai} AI · ${e.tardias} tardías">${e.pctAusencia}% aus.</span>` : '';
+                return `
+                <div class="flex items-center justify-between gap-2 text-xs py-1.5 border-b border-slate-50 last:border-0">
+                    <button onclick="app.verExpedienteEstudiante('${e.id}', ${app.jsStr(e.nombre)}, '${idMat}')" class="text-slate-700 hover:text-indigo-600 hover:underline truncate text-left" title="Ver expediente">${esc(e.nombre)}</button>
+                    <span class="flex items-center gap-1.5 shrink-0">
+                        ${aus}
+                        ${res.cerrado ? '' : `<span class="text-[10px] text-slate-400" title="Lo que lleva acumulado hoy">${e.total}</span><i class="fas fa-arrow-right text-[8px] text-slate-300"></i>`}
+                        <span class="font-black ${colorNota(ref)}" title="${res.cerrado ? 'Nota del periodo' : 'Proyección'}">${ref === null ? '—' : ref}</span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${st.cls}">${st.txt}</span>
+                    </span>
+                </div>`;
+            }).join('');
+
+            let bloqueAmpliacion = '';
+            if (res.ampliacion.habilitada) {
+                const filasAmp = res.ampliacion.lista.length === 0
+                    ? `<p class="text-xs text-emerald-600 font-bold"><i class="fas fa-circle-check"></i> Nadie requiere ampliación: todas las notas anuales alcanzan la mínima (${min}).</p>`
+                    : res.ampliacion.lista.map(e => `
+                        <div class="flex justify-between items-center text-xs py-1.5 border-b border-slate-50 last:border-0">
+                            <span class="text-slate-600 truncate">${esc(e.nombre)}
+                                ${e.ampliacion ? `<span class="text-[10px] text-slate-400 block">Intento ${e.ampliacion.intento}: ${e.ampliacion.notaObtenida} (anual original ${e.notaFinalOriginal})</span>` : ''}
+                            </span>
+                            <span class="flex items-center gap-2 shrink-0">
+                                <span class="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">${e.notaFinal}</span>
+                                ${e.intentosRestantes > 0
+                                    ? `<button onclick="app.abrirModalAmpliacion('${idMat}', ${app.jsStr(nomMat)}, '${e.id}', ${app.jsStr(e.nombre)}, ${min}, ${e.intentosRestantes})" class="text-[10px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-full transition"><i class="fas fa-plus"></i> Ampliación</button>`
+                                    : `<span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">2/2 intentos</span>`}
+                            </span>
+                        </div>`).join('');
+                bloqueAmpliacion = `
+                    <div class="mt-6 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
+                        <p class="text-xs font-bold text-indigo-700 uppercase mb-2"><i class="fas fa-file-signature mr-1"></i> Ampliación (nota anual)</p>
+                        ${filasAmp}
                     </div>`;
-                }).join('');
+            } else if (res.periodo === '2' && !res.cerrado) {
+                bloqueAmpliacion = `<p class="mt-4 text-[11px] text-slate-400"><i class="fas fa-lock mr-1"></i>La ampliación se habilita cuando cierre el II Periodo, sobre la nota anual.</p>`;
+            }
 
             cont.innerHTML = `
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 md:p-6 fade-in">
-                    <div class="flex items-center justify-between mb-4">
-                        <h4 class="font-bold text-slate-700 flex items-center gap-2"><i class="fas fa-chart-pie text-indigo-400"></i> KPIs — ${nomMat}</h4>
-                        <button onclick="app.cerrarKPIsMateria()" class="h-7 w-7 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition flex items-center justify-center" title="Ocultar">
-                            <i class="fas fa-times"></i>
-                        </button>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:p-6 fade-in">
+                    <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
+                        <h4 class="font-bold text-slate-700 flex items-center gap-2">
+                            <i class="fas fa-chart-pie text-indigo-400"></i> Rendimiento — ${esc(nomMat)}
+                            <span class="text-[9px] font-black bg-indigo-600 text-white px-1.5 py-0.5 rounded-full">V5.1</span>
+                        </h4>
+                        <div class="flex items-center gap-1.5">
+                            ${pills}
+                            <span class="text-[10px] font-bold px-2 py-1 rounded-full ${res.cerrado ? 'bg-slate-200 text-slate-600' : 'bg-emerald-50 text-emerald-700'}">${res.cerrado ? 'Cerrado' : 'En curso'}</span>
+                            <button onclick="app.cerrarKPIsMateria()" class="h-7 w-7 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition flex items-center justify-center" title="Ocultar"><i class="fas fa-times"></i></button>
+                        </div>
                     </div>
+                    <p class="text-[11px] text-slate-400 mb-4"><i class="fas fa-circle-info mr-1 text-indigo-300"></i>${res.cerrado
+                        ? 'Periodo cerrado: se usa la nota real del periodo (la misma del Cuadro).'
+                        : 'Periodo en curso: el riesgo se mide con la <b>proyección</b>, es decir, cómo terminaría cada estudiante si mantiene el rendimiento que lleva en lo ya evaluado.'}</p>
 
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
-                            <div class="text-2xl font-extrabold ${colorProm}">${res.promedio}%</div>
-                            <div class="text-[10px] font-bold text-slate-400 mt-1 uppercase">Promedio General</div>
-                        </div>
-                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
-                            <div class="text-2xl font-extrabold ${res.enRiesgo.length > 0 ? 'text-rose-600' : 'text-emerald-600'}">${res.enRiesgo.length}</div>
-                            <div class="text-[10px] font-bold text-slate-400 mt-1 uppercase">Estudiantes en Riesgo</div>
-                        </div>
-                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
-                            <div class="text-2xl font-extrabold ${colorAsist}">${res.asistenciaPromedio}%</div>
-                            <div class="text-[10px] font-bold text-slate-400 mt-1 uppercase">Asistencia Promedio</div>
-                        </div>
-                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
-                            <div class="text-2xl font-extrabold text-indigo-600">${avanceGlobal}%</div>
-                            <div class="text-[10px] font-bold text-slate-400 mt-1 uppercase">Avance de Calificación</div>
-                        </div>
+                        ${tile(res.promedioReferencia === null ? '—' : res.promedioReferencia, colorNota(res.promedioReferencia), res.cerrado ? 'Nota promedio' : 'Proyección promedio', res.cerrado ? `mínimo ${min}` : `acumulado hoy: ${res.promedioAcumulado}`)}
+                        ${tile(`${nRiesgo}<span class="text-sm text-slate-400">/${res.totalEstudiantes}</span>`, nRiesgo > 0 ? 'text-rose-600' : 'text-emerald-600', res.cerrado ? 'Reprobados' : 'En riesgo', `${res.distribucion.atencion} en atención`)}
+                        ${tile(`${pctEval}%`, 'text-indigo-600', 'Curso evaluado', `${res.pesoEvaluado} de ${res.pesoAcademico} pts con notas`)}
+                        ${tile(`${res.asistenciaReal}%`, colorAsist, 'Asistencia real', `${res.leccionesImpartidas} lecciones a la fecha`)}
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div class="flex flex-col items-center justify-center">
                             <canvas id="chart-materia-kpi" width="220" height="220"></canvas>
-                            <p class="text-[10px] text-slate-400 mt-2">${res.totalEstudiantes} estudiante(s) · mínimo ${res.notaMinima}%</p>
+                            <p class="text-[10px] text-slate-400 mt-2">${res.totalEstudiantes} estudiante(s) · mínimo ${min} · ${perTxt(res.periodo)}</p>
                         </div>
                         <div>
-                            <p class="text-xs font-bold text-slate-500 uppercase mb-2">Avance por Rubro</p>
+                            <p class="text-xs font-bold text-slate-500 uppercase mb-2">Avance de calificación</p>
                             ${barrasRubro}
                         </div>
                         <div>
-                            <p class="text-xs font-bold text-slate-500 uppercase mb-2">Estudiantes en Riesgo</p>
-                            ${listaRiesgo}
+                            <p class="text-xs font-bold text-slate-500 uppercase mb-2">Estudiantes <span class="font-normal normal-case text-slate-400">(primero los que necesitan atención)</span></p>
+                            <div class="max-h-72 overflow-y-auto pr-1">${listaEst}</div>
                         </div>
                     </div>
+                    ${bloqueAmpliacion}
                 </div>`;
 
             // Chart.js no permite reusar un canvas sin destruir la instancia anterior primero
             if (app.state.chartMateriaKpi) app.state.chartMateriaKpi.destroy();
             const ctx = document.getElementById('chart-materia-kpi');
+            const d = res.distribucion;
             app.state.chartMateriaKpi = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
-                    labels: ['Excelente (90-100%)', `Aprobado (${res.notaMinima}-89%)`, `Reprobado (<${res.notaMinima}%)`],
+                    labels: res.cerrado
+                        ? [`Reprobado (<${min})`, `Atención (${min}-${min + 4})`, 'Aprobado']
+                        : [`Riesgo (<${min})`, `Atención (${min}-${min + 4})`, 'Al día', 'Sin notas'],
                     datasets: [{
-                        data: [res.distribucion.excelente, res.distribucion.aprobado, res.distribucion.reprobado],
-                        backgroundColor: ['#10b981', '#6366f1', '#f43f5e'],
+                        data: res.cerrado ? [d.riesgo, d.atencion, d.al_dia] : [d.riesgo, d.atencion, d.al_dia, d.sin_eval],
+                        backgroundColor: ['#f43f5e', '#f59e0b', '#10b981', '#cbd5e1'],
                         borderWidth: 2,
                         borderColor: '#fff'
                     }]
                 },
-                options: {
-                    responsive: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } }
-                    }
-                }
+                options: { responsive: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
             });
         },
 
@@ -8231,10 +9084,41 @@ adminLoadUsers: async () => {
             }
 
             Swal.fire({ icon: 'success', title: 'Ampliación registrada', timer: 1400, showConfirmButton: false });
+            app.verKPIsMateria(idMat, nomMat, '2'); // [V5.1] la ampliacion vive en el II Periodo
+        },
+
+        // [V5.1] Boton "Rendimiento": abre el panel o, si ya esta abierto para esa materia, lo oculta.
+        toggleRendimientoMateria: (idMat, nomMat) => {
+            const cont = document.getElementById('materia-kpis-container');
+            if (app.state.kpiAbiertaId === idMat && cont.innerHTML.trim() !== '') {
+                app.cerrarKPIsMateria();
+                return;
+            }
             app.verKPIsMateria(idMat, nomMat);
         },
 
+        // [V5.1] Resalta la fila de la materia cuyo panel esta abierto y cambia su
+        // boton a "Ocultar". idMat = null desmarca todo. Estilos en linea a proposito
+        // (no dependen de que Tailwind genere clases agregadas en caliente).
+        marcarMateriaActiva: (idMat) => {
+            app.state.kpiAbiertaId = idMat;
+            document.querySelectorAll('#table-materias-body tr[id^="mat-row-"]').forEach(tr => {
+                const id = tr.id.replace('mat-row-', '');
+                const activa = id === idMat;
+                tr.style.background = activa ? '#eef2ff' : '';
+                tr.style.boxShadow = activa ? 'inset 3px 0 0 0 #6366f1' : '';
+                const btn = document.getElementById('btn-rend-' + id);
+                if (!btn) return;
+                btn.setAttribute('aria-pressed', activa ? 'true' : 'false');
+                btn.title = activa ? 'Ocultar rendimiento' : 'Ver rendimiento de la materia';
+                btn.innerHTML = activa
+                    ? '<i class="fas fa-eye-slash"></i> <span class="hidden md:inline">Ocultar</span>'
+                    : '<i class="fas fa-chart-bar"></i> <span class="hidden md:inline">Rendimiento</span>';
+            });
+        },
+
         cerrarKPIsMateria: () => {
+            app.marcarMateriaActiva(null); // [V5.1]
             if (app.state.chartMateriaKpi) { app.state.chartMateriaKpi.destroy(); app.state.chartMateriaKpi = null; }
             document.getElementById('materia-kpis-container').innerHTML = '';
         },
@@ -8419,7 +9303,7 @@ adminLoadUsers: async () => {
             const div = document.getElementById('plan-list');
             
             // Spinner Moderno
-            div.innerHTML = '<div class="col-span-full text-center py-10"><i class="fas fa-spinner fa-spin text-indigo-500 text-xl"></i><br><span class="text-slate-400 text-xs">Cargando planes...</span></div>';
+            app.cargaGeneral(div, 'Cargando planes...', { clase: 'col-span-full' }); // [V5.1] carga general
             
             const planes = await app.api({ action: 'getPlanning' });
             div.innerHTML = '';
@@ -8729,7 +9613,7 @@ loadAuditoriaData: async () => {
             container.innerHTML += `
             <div id="view-planeamientos" class="view hidden fade-in">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-2xl font-bold text-gray-800"><i class="fas fa-calendar-alt text-indigo-600 mr-2"></i>Planeamiento Didáctico</h3>
+                    <h3 class="text-2xl font-bold text-gray-800"><i class="fas fa-clipboard-list text-indigo-600 mr-2"></i>Planeamiento Didáctico</h3>
                     <button onclick="app.modalPlan()" class="bg-indigo-600 text-white px-5 py-2 rounded-lg shadow font-bold hover:bg-indigo-700 transition">
                         <i class="fas fa-plus-circle mr-2"></i> Nuevo Plan
                     </button>
@@ -8743,7 +9627,7 @@ loadAuditoriaData: async () => {
             container.innerHTML += `
             <div id="view-bitacoras" class="view hidden fade-in">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-2xl font-bold text-gray-800"><i class="fas fa-book-reader text-amber-500 mr-2"></i>Bitácora de Incidencias</h3>
+                    <h3 class="text-2xl font-bold text-gray-800"><i class="fas fa-book-open text-amber-500 mr-2"></i>Bitácora de Incidencias</h3>
                     <div class="flex gap-2">
                         <button onclick="app.modalBitacora()" class="bg-amber-400 text-black px-5 py-2 rounded-lg shadow font-bold hover:bg-amber-500 transition">
                             <i class="fas fa-plus-circle mr-2"></i> Nueva Entrada
@@ -8781,7 +9665,7 @@ loadAuditoriaData: async () => {
             container.innerHTML += `
             <div id="view-sea" class="view hidden fade-in">
                 <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500 mb-6">
-                    <h3 class="text-xl font-bold text-gray-800 mb-2">Informe Oficial SEA (MEP)</h3>
+                    <h3 class="text-xl font-bold text-gray-800 mb-2"><i class="fas fa-file-excel mr-2"></i>Informe Oficial SEA (MEP)</h3>
                     <p class="text-sm text-gray-500 mb-4">
                         Genera el archivo Excel compatible con la plataforma SEA. 
                         El sistema sumará automáticamente <b>Tareas + Proyectos</b> en la columna de Tareas.
@@ -8889,17 +9773,27 @@ loadAuditoriaData: async () => {
             container.innerHTML += `
             <div id="view-miaula" class="view hidden fade-in">
                 <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-2xl font-bold text-gray-800"><i class="fas fa-chalkboard-teacher text-teal-600 mr-2"></i>Mi Aula Virtual</h3>
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-800"><i class="fas fa-chalkboard-teacher text-teal-600 mr-2"></i>Mi Aula <span class="text-[10px] font-black bg-indigo-600 text-white px-1.5 py-0.5 rounded-full align-middle">V5.1</span></h3>
+                        <p class="text-xs text-slate-400 mt-1">Tus clases y tareas por materia: qué vimos, qué deben entregar y qué falta calificar.</p>
+                    </div>
                     <button onclick="app.modalAula()" class="bg-teal-600 text-white px-5 py-2 rounded-lg shadow font-bold hover:bg-teal-700 transition">
                         <i class="fas fa-plus-circle mr-2"></i> Crear Contenido
                     </button>
                 </div>
 
-                <!-- FILTRO RÁPIDO -->
-                <div class="flex gap-2 mb-4">
-                    <button onclick="app.filterAula('Todos')" class="px-4 py-1 rounded-full bg-gray-200 text-gray-700 text-sm font-bold hover:bg-gray-300">Todos</button>
-                    <button onclick="app.filterAula('Clase')" class="px-4 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-bold hover:bg-blue-200">Clases</button>
-                    <button onclick="app.filterAula('Tarea')" class="px-4 py-1 rounded-full bg-orange-100 text-orange-700 text-sm font-bold hover:bg-orange-200">Tareas</button>
+                <!-- [V5.1] RESUMEN: lo que necesita atención -->
+                <div id="aula-resumen" class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4"></div>
+
+                <!-- [V5.1] FILTROS COMBINABLES -->
+                <div class="flex flex-wrap items-center gap-2 mb-4">
+                    <button data-aula-tipo="Todos" onclick="app.filterAula('Todos')" class="px-4 py-1 rounded-full bg-gray-200 text-gray-700 text-sm font-bold hover:bg-gray-300 transition">Todos</button>
+                    <button data-aula-tipo="Clase" onclick="app.filterAula('Clase')" class="px-4 py-1 rounded-full bg-teal-50 text-teal-700 text-sm font-bold hover:bg-teal-100 transition">Clases</button>
+                    <button data-aula-tipo="Tarea" onclick="app.filterAula('Tarea')" class="px-4 py-1 rounded-full bg-orange-100 text-orange-700 text-sm font-bold hover:bg-orange-200 transition">Tareas</button>
+                    <select id="aula-filtro-mat" onchange="app.filterAula()" class="text-sm border border-slate-200 rounded-full px-3 py-1 bg-white text-slate-600"><option value="">Todas las materias</option></select>
+                    <label class="flex items-center gap-1.5 text-sm font-bold text-slate-600 bg-white border border-slate-200 rounded-full px-3 py-1 cursor-pointer">
+                        <input id="aula-filtro-semana" type="checkbox" onchange="app.filterAula()" class="accent-teal-600"> Esta semana
+                    </label>
                 </div>
 
                 <div id="aula-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
@@ -9218,18 +10112,18 @@ loadAuditoriaData: async () => {
 
 <!-- ====== MODAL KPIs POR SECCIÓN ====== -->
 <div id="modal-kpis" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(15,23,42,0.5)">
-    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md animate-fade-in overflow-hidden">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl animate-fade-in overflow-hidden"><!-- [V5.1] modal mas ancho -->
         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <div>
-                <p class="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-0.5">Panel de Indicadores</p>
+                <p class="text-xs font-bold text-indigo-500 uppercase tracking-widest mb-0.5" id="kpi-kicker">Pulso de la sección</p>
                 <h2 class="text-lg font-black text-slate-800" id="kpi-title">Sección</h2>
             </div>
             <button onclick="document.getElementById('modal-kpis').classList.add('hidden')"
                 class="w-9 h-9 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition text-lg">&times;</button>
         </div>
-        <div id="kpi-body" class="p-5 grid grid-cols-1 gap-3 max-h-[70vh] overflow-y-auto"></div>
+        <div id="kpi-body" class="p-5 flex flex-col gap-3 max-h-[75vh] overflow-y-auto"></div>
         <div class="px-6 py-3 border-t border-slate-100 bg-slate-50 text-center">
-            <p class="text-[10px] text-slate-400">Los datos se calculan en tiempo real la Base de Datos</p>
+            <p class="text-[10px] text-slate-400">V5.1 · Se calcula en tiempo real desde la base de datos (solo lectura)</p>
         </div>
     </div>
 </div>

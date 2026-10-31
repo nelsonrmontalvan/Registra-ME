@@ -107,8 +107,9 @@ function doPost(e) {
     if(action === "saveLesson") return response(guardarLeccion(data));
     if(action === "getLessons") return response(obtenerLeccionesDocente(data.email));
     if(action === "pdfLesson") return response(generarPdfLeccion(data.id));
-    if(action === "deleteLesson") return response(eliminarLeccion(data.id));
+    if(action === "deleteLesson") return response(eliminarLeccion(data.id, data.email)); // [V5.1] solo el autor
     if(action === "shareLesson") return response(compartirLeccionPorCorreo(data));
+    if(action === "getRubrosTarea") return response(obtenerRubrosParaTarea(data.idMateria, data.idLeccion)); // [V5.1]
 
     // --- NUEVOS REPORTES ---
     if(action === "getStudentReport") return response(obtenerBoletaEstudiante(data.id, data.periodo));
@@ -136,7 +137,7 @@ function doPost(e) {
 
     // --- KPIs POR SECCIÓN ---
     if(action === "getSectionKPIs") return response(getSectionKPIs(data.idSeccion));
-    if(action === "getMateriaKPIs") return response(getMateriaKPIs(data.id));
+    if(action === "getMateriaKPIs") return response(getMateriaKPIs(data.id, data.periodo)); // [V5.1] acepta periodo
 
     // --- AMPLIACIÓN (EXAMEN EXTRAORDINARIO) ---
     if(action === "saveAmpliacion") return response(guardarAmpliacion(data));
@@ -2025,21 +2026,187 @@ function obtenerIncidenciasPendientes(email) {
 }
 
 // --- MI AULA ---
-function guardarLeccion(form) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
-  const sheet = ss.getSheetByName("MIAULA");
-  const idUsuario = obtenerIdUsuarioPorEmail(form.email);
-  let fileUrl = "", fileName = "";
+// ==========================================
+// ===== PROPUESTA V5.1 (2026-10-31) - MI AULA RENOVADA =====
+// Que corrige (verificado contra la hoja MIAULA real, 9 filas):
+//  [AULA-1] Antes se ignoraban TIPO, RUBRO y FECHAS del formulario: todo quedaba
+//           como "Clase". Ahora se guardan en 4 columnas NUEVAS al final (J..M).
+//           Las 9 columnas originales y las filas que ya existen NO se tocan.
+//  [AULA-2] Editar ya no duplica: actualiza la misma fila y conserva el archivo
+//           si no se sube uno nuevo. Solo el autor puede editar o borrar.
+//  [AULA-3] "Entregados" pasa a "Calificados": estudiantes de la seccion (no
+//           eximidos) con nota en el rubro vinculado.
+//  [AULA-4] Rubro util de verdad: crear el rubro desde la tarea (Tareas/Proyectos
+//           del periodo vigente), control del % disponible del rubro de la materia,
+//           1 tarea = 1 rubro, y recordatorio solo a familias de quienes no tienen nota.
+// Columnas MIAULA:
+//  A ID_LECCION  B ID_MATERIA  C TITULO  D DESCRIPCION  E URL_ARCHIVO  F LINK_EXTRA
+//  G FECHA (registro del sistema)  H ID_USUARIO  I NOMBRE_ARCHIVO
+//  J TIPO (Clase|Tarea)  K ID_INDICADOR  L FECHA_ENVIO  M FECHA_LIMITE   <- nuevas
+// ==========================================
+const AULA_ENCABEZADOS_NUEVOS = ["TIPO", "ID_INDICADOR", "FECHA_ENVIO", "FECHA_LIMITE"];
+const AULA_CATS_RUBRO = { TAREAS: "Tareas", PROYECTOS: "Proyectos" };
 
-  if (form.archivoBase64 && form.archivoNombre) {
-    const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-    const blob = Utilities.newBlob(Utilities.base64Decode(form.archivoBase64), form.archivoMime, form.archivoNombre);
-    const file = folder.createFile(blob);
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    fileUrl = file.getUrl(); fileName = form.archivoNombre;
+// [V5.1] Escribe los encabezados nuevos en J1:M1 SOLO en las celdas vacias.
+function aulaAsegurarEncabezados_(sheet) {
+  const n = AULA_ENCABEZADOS_NUEVOS.length;
+  const enc = sheet.getRange(1, 10, 1, n).getValues()[0];
+  if (enc.some(v => v === "" || v === null)) {
+    sheet.getRange(1, 10, 1, n).setValues([enc.map((v, k) => (v === "" || v === null) ? AULA_ENCABEZADOS_NUEVOS[k] : v)]);
   }
-  sheet.appendRow(["LEC-" + Date.now(), form.idMateria, form.titulo, form.descripcion, fileUrl, form.linkExtra, new Date(), idUsuario, fileName]);
-  return { success: true, message: "Lección publicada" };
+}
+
+// [V5.1] Estado de los rubros de Tareas/Proyectos de una materia en un periodo:
+// peso del rubro en la materia, % ya usado, disponible y cada indicador con su avance
+// y si ya esta vinculado a otra tarea. Solo lectura.
+function aulaEstadoRubros_(ss, idMateria, periodo, idLeccionActual) {
+  const idMat = String(idMateria).trim();
+  const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+  let mat = null;
+  for (let i = 1; i < dataMat.length; i++) if (String(dataMat[i][0]).trim() === idMat) { mat = dataMat[i]; break; }
+  if (!mat) return { error: "Materia no encontrada" };
+  const idSec = String(mat[1]).trim();
+  const pesos = { TAREAS: Number(mat[4]) || 0, PROYECTOS: Number(mat[6]) || 0 };
+
+  const dataEst = ss.getSheetByName("ESTUDIANTES").getDataRange().getValues();
+  const est = new Set();
+  for (let i = 1; i < dataEst.length; i++) {
+    if (String(dataEst[i][1]).trim() === idSec && String(dataEst[i][11]).toUpperCase().trim() !== "TRUE") est.add(String(dataEst[i][0]).trim());
+  }
+
+  const vinculos = {}; // idInd -> titulo de la tarea que lo usa
+  const shAula = ss.getSheetByName("MIAULA");
+  const dataAula = shAula ? shAula.getDataRange().getValues() : [];
+  for (let i = 1; i < dataAula.length; i++) {
+    const idInd = String(dataAula[i][10] || "").trim();
+    if (idInd && String(dataAula[i][0]).trim() !== String(idLeccionActual || "").trim()) vinculos[idInd] = String(dataAula[i][2]);
+  }
+
+  const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
+  const inds = [];
+  const usado = { TAREAS: 0, PROYECTOS: 0 };
+  for (let i = 1; i < dataInd.length; i++) {
+    const r = dataInd[i];
+    const cat = String(r[2]).trim();
+    if (String(r[1]).trim() !== idMat || !AULA_CATS_RUBRO[cat] || String(r[7]) !== String(periodo)) continue;
+    const puntaje = parseFloat(r[4]) || 0;
+    usado[cat] += puntaje;
+    inds.push({ id: String(r[0]).trim(), cat: cat, desc: String(r[3]), puntaje: puntaje, puntosTotales: Number(r[6]) || 100, usadoPor: vinculos[String(r[0]).trim()] || "" });
+  }
+  if (inds.length) {
+    const ids = new Set(inds.map(x => x.id));
+    const conNota = {};
+    const dataNotas = ss.getSheetByName("NOTAS").getDataRange().getValues();
+    for (let n = 1; n < dataNotas.length; n++) {
+      const idInd = String(dataNotas[n][1]).trim();
+      const idE = String(dataNotas[n][2]).trim();
+      if (!ids.has(idInd) || !est.has(idE)) continue;
+      if (!conNota[idInd]) conNota[idInd] = new Set();
+      conNota[idInd].add(idE);
+    }
+    inds.forEach(x => { x.calificados = conNota[x.id] ? conNota[x.id].size : 0; x.totalEst = est.size; });
+  }
+  const r2 = v => Math.round(v * 100) / 100;
+  return {
+    success: true, periodo: String(periodo),
+    rubros: Object.keys(AULA_CATS_RUBRO).map(c => ({ cat: c, label: AULA_CATS_RUBRO[c], peso: pesos[c], usado: r2(usado[c]), disponible: r2(Math.max(0, pesos[c] - usado[c])) })),
+    indicadores: inds
+  };
+}
+
+// [V5.1] Endpoint del formulario: rubros disponibles para vincular una tarea.
+function obtenerRubrosParaTarea(idMateria, idLeccion) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const periodo = determinarPeriodoVigente(ss, idMateria);
+    return aulaEstadoRubros_(ss, idMateria, periodo, idLeccion);
+  } catch (e) { return { error: e.toString() }; }
+}
+
+function guardarLeccion(form) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName("MIAULA");
+    if (!sheet) return { success: false, message: "No existe la hoja MIAULA." };
+
+    const idUsuario = obtenerIdUsuarioPorEmail(form.email);
+    if (!form.idMateria || !String(form.titulo || "").trim()) return { success: false, message: "Falta la materia o el título." };
+
+    const tipo = form.tipo === "Tarea" ? "Tarea" : "Clase";
+    const fechaEnvio = String(form.fechaEnvio || form.fecha || "").substring(0, 10);
+    const fechaLimite = tipo === "Tarea" ? String(form.fechaLimite || "").substring(0, 10) : "";
+    if (tipo === "Tarea" && !fechaLimite) return { success: false, message: "Una tarea necesita fecha límite de entrega." };
+    if (fechaLimite && fechaEnvio && fechaLimite < fechaEnvio) return { success: false, message: "La fecha límite no puede ser antes de la fecha de envío." };
+
+    // Si se edita, primero confirmar que existe y que es del autor (antes de crear nada)
+    let filaEditar = -1;
+    if (form.idLeccion) {
+      const data = sheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][0]).trim() !== String(form.idLeccion).trim()) continue;
+        if (String(data[i][7]).trim() !== String(idUsuario).trim()) return { success: false, message: "Solo quien publicó este contenido puede editarlo." };
+        filaEditar = i + 1; break;
+      }
+      if (filaEditar < 0) return { success: false, message: "No se encontró el contenido a editar." };
+    }
+
+    // [AULA-4] Rubro
+    let idInd = "";
+    let rubroCreado = null;
+    if (tipo === "Tarea" && form.rubroModo === "crear") {
+      const cr = form.crearRubro || {};
+      const cat = String(cr.categoria || "").trim();
+      const puntaje = parseFloat(cr.puntaje);
+      const ptsTot = parseFloat(cr.puntosTotales) || 100;
+      if (!AULA_CATS_RUBRO[cat]) return { success: false, message: "El rubro de una tarea debe ser de Tareas o Proyectos." };
+      if (!(puntaje > 0)) return { success: false, message: "Indicá el valor (%) del rubro." };
+      const periodo = determinarPeriodoVigente(ss, form.idMateria);
+      const estado = aulaEstadoRubros_(ss, form.idMateria, periodo, form.idLeccion);
+      if (estado.error) return { success: false, message: estado.error };
+      const rb = estado.rubros.find(x => x.cat === cat);
+      if (puntaje > rb.disponible + 0.001) return { success: false, message: `En ${rb.label} solo quedan ${rb.disponible}% disponibles en este periodo (usado ${rb.usado}% de ${rb.peso}%).` };
+      idInd = "IND-" + Date.now();
+      // Mismo formato que guardarIndicador (pantalla Evaluar). No es Cotidiano: no hay pesos que recalcular.
+      ss.getSheetByName("INDICADORES").appendRow([idInd, form.idMateria, cat, String(form.titulo).trim(), puntaje, new Date(), ptsTot, periodo]);
+      rubroCreado = { id: idInd, cat: cat, puntaje: puntaje, periodo: periodo };
+    } else if (tipo === "Tarea" && form.rubroModo === "existente") {
+      idInd = String(form.idIndicador || "").trim();
+      if (!idInd) return { success: false, message: "Elegí el rubro existente." };
+      const estado = aulaEstadoRubros_(ss, form.idMateria, determinarPeriodoVigente(ss, form.idMateria), form.idLeccion);
+      const ind = (estado.indicadores || []).find(x => x.id === idInd);
+      // Se permite un rubro de otro periodo solo si ya estaba vinculado a esta misma tarea (edicion)
+      if (ind && ind.usadoPor) return { success: false, message: `Ese rubro ya está vinculado a la tarea "${ind.usadoPor}". Cada tarea necesita su propio rubro.` };
+    }
+
+    aulaAsegurarEncabezados_(sheet);
+
+    // Archivo nuevo (si viene)
+    let fileUrl = "", fileName = "";
+    if (form.archivoBase64 && form.archivoNombre) {
+      const folder = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+      const blob = Utilities.newBlob(Utilities.base64Decode(form.archivoBase64), form.archivoMime, form.archivoNombre);
+      const file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      fileUrl = file.getUrl(); fileName = form.archivoNombre;
+    }
+
+    const extra = rubroCreado ? ` y su rubro (${AULA_CATS_RUBRO[rubroCreado.cat]} ${rubroCreado.puntaje}%)` : "";
+    if (filaEditar > 0) {
+      sheet.getRange(filaEditar, 2, 1, 3).setValues([[form.idMateria, form.titulo, form.descripcion || ""]]); // B,C,D
+      sheet.getRange(filaEditar, 6).setValue(form.linkExtra || "");                                        // F
+      if (fileUrl) { sheet.getRange(filaEditar, 5).setValue(fileUrl); sheet.getRange(filaEditar, 9).setValue(fileName); }
+      sheet.getRange(filaEditar, 10, 1, 4).setValues([[tipo, idInd, fechaEnvio, fechaLimite]]);          // J..M
+      return { success: true, message: "Contenido actualizado" + extra };
+    }
+    sheet.appendRow(["LEC-" + Date.now(), form.idMateria, form.titulo, form.descripcion || "", fileUrl, form.linkExtra || "", new Date(), idUsuario, fileName, tipo, idInd, fechaEnvio, fechaLimite]);
+    return { success: true, message: (tipo === "Tarea" ? "Tarea publicada" : "Clase publicada") + extra };
+  } catch (e) {
+    return { success: false, message: e.toString() };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function obtenerLeccionesDocente(email) {
@@ -2057,83 +2224,83 @@ function obtenerLeccionesDocente(email) {
     const dataEst = ss.getSheetByName("ESTUDIANTES").getDataRange().getValues();
     const dataNotas = ss.getSheetByName("NOTAS").getDataRange().getValues();
 
-    let mapMatName = {};
-    let mapMatToSec = {};
-    dataMat.forEach(r => { mapMatName[r[0]] = r[2]; mapMatToSec[r[0]] = r[1]; });
+    const mapMatName = {}, mapMatToSec = {};
+    dataMat.forEach(r => { mapMatName[String(r[0]).trim()] = r[2]; mapMatToSec[String(r[0]).trim()] = String(r[1]).trim(); });
+    const mapSecToInst = {}, mapSecName = {};
+    dataSec.forEach(r => { mapSecToInst[String(r[0]).trim()] = r[1]; mapSecName[String(r[0]).trim()] = r[2]; });
+    const mapInd = {};
+    dataInd.forEach(r => { mapInd[String(r[0]).trim()] = { desc: r[3], cat: String(r[2]).trim(), periodo: r[7], puntaje: r[4] }; });
 
-    let mapSecToInst = {};
-    dataSec.forEach(r => mapSecToInst[r[0]] = r[1]);
-
-    let mapInd = {};
-    dataInd.forEach(r => mapInd[r[0]] = r[3] + " (" + r[2] + ")");
-
-    // Total de estudiantes activos (no eximidos) por sección, para calcular entregas
-    let mapEstudiantesPorSeccion = {};
+    const estPorSec = {}, nombreEst = {};
     for (let i = 1; i < dataEst.length; i++) {
       const sec = String(dataEst[i][1]).trim();
-      const esEximido = String(dataEst[i][11]).toUpperCase().trim() === "TRUE";
-      if (!esEximido) mapEstudiantesPorSeccion[sec] = (mapEstudiantesPorSeccion[sec] || 0) + 1;
+      if (String(dataEst[i][11]).toUpperCase().trim() === "TRUE") continue;
+      if (!estPorSec[sec]) estPorSec[sec] = new Set();
+      estPorSec[sec].add(String(dataEst[i][0]).trim());
+      nombreEst[String(dataEst[i][0]).trim()] = dataEst[i][3];
     }
 
-    // Estudiantes con nota registrada por indicador, para saber cuántos "entregaron" una Tarea
-    let mapEntregasPorIndicador = {};
+    const misInd = new Set();
+    for (let i = 1; i < data.length; i++) if (String(data[i][7]) == String(idUsuario) && data[i][10]) misInd.add(String(data[i][10]).trim());
+    const notasPorInd = {};
     for (let i = 1; i < dataNotas.length; i++) {
       const idInd = String(dataNotas[i][1]).trim();
-      const idEst = String(dataNotas[i][2]).trim();
-      const nota = dataNotas[i][3];
-      const nivel = dataNotas[i][5];
-      const tieneNota = (nota !== "" && nota !== null && nota !== undefined) || (nivel !== "" && nivel !== null && nivel !== undefined);
-      if (tieneNota) {
-        if (!mapEntregasPorIndicador[idInd]) mapEntregasPorIndicador[idInd] = new Set();
-        mapEntregasPorIndicador[idInd].add(idEst);
-      }
+      if (!misInd.has(idInd)) continue;
+      const nota = dataNotas[i][3], nivel = dataNotas[i][5];
+      const tiene = (nota !== "" && nota !== null && nota !== undefined) || (nivel !== "" && nivel !== null && nivel !== undefined);
+      if (!tiene) continue;
+      if (!notasPorInd[idInd]) notasPorInd[idInd] = new Set();
+      notasPorInd[idInd].add(String(dataNotas[i][2]).trim());
     }
 
-    let lista = [];
-    for(let i=1; i<data.length; i++){
-      if(String(data[i][7]) == String(idUsuario)){
-         let idMat = data[i][1];
-         let idSec = mapMatToSec[idMat];
-
-         let tipo = data[i][9] ? String(data[i][9]) : "Clase";
-         let idInd = data[i][10] ? String(data[i][10]) : "";
-
-         let totalEstudiantes = mapEstudiantesPorSeccion[String(idSec).trim()] || 0;
-         let entregados = (tipo === "Tarea" && idInd && mapEntregasPorIndicador[idInd]) ? mapEntregasPorIndicador[idInd].size : 0;
-
-         lista.push({
-           id: data[i][0],
-           idMateria: idMat,
-           idSeccion: idSec,
-           idInstitucion: mapSecToInst[idSec],
-           materia: mapMatName[idMat] || "General",
-           titulo: data[i][2],
-           desc: data[i][3],
-           fileUrl: data[i][4],
-           link: data[i][5],
-           fecha: formatearFechaInput(data[i][6]),
-           fileName: data[i][8],
-           tipo: tipo,
-           idIndicador: idInd,
-           nombreIndicador: mapInd[idInd] || "Sin vincular",
-           entregados: entregados,
-           totalEstudiantes: totalEstudiantes
-         });
+    const lista = [];
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][7]) != String(idUsuario)) continue;
+      const idMat = String(data[i][1]).trim();
+      const idSec = mapMatToSec[idMat];
+      const tipo = data[i][9] ? String(data[i][9]) : "Clase";
+      const idInd = data[i][10] ? String(data[i][10]).trim() : "";
+      const est = estPorSec[idSec] || new Set();
+      const sinNota = [];
+      let calificados = 0;
+      if (tipo === "Tarea" && idInd) {
+        const con = notasPorInd[idInd] || new Set();
+        est.forEach(id => { if (con.has(id)) calificados++; else sinNota.push({ id: id, nombre: nombreEst[id] || id }); });
       }
+      const fechaRegistro = formatearFechaInput(data[i][6]);
+      const fechaEnvio = data[i][11] ? formatearFechaInput(data[i][11]) : fechaRegistro;
+      const fechaLimite = data[i][12] ? formatearFechaInput(data[i][12]) : "";
+      const ind = mapInd[idInd];
+
+      lista.push({
+        id: data[i][0], idMateria: idMat, idSeccion: idSec, idInstitucion: mapSecToInst[idSec],
+        materia: mapMatName[idMat] || "General", seccion: mapSecName[idSec] || "",
+        titulo: data[i][2], desc: data[i][3], fileUrl: data[i][4], link: data[i][5], fileName: data[i][8],
+        fechaRegistro: fechaRegistro, fechaEnvio: fechaEnvio, fechaLimite: fechaLimite,
+        fecha: fechaLimite || fechaEnvio, // compatibilidad
+        tipo: tipo, idIndicador: idInd,
+        nombreIndicador: ind ? `${ind.desc} · ${AULA_CATS_RUBRO[ind.cat] || ind.cat} ${ind.puntaje}%` : "Sin vincular",
+        catIndicador: ind ? ind.cat : "", periodoIndicador: ind ? String(ind.periodo || "") : "",
+        calificados: calificados, entregados: calificados, sinNota: sinNota,
+        totalEstudiantes: est.size
+      });
     }
     return lista.reverse();
   } catch(e) { return []; }
 }
 
-function eliminarLeccion(id) {
+function eliminarLeccion(id, email) {
   const ss = SpreadsheetApp.openById(SHEET_ID);
   const sheet = ss.getSheetByName("MIAULA");
   const data = sheet.getDataRange().getValues();
+  const idUsuario = email ? obtenerIdUsuarioPorEmail(email) : null;
 
   for(let i=1; i<data.length; i++){
     if(String(data[i][0]) == String(id)){
+      if (idUsuario && String(data[i][7]).trim() !== String(idUsuario).trim()) return { success: false, message: "Solo quien publicó este contenido puede eliminarlo." };
+      // El rubro vinculado (y sus notas) NO se borra: vive en la pantalla Evaluar.
       sheet.deleteRow(i+1);
-      return { success: true, message: "Contenido eliminado." };
+      return { success: true, message: "Contenido eliminado. El rubro y sus notas se conservan en Evaluar." };
     }
   }
   return { success: false, message: "No se encontró el ID." };
@@ -2152,7 +2319,8 @@ function compartirLeccionPorCorreo(data) {
         desc: dataAula[i][3],
         fileUrl: dataAula[i][4],
         link: dataAula[i][5],
-        tipo: dataAula[i][9] ? String(dataAula[i][9]) : "Clase"
+        tipo: dataAula[i][9] ? String(dataAula[i][9]) : "Clase",
+        fechaLimite: dataAula[i][12] ? formatearFechaInput(dataAula[i][12]).split("-").reverse().join("/") : "" // [V5.1] dd/MM/yyyy sin desfase de zona horaria
       };
       break;
     }
@@ -2179,13 +2347,18 @@ function compartirLeccionPorCorreo(data) {
   const nombreRemitente = nombreProfe + " - RegistraME";
 
   const tipoTexto = leccion.tipo === "Tarea" ? "una nueva tarea" : "nuevo material de clase";
+  // [V5.1] Recordatorio: solo a familias de estudiantes sin nota en el rubro de la tarea
+  const intro = data.recordatorio
+    ? `Le recordamos que su estudiante tiene pendiente la siguiente tarea de ${nombreMateria}:`
+    : `Se ha publicado ${tipoTexto} en ${nombreMateria}:`;
   let cuerpo = `Estimada familia:\n\n${data.mensaje ? data.mensaje + "\n\n" : ""}` +
-    `Se ha publicado ${tipoTexto} en ${nombreMateria}:\n\n"${leccion.titulo}"\n${leccion.desc || ""}\n`;
+    `${intro}\n\n"${leccion.titulo}"\n${leccion.desc || ""}\n`;
+  if (leccion.tipo === "Tarea" && leccion.fechaLimite) cuerpo += `\nFecha límite de entrega: ${leccion.fechaLimite}\n`; // [V5.1]
   if (leccion.fileUrl) cuerpo += `\nArchivo: ${leccion.fileUrl}\n`;
   if (leccion.link) cuerpo += `\nEnlace: ${leccion.link}\n`;
   cuerpo += `\nAtentamente,\n${nombreProfe}`;
 
-  const asunto = (leccion.tipo === "Tarea" ? "Nueva Tarea" : "Nuevo Material") + " - " + leccion.titulo;
+  const asunto = (data.recordatorio ? "Recordatorio: tarea pendiente" : (leccion.tipo === "Tarea" ? "Nueva Tarea" : "Nuevo Material")) + " - " + leccion.titulo; // [V5.1]
 
   let enviados = 0, fallidos = 0, erroresDetallados = [];
 
@@ -3497,227 +3670,460 @@ function generarPdfListaEstudiantes(idSeccion) {
 }
 
 // ==========================================
-// KPIs POR MATERIA (panel al entrar a una asignatura)
-// Reutiliza funciones ya existentes y confiables (obtenerCuadroMateria,
-// calcularAsistenciaMap) en vez de recalcular todo de cero -- misma logica que
-// ya usan Cuadro/Boleta/SEA, para no crear una cuarta fuente de verdad.
+// ===== PROPUESTA V5.1 (2026-10-31) - KPIs RENOVADOS =====
+// Reemplaza a las versiones anteriores de getMateriaKPIs / getSectionKPIs
+// (respaldo completo en sandbox/code.gs.respaldo-2026-10-31).
+//
+// GARANTIA DE DATOS: todo este bloque es de SOLO LECTURA. Ninguna funcion
+// aqui escribe en el Sheets (no hay setValue, setValues, appendRow,
+// insertSheet, deleteRow ni clear). Se puede verificar con:
+//   grep -n "setValue\|appendRow\|insertSheet\|deleteRow\|clear(" (rango V5.1)
+//
+// QUE CORRIGE RESPECTO A LA VERSION ANTERIOR:
+//  [V5.1-1] Filtra por PERIODO (antes sumaba I + II Periodo juntos).
+//  [V5.1-2] Una sola regla de "estado academico" para Materia y Seccion
+//           (antes cada vista calculaba "en riesgo" distinto).
+//  [V5.1-3] "En riesgo" usa la PROYECCION (rendimiento en lo ya evaluado),
+//           no los puntos acumulados (que a mitad de periodo siempre son bajos).
+//  [V5.1-4] Seccion: riesgo POR MATERIA (antes sumaba notas de todas las
+//           materias y comparaba contra 65 fijo).
+//  [V5.1-5] Respeta la nota minima de cada materia y la ultima fila de NOTAS
+//           (mismo criterio que el Cuadro; duplicados no cuentan doble).
+//  [V5.1-6] Asistencia real segun Art. 37 del Reglamento MEP 2026: % de
+//           ausencias injustificadas sobre lecciones impartidas (tardia = 0.5).
+//  [V5.1-7] Ampliacion solo se ofrece con el II Periodo cerrado (nota anual).
+//  [V5.1-8] Mas rapida: cada hoja se lee UNA vez por consulta (antes la vista
+//           de materia leia NOTAS/INDICADORES/MATERIAS varias veces).
 // ==========================================
-function getMateriaKPIs(idMateria) {
+
+const KPI_V51_CATS = ['TRAB_COT', 'TAREAS', 'PRUEBAS', 'PROYECTOS'];
+const KPI_V51_CAT_LABEL = { TRAB_COT: 'Cotidiano', TAREAS: 'Tareas', PRUEBAS: 'Pruebas', PROYECTOS: 'Proyectos' };
+const KPI_V51_MARGEN_ATENCION = 5; // puntos por encima de la minima que se marcan "en atencion"
+
+// [V5.1] Lee cada hoja una sola vez. Hojas opcionales devuelven [].
+function kpiV51_leerBase_(ss) {
+  const leer = (nombre) => { const sh = ss.getSheetByName(nombre); return sh ? sh.getDataRange().getValues() : []; };
+  const base = {
+    mat: leer("MATERIAS"), sec: leer("SECCIONES"), est: leer("ESTUDIANTES"),
+    ind: leer("INDICADORES"), notas: leer("NOTAS"), corrNF: leer("CORRECCIONES_NOTA_FINAL"),
+    cfg: leer("CONF_HORARIO"), asis: leer("ASISTENCIA_DATA"),
+    hoy: formatearFechaInput(new Date())
+  };
+  // Indice de notas: idInd -> { idEst -> %_OBTENIDO }. La ULTIMA fila gana
+  // (misma regla que obtenerCuadroMateria y la pantalla de calificar).
+  base.notaIdx = {};
+  for (let n = 1; n < base.notas.length; n++) {
+    const idInd = String(base.notas[n][1]).trim();
+    const idEst = String(base.notas[n][2]).trim();
+    if (!idInd || !idEst) continue;
+    if (!base.notaIdx[idInd]) base.notaIdx[idInd] = {};
+    base.notaIdx[idInd][idEst] = extraerPorcentaje(base.notas[n][3]);
+  }
+  // Indice de asistencia por materia (filas crudas).
+  base.asisIdx = {};
+  for (let i = 1; i < base.asis.length; i++) {
+    const idMat = String(base.asis[i][3]).trim();
+    if (!base.asisIdx[idMat]) base.asisIdx[idMat] = [];
+    base.asisIdx[idMat].push(base.asis[i]);
+  }
+  return base;
+}
+
+// [V5.1] Fechas de periodos de una seccion: [{p, inicio, fin}] (yyyy-MM-dd) o [].
+function kpiV51_periodosSeccion_(base, idSec) {
+  for (let i = 1; i < base.sec.length; i++) {
+    if (String(base.sec[i][0]).trim() !== String(idSec).trim()) continue;
+    try {
+      const arr = JSON.parse(base.sec[i][5] || "[]");
+      return Array.isArray(arr) ? arr.map(p => ({ p: String(p.p), inicio: formatearFechaInput(p.inicio), fin: formatearFechaInput(p.fin) })) : [];
+    } catch (e) { return []; }
+  }
+  return [];
+}
+
+// [V5.1] Periodo vigente con datos ya cargados (misma regla que determinarPeriodoVigente).
+// Sin fechas configuradas: el periodo mas alto que tenga indicadores en la materia.
+function kpiV51_periodoVigente_(base, fechas, idsMaterias) {
+  if (fechas.length > 0) {
+    for (const p of fechas) if (base.hoy >= p.inicio && base.hoy <= p.fin) return p.p;
+    let vig = fechas[0].p;
+    fechas.forEach(p => { if (base.hoy >= p.inicio) vig = p.p; });
+    return vig;
+  }
+  let max = 0;
+  for (let i = 1; i < base.ind.length; i++) {
+    if (idsMaterias.has(String(base.ind[i][1]).trim())) max = Math.max(max, Number(base.ind[i][7]) || 0);
+  }
+  return String(max || 1);
+}
+
+// [V5.1] MOTOR UNICO: estado academico de cada estudiante en UNA materia y UN periodo.
+// La nota acumulada (total) replica EXACTAMENTE a obtenerCuadroMateria(idMateria, periodo)
+// -- se puede comprobar corriendo verificarKPIsV51() desde el editor.
+function kpiV51_calcularMateria_(base, idMateria, periodo, fechas) {
+  const idMat = String(idMateria).trim();
+  let m = null;
+  for (let i = 1; i < base.mat.length; i++) {
+    if (String(base.mat[i][0]).trim() === idMat) {
+      const r = base.mat[i];
+      m = { id: idMat, idSec: String(r[1]).trim(), nombre: String(r[2]),
+            pesos: { TRAB_COT: Number(r[3]) || 0, TAREAS: Number(r[4]) || 0, PRUEBAS: Number(r[5]) || 0, PROYECTOS: Number(r[6]) || 0 },
+            valorAsist: Number(r[7]) || 0, notaMinima: Number(r[8]) || 65 };
+      break;
+    }
+  }
+  if (!m) return { error: "Materia no encontrada" };
+  const pesoAcademico = KPI_V51_CATS.reduce((s, c) => s + m.pesos[c], 0);
+
+  const estudiantes = [];
+  for (let i = 1; i < base.est.length; i++) {
+    if (String(base.est[i][1]).trim() === m.idSec) estudiantes.push({ id: String(base.est[i][0]).trim(), nombre: String(base.est[i][3]) });
+  }
+
+  // Indicadores del periodo
+  const indicadores = [];
+  let tieneIndAsist = false, cantCot = 0;
+  for (let i = 1; i < base.ind.length; i++) {
+    const r = base.ind[i];
+    if (String(r[1]).trim() !== idMat) continue;
+    if (String(r[7]) !== String(periodo)) continue;
+    const cat = String(r[2]).trim();
+    if (cat === 'ASIST') tieneIndAsist = true;
+    if (cat === 'TRAB_COT') cantCot++;
+    indicadores.push({ id: String(r[0]).trim(), cat: cat, desc: String(r[3]), puntaje: parseFloat(r[4]) || 0 });
+  }
+  const pesoCot = cantCot > 0 ? m.pesos.TRAB_COT / cantCot : 0; // igual que calcularPesoCotidianoVigente
+  indicadores.forEach(ind => { ind.peso = ind.cat === 'TRAB_COT' ? pesoCot : ind.puntaje; });
+
+  // Asistencia en puntos (igual que calcularAsistenciaMap) + asistencia real Art. 37 del periodo
+  const asist = kpiV51_asistencia_(base, idMat, m.valorAsist, fechas.find(p => p.p === String(periodo)));
+
+  // Correcciones manuales de nota de periodo (misma regla que el Cuadro)
+  const corr = {};
+  for (let c = 1; c < base.corrNF.length; c++) {
+    const r = base.corrNF[c];
+    if (String(r[1]).trim() === idMat && String(r[3]).trim() === String(periodo)) {
+      const idE = String(r[2]).trim();
+      if (!corr[idE]) corr[idE] = Number(r[4]); // el Cuadro toma la primera coincidencia
+    }
+  }
+
+  const fp = fechas.find(p => p.p === String(periodo));
+  const cerrado = !!(fp && fp.fin && base.hoy > fp.fin);
+
+  const calificadosPorInd = {};
+  const lista = estudiantes.map(e => {
+    const porCat = { TRAB_COT: 0, TAREAS: 0, PRUEBAS: 0, PROYECTOS: 0, ASIST: 0 };
+    let obtenidoAcad = 0, evaluadoAcad = 0;
+    indicadores.forEach(ind => {
+      const notasInd = base.notaIdx[ind.id];
+      if (!notasInd || notasInd[e.id] === undefined) return;
+      const nota = notasInd[e.id];
+      calificadosPorInd[ind.id] = (calificadosPorInd[ind.id] || 0) + 1;
+      if (porCat[ind.cat] !== undefined) porCat[ind.cat] += nota;
+      if (KPI_V51_CATS.indexOf(ind.cat) !== -1) { obtenidoAcad += nota; evaluadoAcad += ind.peso; }
+    });
+    if (!tieneIndAsist) porCat.ASIST = asist.puntos[e.id] !== undefined ? asist.puntos[e.id] : m.valorAsist;
+
+    const totalCalculado = Math.round(
+      Number(porCat.TRAB_COT.toFixed(2)) + Number(porCat.TAREAS.toFixed(2)) + Number(porCat.PRUEBAS.toFixed(2)) +
+      Number(porCat.PROYECTOS.toFixed(2)) + Number(porCat.ASIST.toFixed(1)));
+    const corregida = corr[e.id] !== undefined;
+    const total = corregida ? corr[e.id] : totalCalculado;
+
+    // Rendimiento en lo evaluado y proyeccion si mantiene el ritmo
+    const rendimiento = evaluadoAcad > 0 ? (obtenidoAcad / evaluadoAcad) * 100 : null;
+    const asistPts = Number(porCat.ASIST.toFixed(1));
+    const proyeccion = rendimiento === null ? null
+      : Math.round((rendimiento / 100) * pesoAcademico + asistPts);
+
+    // Estado: periodo cerrado -> nota real; abierto -> proyeccion
+    const ref = cerrado ? total : proyeccion;
+    let estado;
+    if (!cerrado && rendimiento === null) estado = 'sin_eval';
+    else if (ref < m.notaMinima) estado = cerrado ? 'reprobado' : 'riesgo';
+    else if (ref < m.notaMinima + KPI_V51_MARGEN_ATENCION) estado = 'atencion';
+    else estado = 'al_dia';
+
+    const au = asist.real[e.id] || { pct: 0, ai: 0, t: 0 };
+    return {
+      id: e.id, nombre: e.nombre, total: total, totalCalculado: totalCalculado, corregida: corregida,
+      rendimiento: rendimiento === null ? null : Math.round(rendimiento),
+      proyeccion: proyeccion, evaluado: Math.round(evaluadoAcad * 10) / 10,
+      asistPts: asistPts, pctAusencia: au.pct, ai: au.ai, tardias: au.t,
+      bandaAsist: kpiV51_bandaArt37_(au.pct), estado: estado
+    };
+  });
+
+  // Avance por rubro: notas registradas / notas esperadas (indicadores x estudiantes)
+  const avancePorRubro = KPI_V51_CATS.map(c => {
+    const inds = indicadores.filter(i => i.cat === c);
+    const esperadas = inds.length * estudiantes.length;
+    const registradas = inds.reduce((s, i) => s + (calificadosPorInd[i.id] || 0), 0);
+    return { cat: c, label: KPI_V51_CAT_LABEL[c], indicadores: inds.length, esperadas: esperadas, registradas: registradas, peso: m.pesos[c] };
+  });
+  // Peso del curso ya evaluado (indicadores con al menos una nota) sobre el peso academico
+  const pesoEvaluado = indicadores.filter(i => KPI_V51_CATS.indexOf(i.cat) !== -1 && calificadosPorInd[i.id]).reduce((s, i) => s + i.peso, 0);
+
+  const incompletos = indicadores
+    .filter(i => (calificadosPorInd[i.id] || 0) < estudiantes.length)
+    .map(i => ({ desc: i.desc, cat: KPI_V51_CAT_LABEL[i.cat] || i.cat, calificados: calificadosPorInd[i.id] || 0, total: estudiantes.length }));
+
+  return {
+    materia: m, periodo: String(periodo), cerrado: cerrado, pesoAcademico: pesoAcademico,
+    pesoEvaluado: Math.round(pesoEvaluado * 10) / 10, lista: lista,
+    avancePorRubro: avancePorRubro, incompletos: incompletos, leccionesImpartidas: asist.impartidas
+  };
+}
+
+// [V5.1] Banda del Art. 37 (Reglamento de Evaluacion MEP 2026) segun % de ausencias injustificadas.
+function kpiV51_bandaArt37_(pct) {
+  if (pct < 10) return { nivel: 'ok', puntos: 5, texto: '0% a <10%' };
+  if (pct < 20) return { nivel: 'leve', puntos: 4, texto: '10% a <20%' };
+  if (pct < 30) return { nivel: 'alta', puntos: 3, texto: '20% a <30%' };
+  if (pct < 40) return { nivel: 'alta', puntos: 2, texto: '30% a <40%' };
+  if (pct < 50) return { nivel: 'critica', puntos: 1, texto: '40% a <50%' };
+  return { nivel: 'critica', puntos: 0, texto: '50% o mas' };
+}
+
+// [V5.1] Asistencia de una materia con datos cacheados.
+//  - puntos: identico a calcularAsistenciaMap (lo que usa el Cuadro).
+//  - real: % de ausencias injustificadas (AI=1, T=0.5 por leccion) sobre las
+//    lecciones PROGRAMADAS del periodo hasta hoy (segun CONF_HORARIO). Se usa lo
+//    programado y no "dias con lista" porque si el docente solo marca ausentes,
+//    los dias sin ausencias no dejan fila y el % saldria inflado.
+function kpiV51_asistencia_(base, idMat, valorTotalAsist, rangoPeriodo) {
+  const diasMap = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const PESO = { 'AI': 1, 'T': 0.5 };
+  const configs = [];
+  let totalLec = 0;
+  for (let i = 1; i < base.cfg.length; i++) {
+    if (String(base.cfg[i][2]).trim() !== idMat) continue;
+    const ini = new Date(base.cfg[i][3]); const fin = new Date(base.cfg[i][4]);
+    let dias = {}; try { dias = JSON.parse(base.cfg[i][5]); } catch (e) {}
+    configs.push({ ini, fin, dias });
+    const cur = new Date(ini.getTime());
+    while (cur <= fin) { const d = diasMap[cur.getDay()]; if (dias[d]) totalLec += Number(dias[d]); cur.setDate(cur.getDate() + 1); }
+  }
+  const out = { puntos: {}, real: {}, impartidas: 0 };
+  if (configs.length === 0) return out;
+  const factor = totalLec > 0 ? valorTotalAsist / totalLec : 0;
+
+  const perdidasPts = {};
+  const perdidasReal = {}, aiCnt = {}, tCnt = {};
+  (base.asisIdx[idMat] || []).forEach(row => {
+    const fecha = new Date(row[1]);
+    const d = diasMap[fecha.getDay()];
+    let lecciones = 0;
+    configs.forEach(cfg => { if (fecha >= cfg.ini && fecha <= cfg.fin && cfg.dias[d]) lecciones = Number(cfg.dias[d]); });
+    if (lecciones <= 0) return;
+    const idEst = String(row[2]).trim();
+    let perd = 0, ai = 0, t = 0;
+    for (let k = 0; k < lecciones; k++) {
+      const est = resolverEstadoLeccion(row[4], row[6] || "", k);
+      perd += (PESO[est] || 0); if (est === 'AI') ai++; if (est === 'T') t++;
+    }
+    perdidasPts[idEst] = (perdidasPts[idEst] || 0) + perd;
+
+    const f = formatearFechaInput(fecha);
+    const enPeriodo = !rangoPeriodo || (f >= rangoPeriodo.inicio && f <= rangoPeriodo.fin);
+    if (enPeriodo && f <= base.hoy) {
+      perdidasReal[idEst] = (perdidasReal[idEst] || 0) + perd;
+      aiCnt[idEst] = (aiCnt[idEst] || 0) + ai; tCnt[idEst] = (tCnt[idEst] || 0) + t;
+    }
+  });
+  if (totalLec > 0) {
+    Object.keys(perdidasPts).forEach(id => { let p = valorTotalAsist - perdidasPts[id] * factor; out.puntos[id] = p < 0 ? 0 : p; });
+  }
+  // Lecciones programadas del periodo hasta hoy
+  configs.forEach(cfg => {
+    const cur = new Date(cfg.ini.getTime());
+    while (cur <= cfg.fin) {
+      const f = formatearFechaInput(cur);
+      if (f > base.hoy) break;
+      const enPeriodo = !rangoPeriodo || (f >= rangoPeriodo.inicio && f <= rangoPeriodo.fin);
+      const d = diasMap[cur.getDay()];
+      if (enPeriodo && cfg.dias[d]) out.impartidas += Number(cfg.dias[d]);
+      cur.setDate(cur.getDate() + 1);
+    }
+  });
+  Object.keys(perdidasReal).forEach(id => {
+    out.real[id] = { pct: out.impartidas > 0 ? Math.round((perdidasReal[id] / out.impartidas) * 1000) / 10 : 0, ai: aiCnt[id] || 0, t: tCnt[id] || 0 };
+  });
+  return out;
+}
+
+// ==========================================
+// [V5.1] KPIs POR MATERIA -- "Como va mi materia en este periodo?"
+// periodo opcional: si no viene, se usa el periodo vigente.
+// ==========================================
+function getMateriaKPIs(idMateria, periodo) {
   try {
     const ss = SpreadsheetApp.openById(SHEET_ID);
+    const base = kpiV51_leerBase_(ss);
+    let idSec = null;
+    for (let i = 1; i < base.mat.length; i++) if (String(base.mat[i][0]).trim() === String(idMateria).trim()) { idSec = String(base.mat[i][1]).trim(); break; }
+    if (!idSec) return { error: "Materia no encontrada" };
 
-    const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
-    let materia = null;
-    for (let i = 1; i < dataMat.length; i++) {
-      if (String(dataMat[i][0]).trim() === String(idMateria).trim()) {
-        materia = {
-          id: dataMat[i][0], nombre: dataMat[i][2],
-          asistencia: Number(dataMat[i][7]) || 0,
-          notaMinima: Number(dataMat[i][8]) || 65
-        };
-        break;
+    const fechas = kpiV51_periodosSeccion_(base, idSec);
+    const vigente = kpiV51_periodoVigente_(base, fechas, new Set([String(idMateria).trim()]));
+    const per = (periodo === undefined || periodo === null || periodo === '') ? vigente : String(periodo);
+
+    const periodosSet = new Set(fechas.map(p => p.p));
+    for (let i = 1; i < base.ind.length; i++) if (String(base.ind[i][1]).trim() === String(idMateria).trim() && base.ind[i][7] !== '' && base.ind[i][7] !== null) periodosSet.add(String(base.ind[i][7]));
+    periodosSet.add(vigente);
+    const periodos = Array.from(periodosSet).filter(p => p && p !== 'undefined').sort();
+
+    const r = kpiV51_calcularMateria_(base, idMateria, per, fechas);
+    if (r.error) return r;
+
+    const cuenta = (est) => r.lista.filter(e => e.estado === est).length;
+    const conDatos = r.lista.filter(e => (r.cerrado ? true : e.proyeccion !== null));
+    const promRef = conDatos.length ? Math.round(conDatos.reduce((s, e) => s + (r.cerrado ? e.total : e.proyeccion), 0) / conDatos.length) : null;
+    const promAcum = r.lista.length ? Math.round(r.lista.reduce((s, e) => s + e.total, 0) / r.lista.length) : 0;
+    const asistReal = r.lista.length ? Math.round((100 - r.lista.reduce((s, e) => s + e.pctAusencia, 0) / r.lista.length) * 10) / 10 : 100;
+
+    // [V5.1-7] Ampliacion: solo cuando el II Periodo cerro (aplica sobre la nota ANUAL).
+    let ampliacion = { habilitada: false, lista: [] };
+    if (per === '2' && r.cerrado) {
+      const anual = obtenerNotaFinalAnual(idMateria); // funcion existente, solo lectura
+      const amps = obtenerAmpliacionesPorMateria(ss, idMateria);
+      if (anual && anual.success) {
+        ampliacion.habilitada = true;
+        ampliacion.lista = anual.lista
+          .filter(e => typeof e.notaFinal === 'number' && (e.notaFinal < r.materia.notaMinima || e.ampliacion))
+          .map(e => ({ id: e.id, nombre: e.nombre, notaFinal: e.notaFinal, notaFinalOriginal: e.notaFinalOriginal, ampliacion: e.ampliacion,
+                       intentosRestantes: Math.max(0, 2 - ((amps[String(e.id).trim()] || []).length)) }));
       }
     }
-    if (!materia) return { error: "Materia no encontrada" };
 
-    // 1. Promedio, distribucion y estudiantes en riesgo (a partir del Cuadro ya existente)
-    const cuadro = obtenerCuadroMateria(idMateria);
-    if (cuadro.error) return { error: cuadro.error };
-
-    // Ampliación: la nota de cada estudiante se topa/ajusta antes de clasificar
-    // aprobado/reprobado, para que "en riesgo" y el promedio reflejen la
-    // realidad una vez aplicado el examen extraordinario (ver aplicarTopeAmpliacion).
-    const ampliaciones = obtenerAmpliacionesPorMateria(ss, idMateria);
-
-    let sumaTotal = 0;
-    const distribucion = { excelente: 0, aprobado: 0, reprobado: 0 };
-    const enRiesgo = [];
-
-    cuadro.lista.forEach(e => {
-      const intentosEst = ampliaciones[e.id];
-      const resultado = aplicarTopeAmpliacion(e.total, materia.notaMinima, intentosEst);
-      const totalAjustado = resultado.notaFinal;
-
-      sumaTotal += totalAjustado;
-      if (totalAjustado >= 90) distribucion.excelente++;
-      else if (totalAjustado >= materia.notaMinima) distribucion.aprobado++;
-      else distribucion.reprobado++;
-
-      if (totalAjustado < materia.notaMinima) {
-        enRiesgo.push({
-          id: e.id,
-          nombre: e.nombre,
-          total: totalAjustado,
-          totalOriginal: e.total,
-          ampliacion: resultado.ampliacion,
-          intentosRestantes: Math.max(0, 2 - (intentosEst ? intentosEst.length : 0))
-        });
-      }
-    });
-    enRiesgo.sort((a, b) => a.total - b.total);
-
-    const totalEst = cuadro.lista.length;
-    const promedio = totalEst > 0 ? parseFloat((sumaTotal / totalEst).toFixed(1)) : 0;
-
-    // 2. Avance de calificacion por rubro (cuantos indicadores de cada categoria ya tienen al menos 1 nota)
-    const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
-    const dataNotas = ss.getSheetByName("NOTAS").getDataRange().getValues();
-    const indConNota = new Set();
-    for (let i = 1; i < dataNotas.length; i++) indConNota.add(String(dataNotas[i][1]).trim());
-
-    const CAT_LABEL = { TRAB_COT: 'Cotidiano', TAREAS: 'Tareas', PRUEBAS: 'Pruebas', PROYECTOS: 'Proyectos' };
-    const avancePorRubro = {};
-    Object.keys(CAT_LABEL).forEach(c => avancePorRubro[c] = { label: CAT_LABEL[c], total: 0, calificados: 0 });
-
-    for (let i = 1; i < dataInd.length; i++) {
-      if (String(dataInd[i][1]).trim() !== String(idMateria).trim()) continue;
-      const cat = String(dataInd[i][2]).trim();
-      if (!avancePorRubro[cat]) continue;
-      avancePorRubro[cat].total++;
-      if (indConNota.has(String(dataInd[i][0]).trim())) avancePorRubro[cat].calificados++;
-    }
-
-    // 3. Asistencia promedio de la materia (mismo motor que Cuadro/Boleta/SEA)
-    const mapAsist = calcularAsistenciaMap(idMateria, materia.asistencia);
-    let sumaAsist = 0;
-    cuadro.lista.forEach(e => {
-      sumaAsist += (mapAsist[e.id] !== undefined ? mapAsist[e.id] : materia.asistencia);
-    });
-    const asistenciaPromedio = totalEst > 0 ? parseFloat((sumaAsist / totalEst).toFixed(1)) : materia.asistencia;
-
+    const orden = { riesgo: 0, reprobado: 0, atencion: 1, sin_eval: 2, al_dia: 3 };
     return {
-      success: true,
-      materia: materia.nombre,
-      notaMinima: materia.notaMinima,
-      totalEstudiantes: totalEst,
-      promedio: promedio,
-      distribucion: distribucion,
-      enRiesgo: enRiesgo,
-      avancePorRubro: Object.values(avancePorRubro),
-      asistenciaPromedio: asistenciaPromedio,
-      valorAsistTotal: materia.asistencia
+      success: true, version: 'V5.1',
+      materia: r.materia.nombre, notaMinima: r.materia.notaMinima,
+      periodo: per, periodoVigente: vigente, periodos: periodos, cerrado: r.cerrado,
+      totalEstudiantes: r.lista.length,
+      promedioReferencia: promRef, promedioAcumulado: promAcum,
+      pesoAcademico: r.pesoAcademico, pesoEvaluado: r.pesoEvaluado,
+      asistenciaReal: asistReal, leccionesImpartidas: r.leccionesImpartidas,
+      distribucion: { riesgo: cuenta('riesgo') + cuenta('reprobado'), atencion: cuenta('atencion'), al_dia: cuenta('al_dia'), sin_eval: cuenta('sin_eval') },
+      avancePorRubro: r.avancePorRubro,
+      estudiantes: r.lista.slice().sort((a, b) => (orden[a.estado] - orden[b.estado]) || ((a.proyeccion ?? a.total) - (b.proyeccion ?? b.total))),
+      ampliacion: ampliacion
     };
   } catch (e) { return { error: e.toString() }; }
 }
 
 // ==========================================
-// KPIs POR SECCIÓN (DASHBOARD)
+// [V5.1] KPIs POR SECCION -- "Que tengo que atender hoy con este grupo?"
+// Vista transversal (profesor guia / direccion): cruza todas las materias.
 // ==========================================
 function getSectionKPIs(idSeccion) {
   try {
     const ss = SpreadsheetApp.openById(SHEET_ID);
+    const base = kpiV51_leerBase_(ss);
     const idSec = String(idSeccion).trim();
 
-    // 1. Estudiantes de la sección → mapa id→nombre
-    const dataEst = ss.getSheetByName("ESTUDIANTES").getDataRange().getValues();
-    const estMap = {}; // id → nombre
-    for(let i=1; i<dataEst.length; i++) {
-      if(String(dataEst[i][1]).trim() === idSec)
-        estMap[String(dataEst[i][0]).trim()] = String(dataEst[i][3]).trim();
-    }
-    const estIds = new Set(Object.keys(estMap));
-    const totalEst = estIds.size;
+    const materias = [];
+    for (let i = 1; i < base.mat.length; i++) if (String(base.mat[i][1]).trim() === idSec) materias.push(String(base.mat[i][0]).trim());
+    const fechas = kpiV51_periodosSeccion_(base, idSec);
+    const periodo = kpiV51_periodoVigente_(base, fechas, new Set(materias));
+    const fp = fechas.find(p => p.p === periodo);
 
-    // 2. Materias de la sección → mapa id→nombre
-    const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
-    const matMap = {}; // id → nombre
-    for(let i=1; i<dataMat.length; i++) {
-      if(String(dataMat[i][1]).trim() === idSec)
-        matMap[String(dataMat[i][0]).trim()] = String(dataMat[i][2]).trim();
-    }
-    const matIds = new Set(Object.keys(matMap));
+    const porEst = {}; // idEst -> resumen cruzado
+    const resumenMaterias = [];
+    const incompletos = [];
+    let sumaRef = 0, nRef = 0;
 
-    // 3. Indicadores → mapa id→{desc, idMateria}
-    const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
-    const indMap = {}; // id → {desc, idMateria}
-    for(let i=1; i<dataInd.length; i++) {
-      const idMat = String(dataInd[i][1]).trim();
-      if(matIds.has(idMat))
-        indMap[String(dataInd[i][0]).trim()] = { desc: String(dataInd[i][3]).trim(), idMateria: idMat };
-    }
-    const indIds = new Set(Object.keys(indMap));
-
-    // 4. Notas
-    const dataNotas = ss.getSheetByName("NOTAS").getDataRange().getValues();
-    const indConNota = new Set();
-    const acumEst = {}; // idEst → total %
-    let sumaTotal = 0, countNotas = 0;
-
-    for(let i=1; i<dataNotas.length; i++) {
-      const idInd = String(dataNotas[i][1]).trim();
-      const idEst = String(dataNotas[i][2]).trim();
-      const porc  = parseFloat(dataNotas[i][3]);
-      if(indIds.has(idInd) && estIds.has(idEst) && !isNaN(porc)) {
-        indConNota.add(idInd);
-        acumEst[idEst] = (acumEst[idEst] || 0) + porc;
-        sumaTotal += porc;
-        countNotas++;
-      }
-    }
-
-    // Detalle: indicadores sin calificar
-    const detallesIndSinCalificar = [];
-    indIds.forEach(id => {
-      if(!indConNota.has(id)) {
-        const ind = indMap[id];
-        detallesIndSinCalificar.push({ desc: ind.desc, materia: matMap[ind.idMateria] || '' });
-      }
+    materias.forEach(idMat => {
+      const r = kpiV51_calcularMateria_(base, idMat, periodo, fechas);
+      if (r.error) return;
+      let nRiesgo = 0, sumaM = 0, nM = 0, sumaAus = 0;
+      r.lista.forEach(e => {
+        if (!porEst[e.id]) porEst[e.id] = { id: e.id, nombre: e.nombre, riesgo: [], atencion: [], ausMax: 0, ausMateria: '', ai: 0, tardias: 0 };
+        const pe = porEst[e.id];
+        const ref = r.cerrado ? e.total : e.proyeccion;
+        if (e.estado === 'riesgo' || e.estado === 'reprobado') { nRiesgo++; pe.riesgo.push({ materia: r.materia.nombre, nota: ref, min: r.materia.notaMinima }); }
+        else if (e.estado === 'atencion') pe.atencion.push({ materia: r.materia.nombre, nota: ref });
+        if (ref !== null && ref !== undefined) { sumaM += ref; nM++; sumaRef += ref; nRef++; }
+        sumaAus += e.pctAusencia;
+        if (e.pctAusencia > pe.ausMax) { pe.ausMax = e.pctAusencia; pe.ausMateria = r.materia.nombre; }
+        pe.ai += e.ai; pe.tardias += e.tardias;
+      });
+      resumenMaterias.push({
+        id: idMat, nombre: r.materia.nombre, notaMinima: r.materia.notaMinima,
+        enRiesgo: nRiesgo, total: r.lista.length,
+        promedio: nM ? Math.round(sumaM / nM) : null,
+        avanceEval: r.pesoAcademico > 0 ? Math.round((r.pesoEvaluado / r.pesoAcademico) * 100) : 0,
+        asistenciaReal: r.lista.length ? Math.round((100 - sumaAus / r.lista.length) * 10) / 10 : 100
+      });
+      r.incompletos.forEach(x => incompletos.push(Object.assign({ materia: r.materia.nombre }, x)));
     });
 
-    // Detalle: estudiantes bajo mínimo
-    const detallesBajoMinimo = [];
-    let estBajoMinimo = 0;
-    Object.entries(acumEst).forEach(([idEst, total]) => {
-      if(total < 65) {
-        estBajoMinimo++;
-        detallesBajoMinimo.push({ nombre: estMap[idEst] || idEst, total: parseFloat(total.toFixed(1)) });
-      }
-    });
-    detallesBajoMinimo.sort((a,b) => a.total - b.total);
+    const estudiantes = Object.values(porEst);
+    const enRiesgo = estudiantes.filter(e => e.riesgo.length > 0)
+      .sort((a, b) => b.riesgo.length - a.riesgo.length || a.nombre.localeCompare(b.nombre));
+    const ausentismo = estudiantes.filter(e => e.ausMax >= 10)
+      .map(e => ({ nombre: e.nombre, pct: e.ausMax, materia: e.ausMateria, ai: e.ai, tardias: e.tardias, banda: kpiV51_bandaArt37_(e.ausMax) }))
+      .sort((a, b) => b.pct - a.pct);
+    resumenMaterias.sort((a, b) => (b.enRiesgo / (b.total || 1)) - (a.enRiesgo / (a.total || 1)));
 
-    const promedioSeccion = countNotas > 0 ? parseFloat((sumaTotal / countNotas).toFixed(1)) : 0;
-
-    // 5. Ausencias injustificadas → conteo por estudiante
-    const dataAsist = ss.getSheetByName("ASISTENCIA_DATA").getDataRange().getValues();
-    const aiCount = {}; // idEst → cant AI
-    for(let i=1; i<dataAsist.length; i++) {
-      const idEst = String(dataAsist[i][2]).trim();
-      if(estIds.has(idEst) && String(dataAsist[i][4]).trim() === 'AI')
-        aiCount[idEst] = (aiCount[idEst] || 0) + 1;
-    }
-    const detallesEstConAI = Object.entries(aiCount)
-      .map(([id, cant]) => ({ nombre: estMap[id] || id, cant }))
-      .sort((a,b) => b.cant - a.cant);
-
-    // 6. Bitácoras pendientes
-    const dataBit = ss.getSheetByName("BITACORAS").getDataRange().getValues();
-    const detallesBitPendientes = [];
-    for(let i=1; i<dataBit.length; i++) {
-      if(String(dataBit[i][1]).trim() === idSec && dataBit[i][9] === true) {
-        detallesBitPendientes.push({
-          desc: String(dataBit[i][6]).trim(),
-          fecha: dataBit[i][5] ? formatearFecha(dataBit[i][5]) : ''
-        });
+    // Bitacoras pendientes (sin cambios de logica respecto a la version anterior)
+    const bitacoras = [];
+    const dataBit = ss.getSheetByName("BITACORAS") ? ss.getSheetByName("BITACORAS").getDataRange().getValues() : [];
+    for (let i = 1; i < dataBit.length; i++) {
+      if (String(dataBit[i][1]).trim() === idSec && dataBit[i][9] === true) {
+        bitacoras.push({ desc: String(dataBit[i][6]).trim(), fecha: dataBit[i][5] ? formatearFecha(dataBit[i][5]) : '' });
       }
     }
 
     return {
-      success: true,
-      totalEst,
-      indSinCalificar: detallesIndSinCalificar.length,
-      estConAI: detallesEstConAI.length,
-      bitPendientes: detallesBitPendientes.length,
-      estBajoMinimo,
-      promedioSeccion,
-      detallesBajoMinimo,
-      detallesIndSinCalificar,
-      detallesEstConAI,
-      detallesBitPendientes
+      success: true, version: 'V5.1',
+      periodo: periodo, cerrado: !!(fp && fp.fin && base.hoy > fp.fin),
+      totalEst: estudiantes.length, totalMaterias: resumenMaterias.length,
+      promedioReferencia: nRef ? Math.round(sumaRef / nRef) : null,
+      enRiesgo: enRiesgo.map(e => ({ nombre: e.nombre, materias: e.riesgo, atencion: e.atencion.length })),
+      enRiesgo3: enRiesgo.filter(e => e.riesgo.length >= 3).length,
+      ausentismo: ausentismo,
+      materias: resumenMaterias,
+      incompletos: incompletos,
+      bitacoras: bitacoras
     };
-  } catch(e) {
-    return { error: e.toString() };
-  }
+  } catch (e) { return { error: e.toString() }; }
 }
+
+// ==========================================
+// [V5.1] VERIFICACION (correr a mano desde el editor: Run -> verificarKPIsV51)
+// Compara la nota acumulada del motor V5.1 contra obtenerCuadroMateria
+// (la fuente oficial del Cuadro/Boleta) para TODAS las materias y periodos.
+// Solo lee y escribe en el Log. Debe terminar en "0 diferencias".
+// ==========================================
+function verificarKPIsV51() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const base = kpiV51_leerBase_(ss);
+  let revisados = 0, diferencias = 0;
+  for (let i = 1; i < base.mat.length; i++) {
+    const idMat = String(base.mat[i][0]).trim();
+    if (!idMat) continue;
+    const fechas = kpiV51_periodosSeccion_(base, String(base.mat[i][1]).trim());
+    const pers = new Set(['1', '2']);
+    fechas.forEach(p => pers.add(p.p));
+    pers.forEach(per => {
+      const oficial = obtenerCuadroMateria(idMat, per);
+      const v51 = kpiV51_calcularMateria_(base, idMat, per, fechas);
+      if (oficial.error || v51.error) return;
+      const mapa = {}; v51.lista.forEach(e => mapa[e.id] = e.total);
+      oficial.lista.forEach(e => {
+        revisados++;
+        if (mapa[e.id] !== e.total) { diferencias++; Logger.log(`DIF ${idMat} P${per} ${e.id}: cuadro=${e.total} v51=${mapa[e.id]}`); }
+      });
+    });
+  }
+  Logger.log(`verificarKPIsV51: ${revisados} notas revisadas, ${diferencias} diferencias.`);
+  return { revisados, diferencias };
+}
+// ===== FIN PROPUESTA V5.1 =====
+
 
 // ==========================================
 // MANTENIMIENTO ÚNICO: DEDUPLICAR NOTAS
