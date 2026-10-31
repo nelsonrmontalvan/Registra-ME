@@ -280,6 +280,13 @@
         }
     }
 
+    /* [V5.1-radiografía] Panel de Rendimiento compacto también en celular:
+       sin el mínimo de 44px en sus botoncitos; la lista de estudiantes conserva un área cómoda. */
+    @media (max-width: 767px) {
+        #materia-kpis-container button { min-height: 0; }
+        #materia-kpis-container .kpi-est-btn { min-height: 32px; }
+    }
+
     /* --- 1. THEMA PREMIUM PARA SWEETALERT2 --- */
     div:where(.swal2-container) div:where(.swal2-popup) {
         border-radius: 1.5rem !important; /* Bordes súper redondos */
@@ -8854,71 +8861,58 @@ adminLoadUsers: async () => {
         },
 
         // ===== PROPUESTA V5.1 (2026-10-31) — RENDIMIENTO DE LA MATERIA =====
-        // Responde "¿cómo va mi materia en este periodo?". Se abre al hacer clic
-        // en el nombre de la materia. Cambios frente a la versión anterior:
-        //  - Selector de periodo (antes mezclaba I y II Periodo).
-        //  - "En riesgo" por proyección mientras el periodo está en curso;
-        //    "Reprobado" con la nota real cuando el periodo cerró.
-        //  - Asistencia real en % (Art. 37), no en puntos del rubro.
-        //  - Avance por rubro = notas registradas / notas esperadas.
-        //  - Ampliación solo al cerrar el II Periodo (sobre la nota anual).
-        //  - Clic en un estudiante abre su expediente de la materia.
-        verKPIsMateria: async (idMat, nomMat, periodo) => {
+        // Responde "¿cómo va mi materia en este periodo?". Se abre con el botón
+        // "Rendimiento" de cada materia.
+        //  - Selector de periodo, riesgo por proyección (en curso) o nota real (cerrado).
+        //  - Asistencia real en % (Art. 37), avance por rubro, ampliación al cerrar el II Periodo.
+        //  - [V5.1-radiografía] Clic en un estudiante: la misma radiografía, pero de ese
+        //    estudiante comparado con el grupo. Se dibuja con los datos ya cargados (sin
+        //    volver al servidor). "Todo el grupo" vuelve a la vista general.
+        verKPIsMateria: async (idMat, nomMat, periodo, idEstSel) => {
             const cont = document.getElementById('materia-kpis-container');
             const esc = app.escapeHtml;
             if (periodo === undefined && app.state.kpiMat && app.state.kpiMat.id === idMat) periodo = app.state.kpiMat.periodo;
             app.marcarMateriaActiva(idMat);
-            // [V5.1] Carga uniforme (misma que el Pulso de la sección)
             const finCarga = app.cargaRendimiento(cont, `Calculando rendimiento de ${esc(nomMat)}...`, true);
             cont.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
             const res = await app.api({ action: 'getMateriaKPIs', id: idMat, periodo: periodo });
-            finCarga(); // [V5.1]
+            finCarga();
             if (!res || res.error) {
-                cont.innerHTML = `<div class="bg-white rounded-2xl shadow-sm border border-rose-200 p-6 text-center text-rose-500 text-sm">${esc((res && res.error) || 'No se pudieron cargar los KPIs')}</div>`;
+                cont.innerHTML = `<div class="bg-white rounded-2xl shadow-sm border border-rose-200 p-5 text-center text-rose-500 text-sm">${esc((res && res.error) || 'No se pudieron cargar los KPIs')}</div>`;
                 return;
             }
             app.state.kpiMat = { id: idMat, periodo: res.periodo };
+            app.state.kpiMatRes = { res: res, idMat: idMat, nomMat: nomMat };
+            app.renderKPIsMateria(idEstSel || null);
+        },
+
+        // [V5.1-radiografía] Cambia entre la vista del grupo (null) y la de un estudiante.
+        verRadiografiaEstudiante: (idEst) => {
+            if (!app.state.kpiMatRes) return;
+            app.renderKPIsMateria(idEst);
+            const cont = document.getElementById('materia-kpis-container');
+            if (cont && cont.getBoundingClientRect().top < 0) cont.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        },
+
+        renderKPIsMateria: (idEstSel) => {
+            const cont = document.getElementById('materia-kpis-container');
+            const esc = app.escapeHtml;
+            const { res, idMat, nomMat } = app.state.kpiMatRes;
+            app.state.kpiMatSel = idEstSel || null;
 
             if (res.totalEstudiantes === 0) {
-                cont.innerHTML = `<div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center text-slate-400 text-sm">Todavía no hay estudiantes en esta sección para calcular el rendimiento de <b>${esc(nomMat)}</b>.</div>`;
+                cont.innerHTML = `<div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center text-slate-400 text-sm">Todavía no hay estudiantes en esta sección para calcular el rendimiento de <b>${esc(nomMat)}</b>.</div>`;
                 return;
             }
 
             const min = res.notaMinima;
             const perTxt = (p) => p === '1' ? 'I Periodo' : p === '2' ? 'II Periodo' : `Periodo ${esc(p)}`;
             const colorNota = (n) => n === null || n === undefined ? 'text-slate-400' : n < min ? 'text-rose-600' : n < min + 5 ? 'text-amber-600' : 'text-emerald-600';
-            const pctEval = res.pesoAcademico > 0 ? Math.round((res.pesoEvaluado / res.pesoAcademico) * 100) : 0;
-            const colorAsist = res.asistenciaReal >= 90 ? 'text-emerald-600' : res.asistenciaReal >= 80 ? 'text-amber-600' : 'text-rose-600';
-            const nRiesgo = res.distribucion.riesgo;
-
-            const pills = res.periodos.map(p => `
-                <button onclick="app.verKPIsMateria('${idMat}', ${app.jsStr(nomMat)}, '${p}')"
-                    class="text-[11px] font-bold px-3 py-1 rounded-full transition ${p === res.periodo ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}">
-                    ${perTxt(p)}${p === res.periodoVigente ? ' •' : ''}
-                </button>`).join('');
-
-            const tile = (valor, colorCls, label, sub) => `
-                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-3 text-center">
-                    <div class="text-2xl font-extrabold ${colorCls}">${valor}</div>
-                    <div class="text-[10px] font-bold text-slate-500 mt-1 uppercase">${label}</div>
-                    <div class="text-[10px] text-slate-400 mt-0.5">${sub}</div>
-                </div>`;
-
-            const barrasRubro = res.avancePorRubro.map(r => {
-                const pct = r.esperadas > 0 ? Math.round((r.registradas / r.esperadas) * 100) : 0;
-                const color = r.indicadores === 0 ? 'bg-slate-200' : pct === 100 ? 'bg-emerald-500' : pct > 0 ? 'bg-amber-400' : 'bg-rose-400';
-                return `
-                    <div class="mb-2.5">
-                        <div class="flex justify-between text-[11px] font-bold text-slate-500 mb-0.5">
-                            <span>${r.label} <span class="font-normal text-slate-400">· ${r.peso}%</span></span>
-                            <span>${r.indicadores > 0 ? `${r.registradas}/${r.esperadas} notas` : 'Sin indicadores'}</span>
-                        </div>
-                        <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                            <div class="${color} h-2 rounded-full transition-all" style="width:${r.indicadores > 0 ? pct : 0}%"></div>
-                        </div>
-                    </div>`;
-            }).join('');
+            const colorPct = (p) => p === null || p === undefined ? 'text-slate-400' : p >= 90 ? 'text-emerald-600' : p >= 80 ? 'text-amber-600' : 'text-rose-600';
+            const refDe = (e) => res.cerrado ? e.total : e.proyeccion;
+            const colorLogro = (p) => p === null || p === undefined ? 'text-slate-400' : p >= 75 ? 'text-emerald-600' : p >= 60 ? 'text-amber-600' : 'text-rose-600';
+            const sel = idEstSel ? res.estudiantes.find(e => String(e.id) === String(idEstSel)) : null;
 
             const ESTADO = {
                 riesgo:    { txt: 'Riesgo',     cls: 'bg-rose-50 text-rose-600' },
@@ -8927,83 +8921,165 @@ adminLoadUsers: async () => {
                 al_dia:    { txt: res.cerrado ? 'Aprobado' : 'Al día', cls: 'bg-emerald-50 text-emerald-700' },
                 sin_eval:  { txt: 'Sin notas',  cls: 'bg-slate-100 text-slate-500' }
             };
+
+            const pills = res.periodos.map(p => `
+                <button onclick="app.verKPIsMateria('${idMat}', ${app.jsStr(nomMat)}, '${p}'${sel ? `, '${sel.id}'` : ''})"
+                    class="text-[10px] font-bold px-2.5 py-0.5 rounded-full transition ${p === res.periodo ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}">
+                    ${perTxt(p)}${p === res.periodoVigente ? ' •' : ''}
+                </button>`).join('');
+
+            const tile = (valor, colorCls, label, sub) => `
+                <div class="bg-slate-50 border border-slate-100 rounded-xl px-2 py-2 text-center">
+                    <div class="text-xl font-extrabold leading-tight ${colorCls}">${valor}</div>
+                    <div class="text-[9px] font-bold text-slate-500 mt-0.5 uppercase tracking-wide">${label}</div>
+                    <div class="text-[9px] text-slate-400">${sub}</div>
+                </div>`;
+
+            // Lista de estudiantes (derecha): clic = radiografía; carpeta = expediente
             const listaEst = res.estudiantes.map(e => {
                 const st = ESTADO[e.estado] || ESTADO.sin_eval;
-                const ref = res.cerrado ? e.total : e.proyeccion;
-                const aus = e.pctAusencia >= 10 ? `<span class="text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full" title="${e.ai} AI · ${e.tardias} tardías">${e.pctAusencia}% aus.</span>` : '';
+                const ref = refDe(e);
+                const activo = sel && String(sel.id) === String(e.id);
+                const aus = e.pctAusencia >= 10 ? `<span class="text-[9px] font-bold text-orange-600 bg-orange-50 px-1 py-0.5 rounded-full" title="${e.ai} AI · ${e.tardias} tardías">${e.pctAusencia}%</span>` : '';
                 return `
-                <div class="flex items-center justify-between gap-2 text-xs py-1.5 border-b border-slate-50 last:border-0">
-                    <button onclick="app.verExpedienteEstudiante('${e.id}', ${app.jsStr(e.nombre)}, '${idMat}')" class="text-slate-700 hover:text-indigo-600 hover:underline truncate text-left" title="Ver expediente">${esc(e.nombre)}</button>
-                    <span class="flex items-center gap-1.5 shrink-0">
+                <div class="flex items-center justify-between gap-1.5 text-[11px] py-1 px-1.5 rounded-lg border-b border-slate-50 last:border-0 ${activo ? 'bg-indigo-50 ring-1 ring-indigo-200' : 'hover:bg-slate-50'}">
+                    <button onclick="app.verRadiografiaEstudiante('${e.id}')" class="kpi-est-btn ${activo ? 'text-indigo-700 font-bold' : 'text-slate-700'} hover:text-indigo-600 truncate text-left flex-1 min-w-0" title="Ver la radiografía de ${esc(e.nombre)}">${activo ? '<i class="fas fa-caret-right mr-1"></i>' : ''}${esc(e.nombre)}</button>
+                    <span class="flex items-center gap-1 shrink-0">
                         ${aus}
-                        ${res.cerrado ? '' : `<span class="text-[10px] text-slate-400" title="Lo que lleva acumulado hoy">${e.total}</span><i class="fas fa-arrow-right text-[8px] text-slate-300"></i>`}
                         <span class="font-black ${colorNota(ref)}" title="${res.cerrado ? 'Nota del periodo' : 'Proyección'}">${ref === null ? '—' : ref}</span>
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${st.cls}">${st.txt}</span>
+                        <span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full ${st.cls}">${st.txt}</span>
+                        <button onclick="app.verExpedienteEstudiante('${e.id}', ${app.jsStr(e.nombre)}, '${idMat}')" class="h-5 w-5 rounded text-teal-500 hover:bg-teal-50 flex items-center justify-center" title="Expediente"><i class="fas fa-folder-open text-[10px]"></i></button>
                     </span>
                 </div>`;
             }).join('');
 
-            let bloqueAmpliacion = '';
-            if (res.ampliacion.habilitada) {
-                const filasAmp = res.ampliacion.lista.length === 0
-                    ? `<p class="text-xs text-emerald-600 font-bold"><i class="fas fa-circle-check"></i> Nadie requiere ampliación: todas las notas anuales alcanzan la mínima (${min}).</p>`
-                    : res.ampliacion.lista.map(e => `
-                        <div class="flex justify-between items-center text-xs py-1.5 border-b border-slate-50 last:border-0">
-                            <span class="text-slate-600 truncate">${esc(e.nombre)}
-                                ${e.ampliacion ? `<span class="text-[10px] text-slate-400 block">Intento ${e.ampliacion.intento}: ${e.ampliacion.notaObtenida} (anual original ${e.notaFinalOriginal})</span>` : ''}
-                            </span>
-                            <span class="flex items-center gap-2 shrink-0">
-                                <span class="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">${e.notaFinal}</span>
-                                ${e.intentosRestantes > 0
-                                    ? `<button onclick="app.abrirModalAmpliacion('${idMat}', ${app.jsStr(nomMat)}, '${e.id}', ${app.jsStr(e.nombre)}, ${min}, ${e.intentosRestantes})" class="text-[10px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-full transition"><i class="fas fa-plus"></i> Ampliación</button>`
-                                    : `<span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">2/2 intentos</span>`}
-                            </span>
-                        </div>`).join('');
-                bloqueAmpliacion = `
-                    <div class="mt-6 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4">
-                        <p class="text-xs font-bold text-indigo-700 uppercase mb-2"><i class="fas fa-file-signature mr-1"></i> Ampliación (nota anual)</p>
-                        ${filasAmp}
+            const cerrarBtn = `<button onclick="app.cerrarKPIsMateria()" class="h-6 w-6 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition flex items-center justify-center" title="Ocultar"><i class="fas fa-times text-xs"></i></button>`;
+            const estadoChip = `<span class="text-[9px] font-bold px-2 py-0.5 rounded-full ${res.cerrado ? 'bg-slate-200 text-slate-600' : 'bg-emerald-50 text-emerald-700'}">${res.cerrado ? 'Cerrado' : 'En curso'}</span>`;
+
+            let tilesHtml, centroHtml, cabeceraHtml, notaHtml, bloqueAmpliacion = '';
+
+            if (!sel) {
+                // ---------- VISTA DEL GRUPO ----------
+                const pctEval = res.pesoAcademico > 0 ? Math.round((res.pesoEvaluado / res.pesoAcademico) * 100) : 0;
+                const nRiesgo = res.distribucion.riesgo;
+                cabeceraHtml = `<i class="fas fa-chart-pie text-indigo-400"></i> Rendimiento — ${esc(nomMat)}`;
+                notaHtml = res.cerrado
+                    ? 'Periodo cerrado: se usa la nota real del periodo (la misma del Cuadro).'
+                    : 'Periodo en curso: el riesgo se mide con la <b>proyección</b> (cómo terminaría si mantiene su rendimiento). Toca un nombre para ver su radiografía.';
+                tilesHtml = [
+                    tile(res.promedioReferencia === null ? '—' : res.promedioReferencia, colorNota(res.promedioReferencia), res.cerrado ? 'Nota promedio' : 'Proyección prom.', res.cerrado ? `mínimo ${min}` : `acumulado hoy: ${res.promedioAcumulado}`),
+                    tile(`${nRiesgo}<span class="text-xs text-slate-400">/${res.totalEstudiantes}</span>`, nRiesgo > 0 ? 'text-rose-600' : 'text-emerald-600', res.cerrado ? 'Reprobados' : 'En riesgo', `${res.distribucion.atencion} en atención`),
+                    tile(`${pctEval}%`, 'text-indigo-600', 'Curso evaluado', `${res.pesoEvaluado} de ${res.pesoAcademico} pts`),
+                    tile(`${res.asistenciaReal}%`, colorPct(res.asistenciaReal), 'Asistencia real', `${res.leccionesImpartidas} lecciones`)
+                ].join('');
+                centroHtml = `
+                    <p class="text-[10px] font-bold text-slate-500 uppercase mb-1.5">Avance de calificación</p>
+                    ${res.avancePorRubro.map(r => {
+                        const pct = r.esperadas > 0 ? Math.round((r.registradas / r.esperadas) * 100) : 0;
+                        const color = r.indicadores === 0 ? 'bg-slate-200' : pct === 100 ? 'bg-emerald-500' : pct > 0 ? 'bg-amber-400' : 'bg-rose-400';
+                        return `
+                        <div class="mb-2">
+                            <div class="flex justify-between text-[10px] font-bold text-slate-500 mb-0.5">
+                                <span>${r.label} <span class="font-normal text-slate-400">· ${r.peso}%</span></span>
+                                <span>${r.indicadores > 0 ? `${r.registradas}/${r.esperadas} notas` : 'Sin indicadores'}</span>
+                            </div>
+                            <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden"><div class="${color} h-1.5 rounded-full transition-all" style="width:${r.indicadores > 0 ? pct : 0}%"></div></div>
+                        </div>`;
+                    }).join('')}`;
+
+                if (res.ampliacion.habilitada) {
+                    const filasAmp = res.ampliacion.lista.length === 0
+                        ? `<p class="text-[11px] text-emerald-600 font-bold"><i class="fas fa-circle-check"></i> Nadie requiere ampliación: todas las notas anuales alcanzan la mínima (${min}).</p>`
+                        : res.ampliacion.lista.map(e => `
+                            <div class="flex justify-between items-center text-[11px] py-1 border-b border-slate-50 last:border-0">
+                                <span class="text-slate-600 truncate">${esc(e.nombre)}
+                                    ${e.ampliacion ? `<span class="text-[9px] text-slate-400 block">Intento ${e.ampliacion.intento}: ${e.ampliacion.notaObtenida} (anual original ${e.notaFinalOriginal})</span>` : ''}
+                                </span>
+                                <span class="flex items-center gap-1.5 shrink-0">
+                                    <span class="font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-full">${e.notaFinal}</span>
+                                    ${e.intentosRestantes > 0
+                                        ? `<button onclick="app.abrirModalAmpliacion('${idMat}', ${app.jsStr(nomMat)}, '${e.id}', ${app.jsStr(e.nombre)}, ${min}, ${e.intentosRestantes})" class="text-[9px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 px-1.5 py-0.5 rounded-full transition"><i class="fas fa-plus"></i> Ampliación</button>`
+                                        : `<span class="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">2/2 intentos</span>`}
+                                </span>
+                            </div>`).join('');
+                    bloqueAmpliacion = `
+                        <div class="mt-4 rounded-xl border border-indigo-100 bg-indigo-50/40 p-3">
+                            <p class="text-[10px] font-bold text-indigo-700 uppercase mb-1.5"><i class="fas fa-file-signature mr-1"></i> Ampliación (nota anual)</p>
+                            ${filasAmp}
+                        </div>`;
+                } else if (res.periodo === '2' && !res.cerrado) {
+                    bloqueAmpliacion = `<p class="mt-3 text-[10px] text-slate-400"><i class="fas fa-lock mr-1"></i>La ampliación se habilita cuando cierre el II Periodo, sobre la nota anual.</p>`;
+                }
+            } else {
+                // ---------- RADIOGRAFÍA DE UN ESTUDIANTE ----------
+                const st = ESTADO[sel.estado] || ESTADO.sin_eval;
+                const ref = refDe(sel);
+                const conRef = res.estudiantes.filter(e => refDe(e) !== null && refDe(e) !== undefined).map(refDe).sort((a, b) => b - a);
+                const puesto = ref === null || ref === undefined ? null : conRef.indexOf(ref) + 1; // empates comparten puesto
+                const asistEst = Math.round((100 - sel.pctAusencia) * 10) / 10;
+                const g = res.grupo || { rendimiento: null, rubros: [] };
+
+                cabeceraHtml = `<i class="fas fa-user-graduate text-indigo-400"></i> <span class="truncate">${esc(sel.nombre)}</span> <span class="hidden md:inline text-slate-400 font-normal text-sm shrink-0">· ${esc(nomMat)}</span>`;
+                notaHtml = `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded-full ${st.cls} mr-1">${st.txt}</span>`
+                    + (res.cerrado
+                        ? `Nota del periodo${sel.corregida ? ` (corregida; calculada: ${sel.totalCalculado})` : ''}.`
+                        : `Lleva <b>${sel.total}</b> acumulado hoy; si mantiene su ritmo terminaría con <b>${ref === null ? '—' : ref}</b>. Mínimo ${min}.`);
+                tilesHtml = [
+                    tile(ref === null ? '—' : ref, colorNota(ref), res.cerrado ? 'Nota' : 'Proyección', `grupo: ${res.promedioReferencia === null ? '—' : res.promedioReferencia}`),
+                    tile(sel.rendimiento === null ? '—' : `${sel.rendimiento}%`, colorLogro(sel.rendimiento), 'Logro evaluado', `grupo: ${g.rendimiento === null ? '—' : g.rendimiento + '%'}`),
+                    tile(`${asistEst}%`, colorPct(asistEst), 'Asistencia real', `${sel.ai} AI · ${sel.tardias} T · grupo ${res.asistenciaReal}%`),
+                    tile(puesto ? `${puesto}<span class="text-xs text-slate-400">/${conRef.length}</span>` : '—', 'text-indigo-600', 'Puesto en el grupo', res.cerrado ? 'por nota' : 'por proyección')
+                ].join('');
+                centroHtml = `
+                    <p class="text-[10px] font-bold text-slate-500 uppercase mb-1.5">Sus notas por rubro</p>
+                    ${(sel.rubros || []).map((r, k) => {
+                        const gr = g.rubros && g.rubros[k] ? g.rubros[k].logro : null;
+                        const color = r.logro === null ? 'bg-slate-200' : r.logro >= 75 ? 'bg-emerald-500' : r.logro >= 60 ? 'bg-amber-400' : 'bg-rose-400';
+                        return `
+                        <div class="mb-2">
+                            <div class="flex justify-between items-center text-[10px] font-bold text-slate-500 mb-0.5 gap-2">
+                                <span>${r.label} <span class="font-normal text-slate-400">· ${r.peso}%</span></span>
+                                <span class="flex items-center gap-1">
+                                    ${r.sinNota > 0 ? `<span class="text-[9px] text-rose-600 bg-rose-50 px-1.5 rounded-full">${r.sinNota} sin nota</span>` : ''}
+                                    ${r.ev > 0 ? `${r.obt}/${r.ev} pts` : '<span class="font-normal text-slate-400">sin evaluar</span>'}
+                                </span>
+                            </div>
+                            <div class="relative w-full bg-slate-100 rounded-full h-1.5">
+                                <div class="${color} h-1.5 rounded-full transition-all" style="width:${r.logro || 0}%"></div>
+                                ${gr !== null ? `<span class="absolute -top-0.5 h-2.5 w-0.5 bg-slate-500 rounded" style="left:${gr}%" title="Promedio del grupo: ${gr}%"></span>` : ''}
+                            </div>
+                        </div>`;
+                    }).join('')}
+                    <p class="text-[9px] text-slate-400 mt-1"><span class="inline-block h-2 w-0.5 bg-slate-500 align-middle mr-1"></span>promedio del grupo</p>
+                    <div class="flex flex-wrap gap-1.5 mt-3">
+                        <button onclick="app.verExpedienteEstudiante('${sel.id}', ${app.jsStr(sel.nombre)}, '${idMat}')" class="text-[10px] font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-100 px-2.5 py-1 rounded-lg transition"><i class="fas fa-folder-open mr-1"></i>Ver expediente</button>
+                        <button onclick="app.verRadiografiaEstudiante(null)" class="text-[10px] font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg transition"><i class="fas fa-users mr-1"></i>Todo el grupo</button>
                     </div>`;
-            } else if (res.periodo === '2' && !res.cerrado) {
-                bloqueAmpliacion = `<p class="mt-4 text-[11px] text-slate-400"><i class="fas fa-lock mr-1"></i>La ampliación se habilita cuando cierre el II Periodo, sobre la nota anual.</p>`;
             }
 
             cont.innerHTML = `
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 md:p-6 fade-in">
-                    <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
-                        <h4 class="font-bold text-slate-700 flex items-center gap-2">
-                            <i class="fas fa-chart-pie text-indigo-400"></i> Rendimiento — ${esc(nomMat)}
-                            <span class="text-[9px] font-black bg-indigo-600 text-white px-1.5 py-0.5 rounded-full">V5.1</span>
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 fade-in">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+                        <h4 class="font-bold text-slate-700 text-sm md:text-base flex items-center gap-2 min-w-0">
+                            ${sel ? `<button onclick="app.verRadiografiaEstudiante(null)" class="h-6 w-6 shrink-0 rounded-full bg-slate-100 text-slate-500 hover:bg-indigo-100 hover:text-indigo-600 transition flex items-center justify-center" title="Volver a todo el grupo"><i class="fas fa-arrow-left text-[10px]"></i></button>` : ''}
+                            ${cabeceraHtml}
+                            <span class="text-[8px] font-black bg-indigo-600 text-white px-1.5 py-0.5 rounded-full shrink-0">V5.1</span>
                         </h4>
-                        <div class="flex items-center gap-1.5">
-                            ${pills}
-                            <span class="text-[10px] font-bold px-2 py-1 rounded-full ${res.cerrado ? 'bg-slate-200 text-slate-600' : 'bg-emerald-50 text-emerald-700'}">${res.cerrado ? 'Cerrado' : 'En curso'}</span>
-                            <button onclick="app.cerrarKPIsMateria()" class="h-7 w-7 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition flex items-center justify-center" title="Ocultar"><i class="fas fa-times"></i></button>
-                        </div>
+                        <div class="flex items-center gap-1">${pills}${estadoChip}${cerrarBtn}</div>
                     </div>
-                    <p class="text-[11px] text-slate-400 mb-4"><i class="fas fa-circle-info mr-1 text-indigo-300"></i>${res.cerrado
-                        ? 'Periodo cerrado: se usa la nota real del periodo (la misma del Cuadro).'
-                        : 'Periodo en curso: el riesgo se mide con la <b>proyección</b>, es decir, cómo terminaría cada estudiante si mantiene el rendimiento que lleva en lo ya evaluado.'}</p>
+                    <p class="text-[10px] text-slate-400 mb-3">${sel ? '' : '<i class="fas fa-circle-info mr-1 text-indigo-300"></i>'}${notaHtml}</p>
 
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                        ${tile(res.promedioReferencia === null ? '—' : res.promedioReferencia, colorNota(res.promedioReferencia), res.cerrado ? 'Nota promedio' : 'Proyección promedio', res.cerrado ? `mínimo ${min}` : `acumulado hoy: ${res.promedioAcumulado}`)}
-                        ${tile(`${nRiesgo}<span class="text-sm text-slate-400">/${res.totalEstudiantes}</span>`, nRiesgo > 0 ? 'text-rose-600' : 'text-emerald-600', res.cerrado ? 'Reprobados' : 'En riesgo', `${res.distribucion.atencion} en atención`)}
-                        ${tile(`${pctEval}%`, 'text-indigo-600', 'Curso evaluado', `${res.pesoEvaluado} de ${res.pesoAcademico} pts con notas`)}
-                        ${tile(`${res.asistenciaReal}%`, colorAsist, 'Asistencia real', `${res.leccionesImpartidas} lecciones a la fecha`)}
-                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">${tilesHtml}</div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div class="flex flex-col items-center justify-center">
-                            <canvas id="chart-materia-kpi" width="220" height="220"></canvas>
-                            <p class="text-[10px] text-slate-400 mt-2">${res.totalEstudiantes} estudiante(s) · mínimo ${min} · ${perTxt(res.periodo)}</p>
+                            <div style="position:relative;width:180px;height:180px;"><canvas id="chart-materia-kpi" width="180" height="180"></canvas></div>
+                            <p class="text-[9px] text-slate-400 mt-1">${sel ? 'Logro por rubro: estudiante vs grupo' : `${res.totalEstudiantes} estudiante(s) · mínimo ${min} · ${perTxt(res.periodo)}`}</p>
                         </div>
+                        <div>${centroHtml}</div>
                         <div>
-                            <p class="text-xs font-bold text-slate-500 uppercase mb-2">Avance de calificación</p>
-                            ${barrasRubro}
-                        </div>
-                        <div>
-                            <p class="text-xs font-bold text-slate-500 uppercase mb-2">Estudiantes <span class="font-normal normal-case text-slate-400">(primero los que necesitan atención)</span></p>
-                            <div class="max-h-72 overflow-y-auto pr-1">${listaEst}</div>
+                            <p class="text-[10px] font-bold text-slate-500 uppercase mb-1.5">Estudiantes <span class="font-normal normal-case text-slate-400">(toca uno para su radiografía)</span></p>
+                            <div class="max-h-64 overflow-y-auto pr-1">${listaEst}</div>
                         </div>
                     </div>
                     ${bloqueAmpliacion}
@@ -9012,23 +9088,50 @@ adminLoadUsers: async () => {
             // Chart.js no permite reusar un canvas sin destruir la instancia anterior primero
             if (app.state.chartMateriaKpi) app.state.chartMateriaKpi.destroy();
             const ctx = document.getElementById('chart-materia-kpi');
-            const d = res.distribucion;
-            app.state.chartMateriaKpi = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: res.cerrado
-                        ? [`Reprobado (<${min})`, `Atención (${min}-${min + 4})`, 'Aprobado']
-                        : [`Riesgo (<${min})`, `Atención (${min}-${min + 4})`, 'Al día', 'Sin notas'],
-                    datasets: [{
-                        data: res.cerrado ? [d.riesgo, d.atencion, d.al_dia] : [d.riesgo, d.atencion, d.al_dia, d.sin_eval],
-                        backgroundColor: ['#f43f5e', '#f59e0b', '#10b981', '#cbd5e1'],
-                        borderWidth: 2,
-                        borderColor: '#fff'
-                    }]
-                },
-                options: { responsive: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
-            });
+            if (!sel) {
+                const d = res.distribucion;
+                app.state.chartMateriaKpi = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: res.cerrado
+                            ? [`Reprobado (<${min})`, `Atención (${min}-${min + 4})`, 'Aprobado']
+                            : [`Riesgo (<${min})`, `Atención (${min}-${min + 4})`, 'Al día', 'Sin notas'],
+                        datasets: [{
+                            data: res.cerrado ? [d.riesgo, d.atencion, d.al_dia] : [d.riesgo, d.atencion, d.al_dia, d.sin_eval],
+                            backgroundColor: ['#f43f5e', '#f59e0b', '#10b981', '#cbd5e1'],
+                            borderWidth: 2, borderColor: '#fff'
+                        }]
+                    },
+                    options: { responsive: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 } } } } }
+                });
+            } else {
+                const g = res.grupo || { rubros: [] };
+                const rubros = (sel.rubros || []);
+                app.state.chartMateriaKpi = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: rubros.map(r => r.label),
+                        datasets: [
+                            { label: 'Estudiante', data: rubros.map(r => r.logro === null ? 0 : r.logro), backgroundColor: '#6366f1', borderRadius: 4 },
+                            { label: 'Grupo', data: rubros.map((r, k) => (g.rubros[k] && g.rubros[k].logro !== null) ? g.rubros[k].logro : 0), backgroundColor: '#cbd5e1', borderRadius: 4 }
+                        ]
+                    },
+                    options: {
+                        responsive: false,
+                        scales: { y: { min: 0, max: 100, ticks: { font: { size: 9 }, stepSize: 25 } }, x: { ticks: { font: { size: 9 } } } },
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 } } },
+                            tooltip: { callbacks: { label: (c) => {
+                                const r = rubros[c.dataIndex];
+                                if (c.datasetIndex === 0 && r && r.logro === null) return 'Estudiante: sin evaluar';
+                                return `${c.dataset.label}: ${c.parsed.y}% de logro`;
+                            } } }
+                        }
+                    }
+                });
+            }
         },
+
 
         // MODAL: Registrar nota de Ampliación (examen extraordinario) para un
         // estudiante puntual de una materia. Máximo 2 intentos (validado también
@@ -9121,6 +9224,7 @@ adminLoadUsers: async () => {
             app.marcarMateriaActiva(null); // [V5.1]
             if (app.state.chartMateriaKpi) { app.state.chartMateriaKpi.destroy(); app.state.chartMateriaKpi = null; }
             document.getElementById('materia-kpis-container').innerHTML = '';
+            app.state.kpiMatSel = null; // [V5.1-radiografía]
         },
 
         // 3. VER NOTAS DE MATERIA (MODAL TABLA)

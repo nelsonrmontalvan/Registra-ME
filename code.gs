@@ -3815,13 +3815,18 @@ function kpiV51_calcularMateria_(base, idMateria, periodo, fechas) {
   const lista = estudiantes.map(e => {
     const porCat = { TRAB_COT: 0, TAREAS: 0, PRUEBAS: 0, PROYECTOS: 0, ASIST: 0 };
     let obtenidoAcad = 0, evaluadoAcad = 0;
+    // [V5.1-radiografia] puntos obtenidos / evaluados por rubro de ESTE estudiante (solo lectura)
+    const rub = {}; KPI_V51_CATS.forEach(c => { rub[c] = { obt: 0, ev: 0, conNota: {} }; });
     indicadores.forEach(ind => {
       const notasInd = base.notaIdx[ind.id];
       if (!notasInd || notasInd[e.id] === undefined) return;
       const nota = notasInd[e.id];
       calificadosPorInd[ind.id] = (calificadosPorInd[ind.id] || 0) + 1;
       if (porCat[ind.cat] !== undefined) porCat[ind.cat] += nota;
-      if (KPI_V51_CATS.indexOf(ind.cat) !== -1) { obtenidoAcad += nota; evaluadoAcad += ind.peso; }
+      if (KPI_V51_CATS.indexOf(ind.cat) !== -1) {
+        obtenidoAcad += nota; evaluadoAcad += ind.peso;
+        rub[ind.cat].obt += nota; rub[ind.cat].ev += ind.peso; rub[ind.cat].conNota[ind.id] = true;
+      }
     });
     if (!tieneIndAsist) porCat.ASIST = asist.puntos[e.id] !== undefined ? asist.puntos[e.id] : m.valorAsist;
 
@@ -3851,8 +3856,22 @@ function kpiV51_calcularMateria_(base, idMateria, periodo, fechas) {
       rendimiento: rendimiento === null ? null : Math.round(rendimiento),
       proyeccion: proyeccion, evaluado: Math.round(evaluadoAcad * 10) / 10,
       asistPts: asistPts, pctAusencia: au.pct, ai: au.ai, tardias: au.t,
-      bandaAsist: kpiV51_bandaArt37_(au.pct), estado: estado
+      bandaAsist: kpiV51_bandaArt37_(au.pct), estado: estado,
+      _rub: rub
     };
+  });
+
+  // [V5.1-radiografia] Rubros por estudiante. "sinNota" = indicadores del rubro que
+  // ya tienen nota de algun companero pero no de este estudiante.
+  lista.forEach(e => {
+    e.rubros = KPI_V51_CATS.map(c => {
+      const r = e._rub[c];
+      const sinNota = indicadores.filter(i => i.cat === c && calificadosPorInd[i.id] && !r.conNota[i.id]).length;
+      return { cat: c, label: KPI_V51_CAT_LABEL[c], peso: m.pesos[c],
+               obt: Math.round(r.obt * 10) / 10, ev: Math.round(r.ev * 10) / 10,
+               logro: r.ev > 0 ? Math.round((r.obt / r.ev) * 100) : null, sinNota: sinNota };
+    });
+    delete e._rub;
   });
 
   // Avance por rubro: notas registradas / notas esperadas (indicadores x estudiantes)
@@ -3997,6 +4016,14 @@ function getMateriaKPIs(idMateria, periodo) {
       }
     }
 
+    // [V5.1-radiografia] Referencias del grupo para la vista de un estudiante
+    const prom = (arr) => arr.length ? Math.round(arr.reduce((s, x) => s + x, 0) / arr.length) : null;
+    const grupo = {
+      rendimiento: prom(r.lista.filter(e => e.rendimiento !== null).map(e => e.rendimiento)),
+      rubros: KPI_V51_CATS.map((c, k) => ({ cat: c, label: KPI_V51_CAT_LABEL[c],
+        logro: prom(r.lista.map(e => e.rubros[k].logro).filter(x => x !== null)) }))
+    };
+
     const orden = { riesgo: 0, reprobado: 0, atencion: 1, sin_eval: 2, al_dia: 3 };
     return {
       success: true, version: 'V5.1',
@@ -4007,7 +4034,7 @@ function getMateriaKPIs(idMateria, periodo) {
       pesoAcademico: r.pesoAcademico, pesoEvaluado: r.pesoEvaluado,
       asistenciaReal: asistReal, leccionesImpartidas: r.leccionesImpartidas,
       distribucion: { riesgo: cuenta('riesgo') + cuenta('reprobado'), atencion: cuenta('atencion'), al_dia: cuenta('al_dia'), sin_eval: cuenta('sin_eval') },
-      avancePorRubro: r.avancePorRubro,
+      avancePorRubro: r.avancePorRubro, grupo: grupo,
       estudiantes: r.lista.slice().sort((a, b) => (orden[a.estado] - orden[b.estado]) || ((a.proyeccion ?? a.total) - (b.proyeccion ?? b.total))),
       ampliacion: ampliacion
     };
