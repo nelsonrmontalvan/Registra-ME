@@ -259,6 +259,15 @@
         #table-eval-body td:last-child > div { flex-direction: column; align-items: stretch; gap: 8px; }
         #table-eval-body td:last-child > div > div { justify-content: flex-start; }
 
+        /* Calificar: título arriba, acciones en una fila a lo ancho (antes "Guardar Notas" quedaba fuera de la pantalla) */
+        #eval-header { flex-direction: column; align-items: stretch; padding: 12px; }
+        #eval-header #eval-title { font-size: 1rem; line-height: 1.3; }
+        #eval-acciones { width: 100%; }
+        #eval-acciones > div:not(.hidden), #eval-acciones > button:last-child { flex: 1 1 0; min-width: 0; }
+        #eval-acciones > #bulk-score-cotidiano:not(.hidden) { flex: 1.15 1 0; }
+        #eval-acciones select { width: 100%; padding-left: 10px; padding-right: 6px; }
+        #eval-acciones button:not(.hidden) { white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+
         /* Asistencia: filtros compactos */
         #view-asistencia > .bg-white:first-child { padding: 10px; margin-bottom: 10px; }
     }
@@ -378,6 +387,8 @@
         #views-container table {
             min-width: 800px !important; 
         }
+        /* Calificar ya acomoda sus filas: sin ancho mínimo (antes "Corregir" y "Sin estudiantes" quedaban fuera de vista) */
+        #views-container #view-evaluar table { min-width: 0 !important; }
     }
 
     /* Reglas para Celulares (Menos de 640px) */
@@ -5777,14 +5788,14 @@ list.forEach(i => {
 
             // DIBUJAR FILAS
             list.forEach((e, idx) => {
-                let badgeFecha = e.fecha ? `<span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-100 shadow-sm" id="badge-fecha-${e.id}"><i class="far fa-calendar-check"></i> ${e.fecha}</span>` : `<span class="hidden" id="badge-fecha-${e.id}"></span>`;
+                let badgeFecha = e.fecha ? `<span class="text-[11px] font-medium text-slate-500 tabular-nums whitespace-nowrap" id="badge-fecha-${e.id}" title="Fecha en que se registró la nota"><i class="far fa-calendar-check mr-1 text-slate-400"></i>${e.fecha}</span>` : `<span class="hidden" id="badge-fecha-${e.id}"></span>`;
                 
                 let inputHtml = '';
                 let inputVal = (e.nivel !== null && e.nivel !== undefined) ? e.nivel : "";
                 let hasNota = (e.nivel !== null && e.nivel !== undefined && e.nivel !== "");
                 let btnCorregir = "";
                 if (hasNota) {
-                    btnCorregir = `<button type="button" onclick='app.abrirCorreccionNota("${e.id}", ${JSON.stringify(e.nombre)}, "${e.nivel}")' class="ml-1 text-[10px] px-2 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-bold" title="Corregir con motivo"><i class="fas fa-pen mr-1"></i>Corregir</button>`;
+                    btnCorregir = `<button type="button" onclick='app.abrirCorreccionNota("${e.id}", ${JSON.stringify(e.nombre)}, "${e.nivel}")' class="eval-corregir text-xs px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 font-bold whitespace-nowrap" title="Esta nota ya está guardada. Para cambiarla, corregila indicando el motivo."><i class="fas fa-pen mr-1"></i>Corregir</button>`;
                 }
 
                 if (isCotidiano) {
@@ -5792,8 +5803,8 @@ list.forEach(i => {
                     let selectedVal = (e.nivel !== null && e.nivel !== undefined) ? Number(e.nivel) : "";
                     
                     inputHtml = `
-                        <span class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded min-w-[60px] text-center" id="pts-view-${e.id}">- pts</span>
-                        <select class="grade-input w-36 p-2 border border-slate-300 rounded-lg text-sm font-bold text-indigo-600 focus:ring-2 focus:ring-indigo-500 outline-none bg-white shadow-sm ${hasNota ? 'opacity-60 cursor-not-allowed bg-slate-100' : ''}" 
+                        <span class="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded min-w-[60px] text-center tabular-nums" id="pts-view-${e.id}">- %</span>
+                        <select class="grade-input w-36 p-2 border rounded-lg text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none ${hasNota ? 'border-slate-200 bg-slate-50 text-slate-700 cursor-not-allowed' : 'border-slate-300 bg-white text-indigo-700 shadow-sm'}" aria-label="Nivel de ${e.nombre}" 
                             data-id="${e.id}" onchange="app.updatePreviewScore(this)" ${hasNota ? 'disabled' : ''}>
                             <option value="" ${selectedVal === "" ? "selected" : ""}>- Seleccionar -</option>
                             <option value="3" ${selectedVal === 3 ? "selected" : ""}>3 (Logrado)</option>
@@ -5804,16 +5815,15 @@ list.forEach(i => {
                 } else {
                     // LÓGICA EXÁMENES / TAREAS (PUNTOS REALES)
                     inputHtml = `
-                        <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-1 rounded min-w-[50px] text-center" id="nota100-view-${e.id}" title="Nota 1-100">Nota: -</span>
-                        <span class="text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1 rounded min-w-[60px] text-center" id="pts-view-${e.id}" title="Porcentaje para el reporte">- %</span>
-                        <input type="number" class="grade-input w-20 p-2 border border-rose-300 rounded-lg text-center font-bold text-rose-600 focus:ring-2 focus:ring-rose-500 outline-none shadow-sm ${hasNota ? 'opacity-60 cursor-not-allowed bg-slate-100' : ''}" 
+                        <span class="text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1 rounded min-w-[60px] text-center tabular-nums" id="nota100-view-${e.id}" title="Nota 1-100">Nota: -</span>
+                        <span class="text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1 rounded min-w-[60px] text-center tabular-nums" id="pts-view-${e.id}" title="Porcentaje para el reporte">- %</span>
+                        <input type="number" inputmode="decimal" min="0" max="${app.state.currentPtsTotales}" placeholder="pts" aria-label="Puntos de ${e.nombre}" class="grade-input w-20 p-2 border rounded-lg text-center font-bold tabular-nums focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none placeholder:font-normal placeholder:text-slate-400 ${hasNota ? 'border-slate-200 bg-slate-50 text-slate-700 cursor-not-allowed' : 'border-slate-300 bg-white text-slate-800 shadow-sm'}" 
                            data-id="${e.id}" value="${inputVal}" onkeyup="app.updatePreviewScore(this)" onchange="app.updatePreviewScore(this)" ${hasNota ? 'disabled' : ''}>
                         `;
                 }
 
                 if (btnCorregir) {
                     inputHtml = inputHtml + btnCorregir;
-                    if (hasNota) inputHtml = inputHtml + ` <span class="text-[10px] font-bold text-amber-600">Usa botón: Corregir nota</span>`;
                 }
 
                 tbody.innerHTML += `
@@ -5859,7 +5869,10 @@ updatePreviewScore: (inputObj) => {
     if(val === "") {
         spanPorc.innerText = "- %";
         spanPorc.className = "text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1 rounded min-w-[60px] text-center";
-        if(spanNota100) spanNota100.innerText = "Nota: -";
+        if(spanNota100) {
+            spanNota100.innerText = "Nota: -";
+            spanNota100.className = "text-xs font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-1 rounded min-w-[60px] text-center tabular-nums";
+        }
         return;
     }
 
@@ -5890,7 +5903,7 @@ updatePreviewScore: (inputObj) => {
         
         if(spanNota100) {
             spanNota100.innerText = "Nota: " + Math.round(nota100);
-            spanNota100.className = `text-[10px] font-bold px-2 py-1 rounded min-w-[50px] text-center border transition ${nota100 >= 65 ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-rose-600 bg-rose-50 border-rose-200'}`;
+            spanNota100.className = `text-xs font-bold px-2 py-1 rounded min-w-[60px] text-center border transition tabular-nums ${nota100 >= 65 ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-rose-600 bg-rose-50 border-rose-200'}`;
         }
     }
 },
@@ -10033,17 +10046,17 @@ loadAuditoriaData: async () => {
             // 5. VISTA DE CALIFICAR (LA GRID DE NOTAS)
             container.innerHTML += `
             <div id="view-evaluar" class="view hidden fade-in">
-                <div class="flex justify-between items-center mb-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200 sticky top-0 z-10">
-                    <div>
+                <div id="eval-header" class="flex justify-between items-center gap-3 mb-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200 sticky top-0 z-10">
+                    <div class="min-w-0">
                         <button onclick="app.nav('indicadores')" class="text-gray-500 hover:text-indigo-600 text-xs font-bold mb-1"><i class="fas fa-arrow-left"></i> VOLVER</button>
                         <h3 class="text-lg font-bold text-indigo-700" id="eval-title">...</h3>
                         <p class="text-xs text-gray-500" id="eval-subtitle">...</p>
                     </div>
-                    <div class="flex gap-2">
+                    <div id="eval-acciones" class="flex gap-2 shrink-0">
                         <div id="bulk-score-cotidiano" class="hidden">
                             <label class="sr-only" for="bulk-score-select">Asignar nivel a todos</label>
                             <select id="bulk-score-select" onchange="app.fillMaxScore(this.value); this.value=''" class="h-10 bg-blue-50 text-blue-600 border border-blue-200 px-3 rounded-lg font-bold text-sm hover:bg-blue-100 outline-none focus:ring-2 focus:ring-blue-200 cursor-pointer" title="Asignar nivel a todos los estudiantes">
-                                <option value="">Asignar a todos...</option>
+                                <option value="">Nivel a todos</option>
                                 <option value="3">Máximo (3)</option>
                                 <option value="2">Nivel 2</option>
                                 <option value="1">Nivel 1</option>
