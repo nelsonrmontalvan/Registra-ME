@@ -9445,7 +9445,7 @@ adminLoadUsers: async () => {
                 width: '900px',
                 showCloseButton: true,
                 showConfirmButton: false,
-                footer: `<button onclick="app.imprimirReporteAmpliaciones('${idMat}', ${app.jsStr(nomMat)})" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold shadow hover:bg-indigo-700 w-full"><i class="fas fa-file-pdf mr-2"></i> Imprimir Reporte de Ampliaciones</button>`
+                footer: `<div class="flex flex-col sm:flex-row gap-2 w-full"><button onclick="app.downloadPdf('pdfNotaFinalAnual', '${idMat}')" class="bg-emerald-600 text-white px-4 py-2 rounded font-bold shadow hover:bg-emerald-700 flex-1"><i class="fas fa-file-pdf mr-2"></i> Descargar PDF Nota Anual</button><button onclick="app.imprimirReporteAmpliaciones('${idMat}', ${app.jsStr(nomMat)})" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold shadow hover:bg-indigo-700 flex-1"><i class="fas fa-file-pdf mr-2"></i> Imprimir Reporte de Ampliaciones</button></div>`
             });
         },
 

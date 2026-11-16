@@ -116,6 +116,7 @@ function doPost(e) {
     if(action === "pdfStudentReport") return response(generarPdfBoletaEstudiante(data.id, data.periodo)); // [FIX 2026-11-15] periodo
     if(action === "getSubjectReport") return response(obtenerCuadroMateria(data.id, data.periodo));
     if(action === "getNotaFinalAnual") return response(obtenerNotaFinalAnual(data.id));
+    if(action === "pdfNotaFinalAnual") return response(generarPdfNotaFinalAnual(data.id)); // [2026-11-16]
     if(action === "obtenerReporteAuditoriaNotas") return response(obtenerReporteAuditoriaNotas(data.idIndicador));
 
     // --- ASISTENCIA ESTUDIANTE ---
@@ -4871,6 +4872,106 @@ function generarPdfAmpliaciones(idMateria, soloConAmpliacion) {
     blob.setName(`Ampliaciones_${datos.materia}.pdf`);
     return { success: true, base64: Utilities.base64Encode(blob.getBytes()), nombre: blob.getName() };
 
+  } catch (e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+// ==========================================
+// [2026-11-16] PDF DE LA NOTA FINAL ANUAL POR MATERIA (pedido de docentes)
+// Reutiliza obtenerNotaFinalAnual: es EXACTAMENTE lo que muestra la ventana
+// "Nota Final Anual" (I y II Periodo, correcciones, ampliaciones y Pendiente).
+// Solo lectura: no cambia notas ni datos guardados.
+// ==========================================
+function generarPdfNotaFinalAnual(idMateria) {
+  try {
+    const datos = obtenerNotaFinalAnual(idMateria);
+    if (datos.error) return { success: false, message: datos.error };
+    if (!datos.lista || datos.lista.length === 0) return { success: false, message: "No hay estudiantes en esta materia." };
+
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+    let idSec = "", notaMinima = 65;
+    for (let i = 1; i < dataMat.length; i++) {
+      if (String(dataMat[i][0]).trim() === String(idMateria).trim()) { idSec = String(dataMat[i][1]).trim(); notaMinima = Number(dataMat[i][8]) || 65; break; }
+    }
+    let nombreSec = "", anio = "";
+    const dataSec = ss.getSheetByName("SECCIONES").getDataRange().getValues();
+    for (let i = 1; i < dataSec.length; i++) {
+      if (String(dataSec[i][0]).trim() === idSec) { nombreSec = dataSec[i][2]; anio = dataSec[i][3]; break; }
+    }
+
+    const esc = (v) => String(v === null || v === undefined ? "" : v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const td = "border:1px solid #ddd; padding:5px; font-size:10px;";
+    let aprobados = 0, reprobados = 0, pendientes = 0, hayCorreccion = false, hayAmpliacion = false;
+
+    let filas = "";
+    datos.lista.forEach((e, idx) => {
+      const pendiente = e.notaFinal === "Pendiente";
+      let condicion, color;
+      if (pendiente) { condicion = "Pendiente"; color = "#94a3b8"; pendientes++; }
+      else if (Number(e.notaFinal) >= notaMinima) { condicion = "Aprobado"; color = "#15803d"; aprobados++; }
+      else { condicion = "Reprobado"; color = "#b91c1c"; reprobados++; }
+
+      let marca = "";
+      if (e.corregida) { marca += " *"; hayCorreccion = true; }
+      if (e.ampliacion) { marca += " A"; hayAmpliacion = true; }
+
+      const notaTxt = pendiente
+        ? `Pendiente${e.notaParcial !== null && e.notaParcial !== undefined ? `<br><span style="font-size:8px; color:#94a3b8; font-weight:normal;">parcial ${esc(e.notaParcial)}</span>` : ""}`
+        : `${esc(e.notaFinal)}<sup style="font-size:8px;">${marca}</sup>`;
+      const detalle = [
+        e.ampliacion ? `Ampliación intento ${esc(e.ampliacion.intento)}: ${esc(e.ampliacion.notaObtenida)} (original ${esc(e.notaFinalOriginal)})` : "",
+        e.corregida ? `Corregida${e.motivoCorreccion ? ": " + esc(e.motivoCorreccion) : ""}` : ""
+      ].filter(Boolean).join("<br>") || "—";
+
+      filas += `
+       <tr>
+         <td style="${td} text-align:center;">${idx + 1}</td>
+         <td style="${td}">${esc(e.nombre)}</td>
+         <td style="${td} text-align:center;">${esc(e.notaPeriodo1)}</td>
+         <td style="${td} text-align:center;">${e.notaPeriodo2 !== null && e.notaPeriodo2 !== undefined ? esc(e.notaPeriodo2) : "—"}</td>
+         <td style="${td} text-align:center; font-weight:bold; background-color:#f0f0f0; color:${color};">${notaTxt}</td>
+         <td style="${td} text-align:center; color:${color}; font-weight:bold;">${condicion}</td>
+         <td style="${td} font-size:9px; color:#555;">${detalle}</td>
+       </tr>`;
+    });
+
+    const notas = [];
+    if (hayCorreccion) notas.push("* Nota final corregida manualmente por el docente (con motivo).");
+    if (hayAmpliacion) notas.push("A Nota final con examen de ampliación aplicado.");
+    if (pendientes > 0) notas.push(`"Pendiente": la nota anual se calcula al cerrar el II Periodo${datos.finPeriodo2 ? " (" + datos.finPeriodo2.split("-").reverse().join("/") + ")" : ""}. La parcial es solo referencia.`);
+    const fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy");
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+         <h3 style="text-align:center; color:#004E64; margin-bottom:5px;">NOTA FINAL ANUAL${anio ? " " + esc(anio) : ""}</h3>
+         <h4 style="text-align:center; margin-top:0; margin-bottom:4px; color:#555;">${esc(datos.materia)}${nombreSec ? " · Sección " + esc(nombreSec) : ""}</h4>
+         <p style="text-align:center; font-size:10px; color:#888; margin-top:0;">Promedio del I y II Periodo · Nota mínima ${notaMinima} · Generado el ${fecha}</p>
+         <p style="text-align:center; font-size:10px; color:#555;">Aprobados: <b>${aprobados}</b> &nbsp;·&nbsp; Reprobados: <b>${reprobados}</b>${pendientes ? ` &nbsp;·&nbsp; Pendientes: <b>${pendientes}</b>` : ""} &nbsp;·&nbsp; Total: <b>${datos.lista.length}</b></p>
+         <table style="width:100%; border-collapse:collapse; margin-top:12px;">
+            <thead>
+                <tr style="background-color:#004E64; color:white; font-size:11px;">
+                   <th style="padding:5px;">#</th>
+                   <th style="padding:5px; text-align:left;">ESTUDIANTE</th>
+                   <th style="padding:5px;">I PERIODO</th>
+                   <th style="padding:5px;">II PERIODO</th>
+                   <th style="padding:5px;">NOTA FINAL</th>
+                   <th style="padding:5px;">CONDICIÓN</th>
+                   <th style="padding:5px; text-align:left;">DETALLE</th>
+                </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+         </table>
+         ${notas.length ? `<div style="margin-top:12px; font-size:9px; color:#666;">${notas.join("<br>")}</div>` : ""}
+         <div style="margin-top:50px; font-size:10px; color:#333; text-align:center;">
+           ______________________________<br>Firma del docente
+         </div>
+      </div>`;
+
+    const blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
+    blob.setName(`Nota_Final_Anual_${String(datos.materia).replace(/\s+/g, "_")}${nombreSec ? "_" + String(nombreSec).replace(/\s+/g, "_") : ""}.pdf`);
+    return { success: true, base64: Utilities.base64Encode(blob.getBytes()), nombre: blob.getName() };
   } catch (e) {
     return { success: false, message: e.toString() };
   }
