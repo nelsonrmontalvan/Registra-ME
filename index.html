@@ -9841,7 +9841,7 @@ loadAuditoriaData: async () => {
                 <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500 mb-6">
                     <h3 class="text-xl font-bold text-gray-800 mb-2"><i class="fas fa-file-excel mr-2"></i>Informe Oficial SEA (MEP)</h3>
                     <p class="text-sm text-gray-500 mb-4">
-                        Genera el archivo Excel compatible con la plataforma SEA. 
+                        Genera el archivo <b>CSV</b> para subir directo al SEA y un <b>Excel</b> para consultar. 
                         El sistema sumará automáticamente <b>Tareas + Proyectos</b> en la columna de Tareas.
                     </p>
                     
@@ -9871,14 +9871,18 @@ loadAuditoriaData: async () => {
                     
                     <div class="mt-4 flex justify-end gap-3">
                         <button onclick="app.downloadCsvSEA()" class="bg-slate-600 text-white px-6 py-2 rounded-lg font-bold shadow hover:bg-slate-700 transition flex items-center gap-2">
-                            <i class="fas fa-file-csv"></i> Descargar CSV
+                            <i class="fas fa-file-csv"></i> Descargar CSV (para subir al SEA)
                         </button>
                         <button onclick="app.downloadExcelSEA()" class="bg-green-600 text-white px-6 py-2 rounded-lg font-bold shadow hover:bg-green-700 transition flex items-center gap-2">
-                            <i class="fas fa-download"></i> Descargar Plantilla Excel
+                            <i class="fas fa-download"></i> Descargar Excel (para ver y copiar)
                         </button>
                     </div>
-                    <!-- [2026-11-15] Aviso: el CSV se abre en una sola columna en Excel en español -->
-                    <p class="mt-3 text-[11px] text-slate-500 text-right"><i class="fas fa-circle-info text-green-600 mr-1"></i>El <b>CSV</b> tiene el mismo formato del archivo que descarga el SEA (para subirlo). El <b>Excel</b> es para ver o copiar. No guardes el CSV desde Excel: podría cambiarle el formato.</p>
+                    <!-- [2026-11-16] Letra pequeña: cuál archivo usar para el SEA y revisar nombres -->
+                    <div class="mt-3 text-[11px] leading-snug text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 space-y-1 text-left">
+                        <p><i class="fas fa-file-csv text-slate-600 mr-1"></i><b>Para subir al SEA usá solo el CSV</b>, tal como se descarga. No lo abras ni lo guardes en Excel: se le cambia el formato y el SEA ya no lo lee.</p>
+                        <p><i class="fas fa-file-excel text-green-600 mr-1"></i>El <b>Excel</b> es solo para ver, copiar y pegar. El SEA no lo acepta para subir.</p>
+                        <p><i class="fas fa-user-check text-amber-600 mr-1"></i><b>Antes de guardar en el SEA</b>, revisá que los estudiantes y sus notas coincidan con este informe. El SEA busca a cada estudiante por la cédula: si alguna no coincide, ese estudiante queda sin nota y no avisa.</p>
+                    </div>
                 </div>
                 
                 <!-- PREVISUALIZACIÓN -->
