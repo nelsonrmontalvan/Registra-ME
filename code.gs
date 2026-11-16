@@ -4948,7 +4948,7 @@ function generarPdfNotaFinalAnual(idMateria) {
     const html = `
       <div style="font-family: Arial, sans-serif; padding: 20px;">
          <h3 style="text-align:center; color:#004E64; margin-bottom:5px;">NOTA FINAL ANUAL${anio ? " " + esc(anio) : ""}</h3>
-         <h4 style="text-align:center; margin-top:0; margin-bottom:4px; color:#555;">${esc(datos.materia)}${nombreSec ? " · Sección " + esc(nombreSec) : ""}</h4>
+         <h4 style="text-align:center; margin-top:0; margin-bottom:4px; color:#555;">${esc(datos.materia)}${nombreSec ? " · " + (/^secci[oó]n/i.test(String(nombreSec).trim()) ? "" : "Sección ") + esc(nombreSec) : ""}</h4>
          <p style="text-align:center; font-size:10px; color:#888; margin-top:0;">Promedio del I y II Periodo · Nota mínima ${notaMinima} · Generado el ${fecha}</p>
          <p style="text-align:center; font-size:10px; color:#555;">Aprobados: <b>${aprobados}</b> &nbsp;·&nbsp; Reprobados: <b>${reprobados}</b>${pendientes ? ` &nbsp;·&nbsp; Pendientes: <b>${pendientes}</b>` : ""} &nbsp;·&nbsp; Total: <b>${datos.lista.length}</b></p>
          <table style="width:100%; border-collapse:collapse; margin-top:12px;">
