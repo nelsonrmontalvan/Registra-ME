@@ -3155,20 +3155,22 @@ function obtenerDatosReporteSEA(idMateria, periodo) {
     let valAsistTotal = Number(valorAsist) || 0;
     if(!tieneIndAsistencia) mapAsist = calcularAsistenciaMap(idMateria, valAsistTotal);
 
+        // [FIX 2026-11-15] Rendimiento: antes se recorría TODA la hoja NOTAS una vez por
+    // cada estudiante (30 estudiantes = 30 vueltas). Ahora se recorre UNA sola vez y se
+    // indexa por estudiante. Mismo resultado exacto: la última fila por indicador gana.
+    const notasPorEst = {}; // idEst -> { idInd -> {cat, nota} }
+    for(let n=1; n<dataNotas.length; n++) {
+       let idInd = String(dataNotas[n][1]).trim();
+       if(!mapIndCat[idInd]) continue;
+       let idEstNota = String(dataNotas[n][2]).trim();
+       if(!notasPorEst[idEstNota]) notasPorEst[idEstNota] = {};
+       notasPorEst[idEstNota][idInd] = { cat: mapIndCat[idInd], nota: extraerPorcentaje(dataNotas[n][3]) };
+    }
+
     let reporte =[];
     estudiantes.forEach(est => {
        let notas = { 'TRAB_COT':0, 'TAREAS':0, 'PRUEBAS':0, 'PROYECTOS':0, 'ASIST':0 };
-       let notaPorIndicador = {}; // última fila encontrada por indicador (misma regla que la pantalla de calificar)
-
-       for(let n=1; n<dataNotas.length; n++) {
-          let idInd = String(dataNotas[n][1]).trim();
-          let idEstNota = String(dataNotas[n][2]).trim();
-          if(idEstNota == est.id && mapIndCat[idInd]) {
-            let cat = mapIndCat[idInd];
-            let nota = extraerPorcentaje(dataNotas[n][3]);
-            notaPorIndicador[idInd] = { cat: cat, nota: nota };
-          }
-       }
+       let notaPorIndicador = notasPorEst[est.id] || {}; // última fila encontrada por indicador (misma regla que la pantalla de calificar)
        Object.values(notaPorIndicador).forEach(v => { notas[v.cat] += v.nota; });
 
        if (!tieneIndAsistencia) {

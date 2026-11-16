@@ -6747,9 +6747,45 @@ fillMaxScore: async (nivelSeleccionado = null) => {
             return { idMat, periodo, res };
         },
 
+        // [FIX 2026-11-15] Excel instantáneo: se arma en el navegador con SheetJS a partir de
+        // los datos que YA trajo la previsualización (antes se hacía una 2a llamada al servidor
+        // que creaba una Hoja de Google temporal, la exportaba y la borraba: 10-30 s).
+        // Celdas numéricas reales -> se ven en columnas y como números en cualquier Excel.
+        // Si SheetJS no carga (sin internet al CDN), se usa el camino anterior del servidor.
+        cargarSheetJS: () => {
+            if (window.XLSX) return Promise.resolve(window.XLSX);
+            if (app._cargandoSheetJS) return app._cargandoSheetJS;
+            app._cargandoSheetJS = new Promise((ok, falla) => {
+                const sc = document.createElement('script');
+                sc.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+                sc.onload = () => window.XLSX ? ok(window.XLSX) : falla(new Error('SheetJS no disponible'));
+                sc.onerror = () => { app._cargandoSheetJS = null; falla(new Error('No se pudo cargar SheetJS')); };
+                document.head.appendChild(sc);
+            });
+            return app._cargandoSheetJS;
+        },
+
         downloadExcelSEA: async () => {
             const datos = await app.obtenerYPrevisualizarSEA();
             if (!datos) return;
+
+            try {
+                const XLSX = await app.cargarSheetJS();
+                const encabezados = ["Id", "Nombre", "Trabajo cotidiano", "Tareas", "Prueba", "Asistencia"];
+                const filas = datos.res.lista.map(r => [r.Id, r.Nombre, r.Cotidiano, r.Tareas, r.Prueba, r.Asistencia]);
+                const ws = XLSX.utils.aoa_to_sheet([encabezados, ...filas]);
+                ws['!cols'] = [{ wch: 12 }, { wch: 38 }, { wch: 16 }, { wch: 10 }, { wch: 10 }, { wch: 11 }];
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Reporte SEA');
+                XLSX.writeFile(wb, `SEA_${String(datos.res.materia).replace(/\s+/g, '_')}_${app.LABEL_PERIODO[datos.periodo] || datos.periodo}_Periodo.xlsx`);
+                Swal.close();
+                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 3000 });
+                Toast.fire({ icon: 'success', title: 'Archivo SEA descargado' });
+                return;
+            } catch (e) {
+                console.warn('[SEA] Excel en navegador no disponible, uso el servidor:', e);
+            }
+
 
             // GENERAR Y DESCARGAR EL .xlsx REAL
             // El backend arma un Excel binario de verdad (no HTML disfrazado), por eso
@@ -6775,9 +6811,12 @@ fillMaxScore: async (nivelSeleccionado = null) => {
             Toast.fire({ icon: 'success', title: 'Archivo SEA descargado' });
         },
 
-        // CSV separado por comas -- se arma en el navegador (no necesita ir al backend,
-        // ya tenemos los datos de obtenerYPrevisualizarSEA). Lleva BOM UTF-8 para que
-        // Excel no rompa tildes/enes al abrirlo (mismo problema que tuvimos con el xlsx viejo).
+        // CSV -- se arma en el navegador (no necesita ir al backend, ya tenemos los datos de
+        // obtenerYPrevisualizarSEA). Lleva BOM UTF-8 para que Excel no rompa tildes/eñes.
+        // [2026-11-15] El formato NO se cambia a propósito (comas y punto decimal): el SEA
+        // tiene carga por archivo (Manual SEA rol docente, punto 4.3.4) y un cambio de
+        // separador podría hacer que la rechace. Que el Excel en español lo abra en una
+        // sola columna es normal: este archivo es para SUBIR, no para abrir y guardar.
         downloadCsvSEA: async () => {
             const datos = await app.obtenerYPrevisualizarSEA();
             if (!datos) return;
@@ -9834,6 +9873,8 @@ loadAuditoriaData: async () => {
                             <i class="fas fa-download"></i> Descargar Plantilla Excel
                         </button>
                     </div>
+                    <!-- [2026-11-15] Aviso: el CSV se abre en una sola columna en Excel en español -->
+                    <p class="mt-3 text-[11px] text-slate-500 text-right"><i class="fas fa-circle-info text-green-600 mr-1"></i>Para <b>ver o copiar</b> las notas usá el <b>Excel</b> (se abre en columnas). El <b>CSV</b> es para subirlo tal cual: si lo abrís en Excel se ve en una sola columna, y si lo guardás desde ahí puede cambiar de formato.</p>
                 </div>
                 
                 <!-- PREVISUALIZACIÓN -->
