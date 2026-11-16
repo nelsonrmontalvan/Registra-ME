@@ -3550,6 +3550,17 @@ openStudents: async (idSec, nombreSec) => {
             });
             listaHtml += `</div></div>`;
 
+                        // [FIX 2026-11-15] El informe es de UN periodo (antes sumaba I + II). Por defecto, el vigente de la sección.
+            const secInf = (app.data.secciones || []).find(s => String(s.id) === String(app.state.currentSecId));
+            const perDefecto = String((secInf && app.getPeriodoActivoNumero(secInf.fechas)) || 1);
+            const selectorPeriodoInf = `
+                <div class="text-left">
+                    <label class="text-xs font-bold text-slate-500 mb-1 block uppercase tracking-wider">Periodo del informe</label>
+                    <select id="sw-periodo-inf" class="w-full p-2.5 border-2 border-indigo-200 rounded-xl text-sm font-bold text-indigo-700 bg-indigo-50">
+                        ${app.buildPeriodoOptions(app.getCantPeriodosSeccion(app.state.currentSecId), perDefecto, false)}
+                    </select>
+                </div>`;
+
             // Mostrar Modal con el Switch
             const { value: form } = await Swal.fire({
                 title: 'Informes de Rendimiento',
@@ -3574,6 +3585,8 @@ openStudents: async (idSec, nombreSec) => {
                                 </label>
                             </div>
                         </div>
+
+                                                ${selectorPeriodoInf}
 
                         <!-- MENSAJE (Se oculta si elige Imprimir) -->
                         <div id="email-msg-box" class="text-left mb-2 transition-all">
@@ -3613,8 +3626,9 @@ openStudents: async (idSec, nombreSec) => {
                     const spanUser = document.getElementById('user-name').innerText;
                     if(spanUser.includes(',')) nombreDocente = spanUser.split(',')[1].trim();
 
-                    return { 
+                                        return { 
                         tipoAccion: actionType,
+                        periodo: document.getElementById('sw-periodo-inf').value, // [FIX 2026-11-15]
                         mensaje: msg, 
                         ids: ids,
                         nombreDocente: "Prof. " + nombreDocente,
@@ -3633,7 +3647,7 @@ openStudents: async (idSec, nombreSec) => {
                         didOpen: () => Swal.showLoading()
                     });
 
-                    const res = await app.api({ action: 'sendBulkReport', ids: form.ids, mensaje: form.mensaje, nombreDocente: form.nombreDocente, emailDocente: form.emailDocente });
+                    const res = await app.api({ action: 'sendBulkReport', ids: form.ids, periodo: form.periodo, mensaje: form.mensaje, nombreDocente: form.nombreDocente, emailDocente: form.emailDocente });
                     if(res && res.success) Swal.fire('Proceso Finalizado', res.message, 'success');
                     else Swal.fire('Error', res.message || 'Hubo un problema', 'error');
 
@@ -3646,7 +3660,7 @@ openStudents: async (idSec, nombreSec) => {
                         didOpen: () => Swal.showLoading()
                     });
 
-                    const res = await app.api({ action: 'bulkDownloadReport', ids: form.ids, nombreDocente: form.nombreDocente });
+                    const res = await app.api({ action: 'bulkDownloadReport', ids: form.ids, periodo: form.periodo, nombreDocente: form.nombreDocente });
 
                     if(res && res.success) {
                         Swal.close();
@@ -8183,7 +8197,7 @@ adminLoadUsers: async () => {
                 width: '700px',
                 showCloseButton: true,
                 showConfirmButton: false,
-                footer: `<button onclick="app.downloadPdf('pdfStudentReport', '${idEst}')" class="bg-red-500 text-white px-4 py-2 rounded font-bold shadow hover:bg-red-600 w-full"><i class="fas fa-file-pdf mr-2"></i> Descargar Boleta PDF</button>`
+                footer: `<button onclick="app.downloadPdf('pdfStudentReport', '${idEst}', { periodo: '${periodo || ''}' })" class="bg-red-500 text-white px-4 py-2 rounded font-bold shadow hover:bg-red-600 w-full"><i class="fas fa-file-pdf mr-2"></i> Descargar Boleta PDF</button>`
             });
         },
 
@@ -9319,7 +9333,7 @@ adminLoadUsers: async () => {
                 showConfirmButton: false,
                 footer: `
                     <div class="flex gap-2 w-full">
-                        <button onclick="app.downloadPdf('pdfGrades', '${idMat}')" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold shadow hover:bg-indigo-700 flex-1"><i class="fas fa-file-pdf mr-2"></i> Descargar Cuadro PDF</button>
+                        <button onclick="app.downloadPdf('pdfGrades', '${idMat}', { periodo: '${periodo || ''}' })" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold shadow hover:bg-indigo-700 flex-1"><i class="fas fa-file-pdf mr-2"></i> Descargar Cuadro PDF</button>
                         <button onclick="app.verNotaFinalAnual('${idMat}', ${app.jsStr(nomMat)})" class="bg-amber-500 text-white px-4 py-2 rounded font-bold shadow hover:bg-amber-600 flex-1"><i class="fas fa-calculator mr-2"></i> Nota Final Anual</button>
                     </div>`
             });

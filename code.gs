@@ -69,8 +69,8 @@ function doPost(e) {
     if(action === "corregirNota") return response(corregirNota(data));
     if(action === "corregirNotaFinal") return response(corregirNotaFinal(data));
     if(action === "quitarCorreccionNotaFinal") return response(quitarCorreccionNotaFinal(data));
-    if(action === "pdfStudentReport") return response(generarPdfBoletaEstudiante(data.id));
-    if(action === "pdfGrades") return response(generarPdfNotasMateria(data.id));
+    if(action === "pdfStudentReport") return response(generarPdfBoletaEstudiante(data.id, data.periodo)); // [FIX 2026-11-15] periodo
+    if(action === "pdfGrades") return response(generarPdfNotasMateria(data.id, data.periodo)); // [FIX 2026-11-15] periodo
 
     // --- HORARIOS ---
     if(action === "saveConfigHorario") return response(guardarConfigHorario(data));
@@ -113,7 +113,7 @@ function doPost(e) {
 
     // --- NUEVOS REPORTES ---
     if(action === "getStudentReport") return response(obtenerBoletaEstudiante(data.id, data.periodo));
-    if(action === "pdfStudentReport") return response(generarPdfBoletaEstudiante(data.id));
+    if(action === "pdfStudentReport") return response(generarPdfBoletaEstudiante(data.id, data.periodo)); // [FIX 2026-11-15] periodo
     if(action === "getSubjectReport") return response(obtenerCuadroMateria(data.id, data.periodo));
     if(action === "getNotaFinalAnual") return response(obtenerNotaFinalAnual(data.id));
     if(action === "obtenerReporteAuditoriaNotas") return response(obtenerReporteAuditoriaNotas(data.idIndicador));
@@ -2817,14 +2817,69 @@ function obtenerCuadroMateria(idMateria, periodo) {
 // GENERADORES DE PDF
 // ==========================================
 
-function generarPdfNotasMateria(idMateria) {
+// ==========================================
+// [FIX 2026-11-15] REPORTES PDF POR PERIODO
+// Antes, los PDF (Cuadro, Boleta, Informe al Hogar impreso y por correo)
+// llamaban a obtenerCuadroMateria / obtenerBoletaEstudiante SIN periodo y
+// sumaban I + II Periodo (ej. 90 en pantalla -> 181 en el PDF).
+// Ahora usan el periodo que el docente eligio en pantalla y, si no llega,
+// el periodo vigente de la seccion: NUNCA vuelven a sumar periodos.
+// Solo lectura: no cambia ninguna nota ni dato guardado.
+// ==========================================
+function periodoVigenteSeccion_(ss, idSec) {
+  const sec = String(idSec || "").trim();
+  const dataSec = ss.getSheetByName("SECCIONES").getDataRange().getValues();
+  let periodos = [];
+  for (let i = 1; i < dataSec.length; i++) {
+    if (String(dataSec[i][0]).trim() !== sec) continue;
+    try { const arr = JSON.parse(dataSec[i][5] || "[]"); if (Array.isArray(arr)) periodos = arr; } catch (e) {}
+    break;
+  }
+  if (periodos.length) {
+    const hoy = formatearFechaInput(new Date());
+    for (const p of periodos) {
+      if (hoy >= formatearFechaInput(p.inicio) && hoy <= formatearFechaInput(p.fin)) return String(p.p);
+    }
+    let vig = periodos[0].p;
+    periodos.forEach(p => { if (hoy >= formatearFechaInput(p.inicio)) vig = p.p; });
+    return String(vig);
+  }
+  // Sin fechas configuradas: el periodo mas alto que tenga indicadores en las materias de la seccion
+  const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+  const mats = new Set();
+  for (let i = 1; i < dataMat.length; i++) if (String(dataMat[i][1]).trim() === sec) mats.add(String(dataMat[i][0]).trim());
+  const dataInd = ss.getSheetByName("INDICADORES").getDataRange().getValues();
+  let max = 0;
+  for (let i = 1; i < dataInd.length; i++) if (mats.has(String(dataInd[i][1]).trim())) max = Math.max(max, Number(dataInd[i][7]) || 0);
+  return String(max || 1);
+}
+
+function periodoParaReporte_(ss, idSec, periodo) {
+  if (periodo !== undefined && periodo !== null && String(periodo).trim() !== "") return String(periodo).trim();
+  return periodoVigenteSeccion_(ss, idSec);
+}
+
+function etiquetaPeriodo_(p) {
+  const m = { "1": "I", "2": "II", "3": "III" };
+  return (m[String(p)] || String(p)) + " Periodo";
+}
+
+function generarPdfNotasMateria(idMateria, periodo) {
   try {
-    const datos = obtenerCuadroMateria(idMateria);
+    // [FIX 2026-11-15] mismo periodo que el Cuadro en pantalla (antes sumaba I + II)
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+    let idSecMat = "", notaMinima = 65;
+    for (let i = 1; i < dataMat.length; i++) {
+      if (String(dataMat[i][0]).trim() === String(idMateria).trim()) { idSecMat = dataMat[i][1]; notaMinima = Number(dataMat[i][8]) || 65; break; }
+    }
+    const per = periodoParaReporte_(ss, idSecMat, periodo);
+    const datos = obtenerCuadroMateria(idMateria, per);
     if(datos.error) return { success: false, message: datos.error };
 
     let filas = "";
     datos.lista.forEach((e, idx) => {
-       let color = e.total >= 70 ? "green" : "red";
+              let color = e.total >= notaMinima ? "green" : "red"; // [FIX 2026-11-15] nota minima de la materia (antes 70 fijo)
        filas += `
        <tr>
          <td style="border:1px solid #ddd; padding:5px; font-size:10px; text-align:center;">${idx+1}</td>
@@ -2841,7 +2896,7 @@ function generarPdfNotasMateria(idMateria) {
     let html = `
       <div style="font-family: Arial, sans-serif; padding: 20px;">
          <h3 style="text-align:center; color:#004E64; margin-bottom:5px;">CUADRO DE RENDIMIENTO</h3>
-         <h4 style="text-align:center; margin-top:0; color:#555;">${datos.materia}</h4>
+                  <h4 style="text-align:center; margin-top:0; color:#555;">${datos.materia} · ${etiquetaPeriodo_(per)}</h4>
 
          <table style="width:100%; border-collapse:collapse; margin-top:20px;">
             <thead>
@@ -2862,7 +2917,7 @@ function generarPdfNotasMateria(idMateria) {
     `;
 
     const blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
-    blob.setName(`Cuadro_${datos.materia}.pdf`);
+        blob.setName(`Cuadro_${datos.materia}_${etiquetaPeriodo_(per).replace(' ', '_')}.pdf`);
     return { success: true, base64: Utilities.base64Encode(blob.getBytes()), nombre: blob.getName() };
 
   } catch(e) {
@@ -3207,7 +3262,7 @@ function enviarReporteHogarMasivo(data) {
       if (!encontrado) throw new Error(`No se encontró el ID ${idEst}.`);
       if (!emailEncargado || !String(emailEncargado).includes("@")) throw new Error(`Correo inválido o vacío.`);
 
-      const pdfBlob = crearBlobPdfEstudiante(idEst, nombreProfe);
+            const pdfBlob = crearBlobPdfEstudiante(idEst, nombreProfe, data.periodo); // [FIX 2026-11-15]
 
       GmailApp.sendEmail(
         emailEncargado,
@@ -3240,9 +3295,16 @@ function enviarReporteHogarMasivo(data) {
 // GENERADORES DE PDF "RADIOGRAFÍA"
 // ==========================================
 
-function generarHtmlRadiografia(idEst, nombreDocente = "Docente a cargo") {
+function generarHtmlRadiografia(idEst, nombreDocente = "Docente a cargo", periodo) {
   const ss = SpreadsheetApp.openById(SHEET_ID);
-  const datos = obtenerBoletaEstudiante(idEst);
+  // [FIX 2026-11-15] el informe es de UN periodo (antes sumaba I + II)
+  let idSecEst = "";
+  const dataEstPer = ss.getSheetByName("ESTUDIANTES").getDataRange().getValues();
+  for (let i = 1; i < dataEstPer.length; i++) {
+    if (String(dataEstPer[i][0]).trim() === String(idEst).trim()) { idSecEst = dataEstPer[i][1]; break; }
+  }
+  const per = periodoParaReporte_(ss, idSecEst, periodo);
+  const datos = obtenerBoletaEstudiante(idEst, per);
   if(datos.error) throw new Error("No hay datos para generar el reporte");
 
   const idSec = datos.estudiante.idSec;
@@ -3316,7 +3378,8 @@ function generarHtmlRadiografia(idEst, nombreDocente = "Docente a cargo") {
   return `
     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; padding: 20px; color: #1e293b;">
       <div style="text-align:center; border-bottom: 3px solid #4F46E5; padding-bottom:15px; margin-bottom:25px;">
-         <h1 style="color:#4F46E5; margin:0; text-transform:uppercase; font-size:22px; letter-spacing:1px;">Informe de Avance al Hogar</h1>
+                  <h1 style="color:#4F46E5; margin:0; text-transform:uppercase; font-size:22px; letter-spacing:1px;">Informe de Avance al Hogar</h1>
+         <p style="color:#4F46E5; font-size:13px; font-weight:bold; margin:6px 0 0 0;">${etiquetaPeriodo_(per)}</p>
          <p style="color:#64748b; font-size:11px; margin:5px 0 0 0;">Generado de forma automatizada por RegistraME V-Pro</p>
       </div>
       <table style="width:100%; margin-bottom:25px; border-collapse:collapse;">
@@ -3382,13 +3445,13 @@ function generarHtmlRadiografia(idEst, nombreDocente = "Docente a cargo") {
   `;
 }
 
-function crearBlobPdfEstudiante(idEst, nombreDocente) {
-  let html = generarHtmlRadiografia(idEst, nombreDocente);
+function crearBlobPdfEstudiante(idEst, nombreDocente, periodo) {
+  let html = generarHtmlRadiografia(idEst, nombreDocente, periodo); // [FIX 2026-11-15]
   return Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF).setName(`Informe_${idEst}.pdf`);
 }
 
-function generarPdfBoletaEstudiante(idEst) {
-  let html = generarHtmlRadiografia(idEst, "Docente a cargo");
+function generarPdfBoletaEstudiante(idEst, periodo) {
+  let html = generarHtmlRadiografia(idEst, "Docente a cargo", periodo); // [FIX 2026-11-15]
   const blob = Utilities.newBlob(html, MimeType.HTML).getAs(MimeType.PDF);
   blob.setName(`Radiografia_${idEst}.pdf`);
   return { success: true, base64: Utilities.base64Encode(blob.getBytes()), nombre: blob.getName() };
@@ -3397,7 +3460,7 @@ function generarPdfBoletaEstudiante(idEst) {
 function generarPdfMasivoBoletas(data) {
   let htmlFinal = "";
   for(let i=0; i<data.ids.length; i++) {
-      htmlFinal += generarHtmlRadiografia(data.ids[i], data.nombreDocente);
+            htmlFinal += generarHtmlRadiografia(data.ids[i], data.nombreDocente, data.periodo); // [FIX 2026-11-15]
       if(i < data.ids.length - 1) htmlFinal += "<div style='page-break-after: always;'></div>";
   }
   const blob = Utilities.newBlob(htmlFinal, MimeType.HTML).getAs(MimeType.PDF);
