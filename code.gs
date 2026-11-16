@@ -2653,6 +2653,7 @@ function obtenerBoletaEstudiante(idEstudiante, periodo) {
     if(String(dataMat[i][1]) == String(est.idSec)) {
       materias.push({
         id: dataMat[i][0], nombre: dataMat[i][2],
+        notaMinima: Number(dataMat[i][8]) || 65, // [2026-11-16] para colorear aprobado/reprobado
         p: { cot: dataMat[i][3], tar: dataMat[i][4], pru: dataMat[i][5], pro: dataMat[i][6], asi: dataMat[i][7] }
       });
     }
@@ -2701,6 +2702,7 @@ function obtenerBoletaEstudiante(idEstudiante, periodo) {
 
     reporte.push({
       materia: mat.nombre,
+      notaMinima: mat.notaMinima, // [2026-11-16]
       desglose: {
           TRAB_COT: Number(acumulado.TRAB_COT.toFixed(2)),
           TAREAS: Number(acumulado.TAREAS.toFixed(2)),
@@ -3364,7 +3366,7 @@ function generarHtmlRadiografia(idEst, nombreDocente = "Docente a cargo", period
 
   let filasNotas = "";
   datos.notas.forEach(n => {
-     let colorHex = n.final >= 65 ? "#10b981" : "#ef4444";
+     let colorHex = n.final >= (n.notaMinima || 65) ? "#10b981" : "#ef4444"; // [2026-11-16] nota minima de la materia
      filasNotas += `
      <tr>
         <td style="border-bottom:1px solid #e2e8f0; padding:8px; font-size:12px; font-weight:bold; color:#334155;">${n.materia}</td>
@@ -4721,7 +4723,7 @@ function obtenerNotaFinalAnual(idMateria) {
       };
     });
 
-    return { success: true, materia: p1.materia, lista: lista, finPeriodo2: cierreP2.finP2 || "", usaFechasCierre: cierreP2.usaFechas };
+    return { success: true, materia: p1.materia, notaMinima: notaMinima, lista: lista, finPeriodo2: cierreP2.finP2 || "", usaFechasCierre: cierreP2.usaFechas }; // [2026-11-16] + notaMinima
   } catch (e) { return { error: e.toString() }; }
 }
 
@@ -4833,7 +4835,7 @@ function generarPdfAmpliaciones(idMateria, soloConAmpliacion) {
       const detalle = tieneAmp
         ? `Intento ${e.ampliacion.intento}: ${e.ampliacion.notaObtenida}% (original ${e.notaFinalOriginal}%)`
         : "—";
-      const color = e.notaFinal === "Pendiente" ? "#999" : (e.notaFinal >= 65 ? "green" : "red");
+      const color = e.notaFinal === "Pendiente" ? "#999" : (e.notaFinal >= (datos.notaMinima || 65) ? "green" : "red"); // [2026-11-16]
       filas += `
       <tr>
         <td style="border:1px solid #ddd; padding:5px; font-size:10px; text-align:center;">${idx + 1}</td>

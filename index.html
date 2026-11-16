@@ -5917,7 +5917,7 @@ updatePreviewScore: (inputObj) => {
         
         if(spanNota100) {
             spanNota100.innerText = "Nota: " + Math.round(nota100);
-            spanNota100.className = `text-xs font-bold px-2 py-1 rounded min-w-[60px] text-center border transition tabular-nums ${nota100 >= 65 ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-rose-600 bg-rose-50 border-rose-200'}`;
+            spanNota100.className = `text-xs font-bold px-2 py-1 rounded min-w-[60px] text-center border transition tabular-nums ${nota100 >= app.notaMinimaMateria(app.state.currentMatId) ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-rose-600 bg-rose-50 border-rose-200'}`;
         }
     }
 },
@@ -6219,9 +6219,15 @@ fillMaxScore: async (nivelSeleccionado = null) => {
 // corregida a mano, muestra tambien la nota CALCULADA por el sistema, avisa si
 // la calculada cambio despues de la correccion, y ofrece "Deshacer corrección" para volver
 // a la calculada.
+    // [2026-11-16] Nota mínima de una materia de la sección abierta (la lista de Asignaturas la trae)
+    notaMinimaMateria: (idMat) => {
+        const m = (app.state.tempMaterias || []).find(x => String(x.id) === String(idMat));
+        return (m && Number(m.notaMinima)) || 65;
+    },
+
     celdaNotaFinal: (o) => {
         const esc = app.escapeHtml;
-        const color = o.nota === 'Pendiente' ? 'text-gray-400' : (o.nota >= 70 ? 'text-green-600' : 'text-red-600');
+        const color = o.nota === 'Pendiente' ? 'text-gray-400' : (o.nota >= (o.min || 65) ? 'text-green-600' : 'text-red-600'); // [2026-11-16] nota mínima de la materia (antes 70 fijo)
         const lapiz = o.corregida ? ` <i class="fas fa-pen text-[9px] text-amber-500" title="Corregida: ${esc(o.motivo)}"></i>` : '';
         const notaParaModal = typeof o.nota === 'number' ? o.nota : `'${o.nota}'`;
         const btnCorregir = `<button type="button" onclick="app.abrirCorreccionNotaFinal('${o.idMat}', ${app.jsStr(o.nomMat)}, '${o.idEst}', ${app.jsStr(o.nombre)}, ${notaParaModal}, '${o.periodo}')" class="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 font-bold" title="Corregir nota final con motivo"><i class="fas fa-pen mr-0.5"></i>Corregir</button>`;
@@ -8221,7 +8227,7 @@ adminLoadUsers: async () => {
                     <tbody class="divide-y">`;
 
             res.notas.forEach(n => {
-                let color = n.final >= 70 ? 'text-green-600' : 'text-red-600';
+                let color = n.final >= (n.notaMinima || 65) ? 'text-green-600' : 'text-red-600'; // [2026-11-16]
                 html += `<tr>
                     <td class="p-2 font-medium">${n.materia}</td>
                     <td class="p-2 text-center">${n.desglose.TRAB_COT}</td>
@@ -9354,7 +9360,7 @@ adminLoadUsers: async () => {
                     <tbody class="divide-y">`;
 
             res.lista.forEach(e => {
-                let color = e.total >= 70 ? 'text-green-600' : 'text-red-600';
+                let color = e.total >= app.notaMinimaMateria(idMat) ? 'text-green-600' : 'text-red-600'; // [2026-11-16]
                 html += `<tr>
                     <td class="p-2 font-medium truncate max-w-[150px]">${e.nombre}</td>
                     <td class="p-2 text-center">${e.notas.TRAB_COT}</td>
@@ -9363,7 +9369,7 @@ adminLoadUsers: async () => {
                     <td class="p-2 text-center">${e.notas.PROYECTOS}</td>
                     <td class="p-2 text-center">${e.notas.ASIST}</td>
                     <td class="p-2 text-center bg-gray-50">
-                        ${app.celdaNotaFinal({ idMat, nomMat, idEst: e.id, nombre: e.nombre, nota: e.total, calculada: e.totalCalculado, corregida: e.corregida, motivo: e.motivoCorreccion, cambio: e.cambioDesdeCorreccion, calcAlCorregir: e.calculadaAlCorregir, periodo })}
+                        ${app.celdaNotaFinal({ idMat, nomMat, idEst: e.id, nombre: e.nombre, nota: e.total, calculada: e.totalCalculado, corregida: e.corregida, motivo: e.motivoCorreccion, cambio: e.cambioDesdeCorreccion, calcAlCorregir: e.calculadaAlCorregir, periodo, min: app.notaMinimaMateria(idMat) })}
                     </td>
                 </tr>`;
             });
@@ -9424,7 +9430,7 @@ adminLoadUsers: async () => {
 
             res.lista.forEach(e => {
                 const pendiente = e.notaFinal === 'Pendiente';
-                const color = pendiente ? 'text-gray-400' : (e.notaFinal >= 70 ? 'text-green-600' : 'text-red-600');
+                const color = pendiente ? 'text-gray-400' : (e.notaFinal >= (res.notaMinima || app.notaMinimaMateria(idMat)) ? 'text-green-600' : 'text-red-600'); // [2026-11-16]
                 const detalle = e.ampliacion
                     ? `<span class="text-[10px] font-medium text-indigo-500">Ampliación intento ${e.ampliacion.intento}: ${e.ampliacion.notaObtenida}% (nota original ${e.notaFinalOriginal}%)</span>`
                     : `<span class="text-[10px] text-gray-300">—</span>`;
@@ -9433,7 +9439,7 @@ adminLoadUsers: async () => {
                     <td class="p-2 text-center">${e.notaPeriodo1}</td>
                     <td class="p-2 text-center">${e.notaPeriodo2 !== null ? e.notaPeriodo2 : '—'}</td>
                     <td class="p-2 text-center bg-gray-50">
-                        ${app.celdaNotaFinal({ idMat, nomMat, idEst: e.id, nombre: e.nombre, nota: e.notaFinal, calculada: e.notaFinalCalculada, corregida: e.corregida, motivo: e.motivoCorreccion, cambio: e.cambioDesdeCorreccion, calcAlCorregir: e.calculadaAlCorregir, periodo: '', parcial: e.notaParcial, infoPendiente })}
+                        ${app.celdaNotaFinal({ idMat, nomMat, idEst: e.id, nombre: e.nombre, nota: e.notaFinal, calculada: e.notaFinalCalculada, corregida: e.corregida, motivo: e.motivoCorreccion, cambio: e.cambioDesdeCorreccion, calcAlCorregir: e.calculadaAlCorregir, periodo: '', parcial: e.notaParcial, infoPendiente, min: res.notaMinima || app.notaMinimaMateria(idMat) })}
                     </td>
                     <td class="p-2">${detalle}</td>
                 </tr>`;
