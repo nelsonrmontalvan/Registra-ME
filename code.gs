@@ -3187,6 +3187,10 @@ function obtenerDatosReporteSEA(idMateria, periodo) {
        });
     });
 
+    // [2026-11-15] Siempre en orden alfabético por nombre (vista previa, Excel y CSV).
+    // localeCompare en español: respeta tildes y ñ (Álvarez junto a Alvarado, Muñoz después de Mora).
+    reporte.sort((x, y) => String(x.Nombre || '').trim().localeCompare(String(y.Nombre || '').trim(), 'es', { sensitivity: 'base' }));
+
     return { success: true, lista: reporte, materia: nombreMateria };
   } catch (e) { return { error: e.toString() }; }
 }
