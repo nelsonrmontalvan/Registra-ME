@@ -9406,14 +9406,19 @@ adminLoadUsers: async () => {
                 ? `La nota final se calcula al cerrar el II Periodo (fin: ${finP2Txt}). La "parcial" es solo referencia. Si esa fecha está mal, corregila en la configuración de la sección.`
                 : 'La nota final se calcula cuando el estudiante tenga notas en el II Periodo (esta sección no tiene fechas de periodos configuradas). La "parcial" es solo referencia.';
             const avisoPendiente = hayPendientes
-                ? `<div class="mt-2 p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600"><i class="fas fa-hourglass-half mr-1 text-slate-400"></i>${app.escapeHtml(infoPendiente)}</div>`
+                ? `<div class="mt-2 p-2 rounded-lg bg-slate-50 border border-slate-200 text-[11px] text-slate-600 flex flex-col sm:flex-row sm:items-center gap-2"><span class="flex-1"><i class="fas fa-hourglass-half mr-1 text-slate-400"></i>${app.escapeHtml(infoPendiente)}</span><button onclick="app.cerrarPeriodoMateria('${idMat}', ${app.jsStr(nomMat)})" class="bg-slate-800 text-white px-3 py-1.5 rounded-lg font-bold text-[11px] hover:bg-slate-900 whitespace-nowrap"><i class="fas fa-lock mr-1"></i> Cerrar II Periodo ahora</button></div>`
+                : '';
+            // [2026-11-16] Cierre manual activo: se muestra con opción de reabrir
+            const cm = res.cierreManual;
+            const avisoCierreManual = cm
+                ? `<div class="mt-2 p-2 rounded-lg bg-emerald-50 border border-emerald-200 text-[11px] text-emerald-700 flex flex-col sm:flex-row sm:items-center gap-2"><span class="flex-1"><i class="fas fa-lock mr-1"></i>II Periodo cerrado manualmente${cm.fecha ? ' el ' + cm.fecha.split('-').reverse().join('/') : ''}${cm.motivo ? ' · ' + app.escapeHtml(cm.motivo) : ''}. La nota final ya es la definitiva (si agregás notas nuevas, se recalcula).</span><button onclick="app.reabrirPeriodoMateria('${idMat}', ${app.jsStr(nomMat)})" class="bg-white border border-emerald-300 text-emerald-700 px-3 py-1.5 rounded-lg font-bold text-[11px] hover:bg-emerald-100 whitespace-nowrap"><i class="fas fa-lock-open mr-1"></i> Reabrir</button></div>`
                 : '';
 
             let html = `
             <div class="text-left mb-3">
                 <h4 class="font-bold text-gray-700">${nomMat}</h4>
                 <p class="text-xs text-gray-500">Nota Final Anual ${anioNotaFinal} (promedio I y II Periodo)</p>
-                ${avisoPendiente}
+                ${avisoPendiente}${avisoCierreManual}
             </div>
             <div class="overflow-y-auto max-h-[420px] border rounded-lg">
                 <table class="w-full text-xs text-left">
@@ -9453,6 +9458,48 @@ adminLoadUsers: async () => {
                 showConfirmButton: false,
                 footer: `<div class="flex flex-col sm:flex-row gap-2 w-full"><button onclick="app.downloadPdf('pdfNotaFinalAnual', '${idMat}')" class="bg-emerald-600 text-white px-4 py-2 rounded font-bold shadow hover:bg-emerald-700 flex-1"><i class="fas fa-file-pdf mr-2"></i> Descargar PDF Nota Anual</button><button onclick="app.imprimirReporteAmpliaciones('${idMat}', ${app.jsStr(nomMat)})" class="bg-indigo-600 text-white px-4 py-2 rounded font-bold shadow hover:bg-indigo-700 flex-1"><i class="fas fa-file-pdf mr-2"></i> Imprimir Reporte de Ampliaciones</button></div>`
             });
+        },
+
+        // [2026-11-16] Cierre manual del II Periodo (por materia). Solo se registra en la hoja CIERRES.
+        cerrarPeriodoMateria: async (idMat, nomMat) => {
+            const { value: motivo, isConfirmed } = await Swal.fire({
+                title: 'Cerrar II Periodo',
+                html: `<div class="text-left text-sm text-slate-600 space-y-2">
+                    <p class="font-bold text-slate-700">${app.escapeHtml(nomMat)}</p>
+                    <ul class="list-disc pl-5 text-xs space-y-1">
+                        <li>La <b>Nota Final</b> deja de salir "Pendiente": se calcula ya con las notas del I y II Periodo y sale <b>Aprobado / Reprobado</b>.</li>
+                        <li>Se habilita la <b>Ampliación</b> para quien no alcanzó la nota mínima.</li>
+                        <li>No se borra ni cambia ninguna nota, ni las fechas de la sección. La asistencia sigue igual.</li>
+                        <li>Se puede deshacer con <b>Reabrir</b>.</li>
+                    </ul></div>`,
+                input: 'text',
+                inputPlaceholder: 'Motivo (opcional), ej: ya se entregaron notas',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, cerrar periodo',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#0f172a'
+            });
+            if (!isConfirmed) return;
+            Swal.fire({ title: 'Cerrando periodo...', didOpen: () => Swal.showLoading() });
+            const r = await app.api({ action: 'cerrarPeriodoMateria', idMateria: idMat, periodo: '2', motivo: motivo || '' });
+            if (!r || !r.success) return Swal.fire('No se pudo', (r && r.message) || 'Error de conexión', 'error');
+            app.verNotaFinalAnual(idMat, nomMat);
+        },
+
+        reabrirPeriodoMateria: async (idMat, nomMat) => {
+            const ok = await Swal.fire({
+                title: '¿Reabrir II Periodo?',
+                text: 'La nota final vuelve a calcularse según la fecha de cierre de la sección (puede volver a salir "Pendiente"). No se borra ninguna nota.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, reabrir',
+                cancelButtonText: 'Cancelar'
+            });
+            if (!ok.isConfirmed) return;
+            Swal.fire({ title: 'Reabriendo...', didOpen: () => Swal.showLoading() });
+            const r = await app.api({ action: 'reabrirPeriodoMateria', idMateria: idMat, periodo: '2' });
+            if (!r || !r.success) return Swal.fire('No se pudo', (r && r.message) || 'Error de conexión', 'error');
+            app.verNotaFinalAnual(idMat, nomMat);
         },
 
         // Antes de generar el PDF, deja elegir si va toda la materia o solo

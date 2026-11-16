@@ -117,6 +117,8 @@ function doPost(e) {
     if(action === "getSubjectReport") return response(obtenerCuadroMateria(data.id, data.periodo));
     if(action === "getNotaFinalAnual") return response(obtenerNotaFinalAnual(data.id));
     if(action === "pdfNotaFinalAnual") return response(generarPdfNotaFinalAnual(data.id)); // [2026-11-16]
+    if(action === "cerrarPeriodoMateria") return response(cerrarPeriodoMateria(data)); // [2026-11-16]
+    if(action === "reabrirPeriodoMateria") return response(reabrirPeriodoMateria(data)); // [2026-11-16]
     if(action === "obtenerReporteAuditoriaNotas") return response(obtenerReporteAuditoriaNotas(data.idIndicador));
 
     // --- ASISTENCIA ESTUDIANTE ---
@@ -3778,7 +3780,7 @@ function kpiV51_leerBase_(ss) {
   const base = {
     mat: leer("MATERIAS"), sec: leer("SECCIONES"), est: leer("ESTUDIANTES"),
     ind: leer("INDICADORES"), notas: leer("NOTAS"), corrNF: leer("CORRECCIONES_NOTA_FINAL"),
-    cfg: leer("CONF_HORARIO"), asis: leer("ASISTENCIA_DATA"),
+    cfg: leer("CONF_HORARIO"), asis: leer("ASISTENCIA_DATA"), cierres: leer("CIERRES"), // [2026-11-16] cierre manual
     hoy: formatearFechaInput(new Date())
   };
   // Indice de notas: idInd -> { idEst -> %_OBTENIDO }. La ULTIMA fila gana
@@ -3881,7 +3883,12 @@ function kpiV51_calcularMateria_(base, idMateria, periodo, fechas) {
   }
 
   const fp = fechas.find(p => p.p === String(periodo));
-  const cerrado = !!(fp && fp.fin && base.hoy > fp.fin);
+  // [2026-11-16] cerrado por fecha o por cierre manual del docente (hoja CIERRES, ultima fila manda)
+  let cierreManual = false;
+  (base.cierres || []).slice(1).forEach(r => {
+    if (String(r[1]).trim() === idMat && String(r[2]).trim() === String(periodo)) cierreManual = r[6] === true || String(r[6]).toUpperCase() === "TRUE";
+  });
+  const cerrado = cierreManual || !!(fp && fp.fin && base.hoy > fp.fin);
 
   const calificadosPorInd = {};
   const lista = estudiantes.map(e => {
@@ -4606,8 +4613,94 @@ function leerCalculadaAlCorregir(fila) {
 //    [{p, inicio, fin}] con fin "yyyy-MM-dd"): cerrado = hoy > fin del periodo 2.
 // 2) Si no hay fecha valida: se mira por estudiante si ya tiene AL MENOS una
 //    nota en un indicador del II Periodo de esta materia (estConNotasP2).
+// ==========================================
+// [2026-11-16] CIERRE MANUAL DE PERIODO POR MATERIA
+// Para que el docente cierre el II Periodo de UNA materia cuando ya terminó de
+// calificar, sin esperar la fecha de fin configurada en la sección.
+// Hoja CIERRES (se crea sola la primera vez):
+//   A ID | B ID_MATERIA | C PERIODO | D FECHA | E ID_USUARIO | F MOTIVO | G ACTIVO
+// - Cerrar  = agrega una fila con ACTIVO = TRUE.
+// - Reabrir = marca esa fila con ACTIVO = FALSE (no se borra: queda el historial).
+// NO toca SECCIONES (fechas), NOTAS ni ninguna otra hoja: la asistencia y los
+// avisos de pase de lista siguen con las fechas de siempre.
+// Efecto: la Nota Final Anual deja de salir "Pendiente" y se habilita la Ampliación.
+// ==========================================
+function cierreManualActivo_(ss, idMateria, periodo) {
+  const sh = ss.getSheetByName("CIERRES");
+  if (!sh) return null;
+  const data = sh.getDataRange().getValues();
+  let activo = null;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][1]).trim() !== String(idMateria).trim() || String(data[i][2]).trim() !== String(periodo)) continue;
+    const on = data[i][6] === true || String(data[i][6]).toUpperCase() === "TRUE";
+    activo = on ? { fila: i + 1, fecha: formatearFechaInput(data[i][3]), motivo: String(data[i][5] || "") } : null; // la ultima fila manda
+  }
+  return activo;
+}
+
+// Solo el dueño de la sección (o un ADMIN) puede cerrar o reabrir.
+function puedeCerrarMateria_(ss, idMateria, email) {
+  const idUsuario = String(obtenerIdUsuarioPorEmail(email) || "").trim();
+  if (!idUsuario) return false;
+  const dataUsr = ss.getSheetByName("USUARIOS").getDataRange().getValues();
+  for (let i = 1; i < dataUsr.length; i++) {
+    if (String(dataUsr[i][0]).trim() === idUsuario && String(dataUsr[i][4]).toUpperCase() === "ADMIN") return true;
+  }
+  const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
+  let idSec = "";
+  for (let i = 1; i < dataMat.length; i++) if (String(dataMat[i][0]).trim() === String(idMateria).trim()) { idSec = String(dataMat[i][1]).trim(); break; }
+  const dataSec = ss.getSheetByName("SECCIONES").getDataRange().getValues();
+  for (let i = 1; i < dataSec.length; i++) if (String(dataSec[i][0]).trim() === idSec) return String(dataSec[i][6]).trim() === idUsuario;
+  return false;
+}
+
+function cerrarPeriodoMateria(data) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const periodo = String(data.periodo || "2");
+    if (!puedeCerrarMateria_(ss, data.idMateria, data.email)) return { success: false, message: "Solo el docente de la sección puede cerrar el periodo." };
+    if (cierreManualActivo_(ss, data.idMateria, periodo)) return { success: true, message: "El periodo ya estaba cerrado." };
+    let sh = ss.getSheetByName("CIERRES");
+    if (!sh) {
+      sh = ss.insertSheet("CIERRES");
+      sh.appendRow(["ID", "ID_MATERIA", "PERIODO", "FECHA", "ID_USUARIO", "MOTIVO", "ACTIVO"]);
+    }
+    const idUsuario = obtenerIdUsuarioPorEmail(data.email);
+    sh.appendRow(["CIE-" + Date.now(), data.idMateria, periodo, new Date(), idUsuario, String(data.motivo || ""), true]);
+    try { registrarBitacoraCambio(ss, "CIERRE_PERIODO", data.idMateria + "|P" + periodo, "abierto", "cerrado", idUsuario, String(data.motivo || "")); } catch (e) {}
+    return { success: true, message: "Periodo cerrado." };
+  } catch (e) {
+    return { success: false, message: e.toString() };
+  } finally { lock.releaseLock(); }
+}
+
+function reabrirPeriodoMateria(data) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const periodo = String(data.periodo || "2");
+    if (!puedeCerrarMateria_(ss, data.idMateria, data.email)) return { success: false, message: "Solo el docente de la sección puede reabrir el periodo." };
+    const act = cierreManualActivo_(ss, data.idMateria, periodo);
+    if (!act) return { success: true, message: "El periodo ya estaba abierto." };
+    ss.getSheetByName("CIERRES").getRange(act.fila, 7).setValue(false);
+    const idUsuario = obtenerIdUsuarioPorEmail(data.email);
+    try { registrarBitacoraCambio(ss, "CIERRE_PERIODO", data.idMateria + "|P" + periodo, "cerrado", "reabierto", idUsuario, String(data.motivo || "")); } catch (e) {}
+    return { success: true, message: "Periodo reabierto." };
+  } catch (e) {
+    return { success: false, message: e.toString() };
+  } finally { lock.releaseLock(); }
+}
+
 function estadoCierrePeriodo2(ss, idMateria) {
   const res = { usaFechas: false, cerrado: false, finP2: "", estConNotasP2: new Set() };
+  // [2026-11-16] Cierre manual del docente: manda sobre las fechas
+  try {
+    const man = cierreManualActivo_(ss, idMateria, "2");
+    if (man) { res.usaFechas = true; res.cerrado = true; res.manual = man; return res; }
+  } catch (e) {}
   try {
     const dataMat = ss.getSheetByName("MATERIAS").getDataRange().getValues();
     let idSec = null;
@@ -4723,7 +4816,7 @@ function obtenerNotaFinalAnual(idMateria) {
       };
     });
 
-    return { success: true, materia: p1.materia, notaMinima: notaMinima, lista: lista, finPeriodo2: cierreP2.finP2 || "", usaFechasCierre: cierreP2.usaFechas }; // [2026-11-16] + notaMinima
+    return { success: true, materia: p1.materia, notaMinima: notaMinima, lista: lista, finPeriodo2: cierreP2.finP2 || "", usaFechasCierre: cierreP2.usaFechas, cierreManual: cierreP2.manual ? { fecha: cierreP2.manual.fecha, motivo: cierreP2.manual.motivo } : null }; // [2026-11-16] + notaMinima + cierreManual
   } catch (e) { return { error: e.toString() }; }
 }
 
@@ -4942,6 +5035,7 @@ function generarPdfNotaFinalAnual(idMateria) {
     const notas = [];
     if (hayCorreccion) notas.push("* Nota final corregida manualmente por el docente (con motivo).");
     if (hayAmpliacion) notas.push("A Nota final con examen de ampliación aplicado.");
+    if (datos.cierreManual) notas.push(`II Periodo cerrado manualmente por el docente${datos.cierreManual.fecha ? " el " + String(datos.cierreManual.fecha).split("-").reverse().join("/") : ""}.`); // [2026-11-16]
     if (pendientes > 0) notas.push(`"Pendiente": la nota anual se calcula al cerrar el II Periodo${datos.finPeriodo2 ? " (" + datos.finPeriodo2.split("-").reverse().join("/") + ")" : ""}. La parcial es solo referencia.`);
     const fecha = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy");
 
