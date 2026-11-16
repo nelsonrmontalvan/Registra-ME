@@ -6811,27 +6811,28 @@ fillMaxScore: async (nivelSeleccionado = null) => {
             Toast.fire({ icon: 'success', title: 'Archivo SEA descargado' });
         },
 
-        // CSV -- se arma en el navegador (no necesita ir al backend, ya tenemos los datos de
-        // obtenerYPrevisualizarSEA). Lleva BOM UTF-8 para que Excel no rompa tildes/eñes.
-        // [2026-11-15] El formato NO se cambia a propósito (comas y punto decimal): el SEA
-        // tiene carga por archivo (Manual SEA rol docente, punto 4.3.4) y un cambio de
-        // separador podría hacer que la rechace. Que el Excel en español lo abra en una
-        // sola columna es normal: este archivo es para SUBIR, no para abrir y guardar.
+        // CSV con el MISMO formato del archivo que descarga el SEA (Calificaciones, Manual SEA
+        // rol docente punto 4.3.4), comparado byte a byte con un archivo real del SEA (2026-11-15):
+        //   - UTF-8 con BOM, separador ";", TODOS los campos entre comillas dobles,
+        //   - saltos de línea LF y sin salto al final, mismos encabezados.
+        // Decimal: el archivo del SEA venía todo en 0, así que el separador decimal se fija
+        // en SEA_CSV_DECIMAL (pendiente de confirmar con un archivo del SEA que traiga decimales).
+        SEA_CSV_DECIMAL: ',',
         downloadCsvSEA: async () => {
             const datos = await app.obtenerYPrevisualizarSEA();
             if (!datos) return;
 
-            const escaparCsv = (valor) => {
-                const texto = String(valor ?? '');
-                return /[",\n]/.test(texto) ? `"${texto.replace(/"/g, '""')}"` : texto;
+            const campo = (valor) => {
+                let texto = typeof valor === 'number' ? String(valor).replace('.', app.SEA_CSV_DECIMAL) : String(valor ?? '');
+                return `"${texto.replace(/"/g, '""')}"`;
             };
 
             const encabezados = ["Id", "Nombre", "Trabajo cotidiano", "Tareas", "Prueba", "Asistencia"];
             const filas = datos.res.lista.map(r => [r.Id, r.Nombre, r.Cotidiano, r.Tareas, r.Prueba, r.Asistencia]);
 
             const contenidoCsv = [encabezados, ...filas]
-                .map(fila => fila.map(escaparCsv).join(','))
-                .join('\r\n');
+                .map(fila => fila.map(campo).join(';'))
+                .join('\n');
 
             const nombreArchivo = `SEA_${datos.res.materia.replace(/\s+/g, '_')}.csv`;
             const blob = new Blob(['﻿', contenidoCsv], { type: 'text/csv;charset=utf-8;' });
@@ -9874,7 +9875,7 @@ loadAuditoriaData: async () => {
                         </button>
                     </div>
                     <!-- [2026-11-15] Aviso: el CSV se abre en una sola columna en Excel en español -->
-                    <p class="mt-3 text-[11px] text-slate-500 text-right"><i class="fas fa-circle-info text-green-600 mr-1"></i>Para <b>ver o copiar</b> las notas usá el <b>Excel</b> (se abre en columnas). El <b>CSV</b> es para subirlo tal cual: si lo abrís en Excel se ve en una sola columna, y si lo guardás desde ahí puede cambiar de formato.</p>
+                    <p class="mt-3 text-[11px] text-slate-500 text-right"><i class="fas fa-circle-info text-green-600 mr-1"></i>El <b>CSV</b> tiene el mismo formato del archivo que descarga el SEA (para subirlo). El <b>Excel</b> es para ver o copiar. No guardes el CSV desde Excel: podría cambiarle el formato.</p>
                 </div>
                 
                 <!-- PREVISUALIZACIÓN -->
