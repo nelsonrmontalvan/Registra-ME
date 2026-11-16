@@ -6815,9 +6815,12 @@ fillMaxScore: async (nivelSeleccionado = null) => {
         // rol docente punto 4.3.4), comparado byte a byte con un archivo real del SEA (2026-11-15):
         //   - UTF-8 con BOM, separador ";", TODOS los campos entre comillas dobles,
         //   - saltos de línea LF y sin salto al final, mismos encabezados.
-        // Decimal: el archivo del SEA venía todo en 0, así que el separador decimal se fija
-        // en SEA_CSV_DECIMAL (pendiente de confirmar con un archivo del SEA que traiga decimales).
-        SEA_CSV_DECIMAL: ',',
+        // Decimal: PUNTO. Confirmado leyendo el código del SEA (2026-11-15, Grades-*.js):
+        //   - al descargar, el SEA escribe cada nota con grade.toString() -> "9.25";
+        //   - al subir, convierte cada valor con +valor -> "9,25" daría NaN (nota inválida).
+        //   - empareja por la PRIMERA columna (cédula, comparación exacta de texto) y por el
+        //     NOMBRE del encabezado de cada rubro; si una nota pasa del % del rubro, la recorta.
+        SEA_CSV_DECIMAL: '.',
         downloadCsvSEA: async () => {
             const datos = await app.obtenerYPrevisualizarSEA();
             if (!datos) return;
