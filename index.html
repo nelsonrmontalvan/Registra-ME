@@ -28,29 +28,9 @@
     <meta name="theme-color" content="#C96442">
 
     <!-- LIBRERÍAS MODERNAS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-    tailwind.config = {
-        theme: {
-            extend: {
-                colors: {
-                    indigo: {
-                        50:  '#FDF5F1',
-                        100: '#FAEAE1',
-                        200: '#F2CEBB',
-                        300: '#E8AE8E',
-                        400: '#DB8E68',
-                        500: '#D17452',
-                        600: '#C96442',
-                        700: '#AE5235',
-                        800: '#8C4028',
-                        900: '#3D1A0F',
-                    }
-                }
-            }
-        }
-    }
-    </script>
+    <!-- [Fase 2 MWG] Tailwind ya compilado (antes se compilaba en el navegador con cdn.tailwindcss.com).
+         Config en tailwind.config.js. Si agrega clases nuevas: doble clic en actualizar-css.command -->
+    <link rel="stylesheet" href="/tailwind.css">
     <!-- [Fase 1 MWG] Fuentes: preconnect + link (más rápido que @import) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -60,7 +40,7 @@
     <script>/* [V5.2] Ventanas: no hacen saltar la página de fondo y usan los colores de marca */
     if (window.Swal && Swal.mixin) { window.Swal = Swal.mixin({ heightAuto: false, confirmButtonColor: "#B4573A", cancelButtonColor: "#FFFFFF" }); }</script>
     <!-- Chart.js para gráficas futuras -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
     
